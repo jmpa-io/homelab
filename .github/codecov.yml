@@ -1,0 +1,7 @@
+---
+# ignore:
+#   - cmd/accounts/
+#   - cmd/ping/
+#   - cmd/tags/
+#   - cmd/tracing/
+#   - cmd/transactions/

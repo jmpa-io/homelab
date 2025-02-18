@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD041 MD010 -->
 <p align="center">
-    <img src="docs/logo.png" style="max-width: 80%; height: auto;">
+    <img src="docs/logo.png" width="80%">
 </p>
 
 ## `homelab`
