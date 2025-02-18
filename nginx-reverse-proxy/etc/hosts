@@ -1,0 +1,18 @@
+127.0.0.1       localhost
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+
+# --- BEGIN PVE ---
+10.0.1.4 dns.jmpa.io dns
+# --- END PVE ---
+
+# DNS.
+10.0.1.4        proxmox.jmpa.io proxmox
+
+10.0.1.4        homepage.jmpa.io homepage
+10.0.1.4        myspeed.jmpa.io myspeed
+
+10.0.1.4        grafana.jmpa.io grafana
+10.0.1.4        code.jmpa.io code
+
