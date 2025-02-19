@@ -20,6 +20,15 @@
             label: "Dad says..."
             format: text
 
+  - UptimeKuma:
+      icon: uptime-kuma.svg
+      description: The service used to monitor all the other services.
+      href: https://uptimekuma.jmpa.io
+      siteMonitor: https://uptimekuma.jmpa.io
+      widget:
+        type: uptimekuma
+        url: https://uptimekuma.jmpa.io
+
 - Homelab:
   - Infrastructure:
     - Proxmox:
