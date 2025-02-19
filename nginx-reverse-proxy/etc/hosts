@@ -11,6 +11,7 @@ ff02::2         ip6-allrouters
 10.0.1.4        proxmox.jmpa.io proxmox
 
 10.0.1.4        homepage.jmpa.io homepage
+10.0.1.4        uptimekuma.jmpa.io uptimekuma
 10.0.1.4        myspeed.jmpa.io myspeed
 
 10.0.1.4        grafana.jmpa.io grafana
