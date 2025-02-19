@@ -1,0 +1,40 @@
+---
+# Reference:
+# https://gethomepage.dev/configs/settings/
+
+title: My Homepage
+description: My Homepage
+
+# look & feel.
+headerStyle: boxed
+disableCollapse: true
+
+# base url.
+base: https://homepage.jmpa.io
+
+# quick launch.
+quicklaunch:
+  searchDescriptions: true
+  hideInternetSearch: true
+  showSearchSuggestions: false
+  hideVisitURL: true
+  provider: google
+
+# layout.
+layout:
+  Basics:
+    header: false
+    style: row
+    columns: 3
+
+  Homelab:
+    icon: https://b.thumbs.redditmedia.com/Flac-ySmslzY0SE583PNA42rFbcYxLt7hqgCeUrC11s.png
+    style: row
+    columns: 3
+
+  Personal:
+    icon: https://jcleal.me/my-face.png
+    style: row
+    columns: 3
+
+

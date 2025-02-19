@@ -1,0 +1,25 @@
+---
+# Reference:
+# https://gethomepage.dev/configs/info-widgets/
+
+- logo:
+
+- resources:
+    cpu: true
+
+- resources:
+    memory: true
+
+- resources:
+    disk: /
+
+- resources:
+    network: true
+
+- resources:
+    uptime: true
+
+- search:
+    provider: google
+    target: _blank
+

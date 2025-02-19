@@ -1,0 +1,119 @@
+---
+# Reference:
+# https://gethomepage.dev/configs/services/
+
+- Basics:
+  - Calendar:
+      widget:
+        type: calendar
+
+  - Daily Dad Joke:
+      widget:
+        type: customapi
+        url: https://icanhazdadjoke.com/
+        refreshInterval: 86400000 # Refresh every 24 hours (in ms)
+        method: GET
+        headers:
+          Accept: application/json
+        mappings:
+          - field: joke
+            label: "Dad says..."
+            format: text
+
+- Homelab:
+  - Infrastructure:
+    - Proxmox:
+        icon: proxmox.svg
+        description: The service running all this infrastructure.
+        href: https://proxmox.jmpa.io
+        siteMonitor: https://proxmox.jmpa.io
+        widget:
+          type: proxmox
+          url: https://proxmox.jmpa.io
+          node: jmpa-server-1
+
+    - Grafana:
+        icon: grafana.svg
+        description: The service used to observe all this infrastructure.
+        href: https://grafana.jmpa.io
+        siteMonitor: https://grafana.jmpa.io
+        widget:
+          type: grafana
+          url: https://grafana.jmpa.io
+
+    - AWS:
+        icon: aws.svg
+        description: My cloud provider.
+        href: https://aws.jcleal.me
+        ping: https://aws.jcleal.me
+
+  - Internet:
+    - MySpeed:
+        icon: myspeed.svg
+        description: The speed of my internet.
+        href: https://myspeed.jmpa.io
+        siteMonitor: https://myspeed.jmpa.io
+        widget:
+          type: myspeed
+          url: https://myspeed.jmpa.io
+
+    - Tailscale:
+        icon: tailscale.svg
+        description: My VPN.
+        href: https://tailscale.com
+        siteMonitor: https://tailscale.com
+        widget:
+          type: tailscale
+
+  - Developer:
+    - VS Code:
+        icon: vscode.svg
+        description: An IDE in the browser.
+        href: https://code.jmpa.io
+        siteMonitor: https://code.jmpa.io
+
+    - GitHub:
+        icon: github.svg
+        description: My GitHub org.
+        href: https://github.com/jmpa-io
+        siteMonitor: https://github.com/jmpa-io
+
+    - GitHub (Personal):
+        icon: github.svg
+        description: My personal GitHub.
+        href: https://github.com/jcleal
+        siteMonitor: https://github.com/jcleal
+
+    - Draw.io:
+        icon: https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Diagrams.net_Logo.svg/2048px>
+        description: A drawing program for architecture diagrams.
+        href: https://app.diagrams.net
+        siteMonitor: https://app.diagrams.net
+
+    - Slack:
+        icon: slack.svg
+        description: My personal Slack org.
+        href: https://jmpa-io.slack.com
+        siteMonitor: https://jmpa-io.slack.com
+
+- Personal:
+  - Music:
+    - Youtube Music:
+        icon: youtube-music.svg
+        description: My music.
+        href: https://music.youtube.com
+        siteMonitor: https://music.youtube.com
+
+    - Spotify:
+        icon: spotify.svg
+        description: My backup music.
+        href: https://open.spotify.com
+        siteMonitor: https://open.spotify.com
+
+  - Finances:
+    - Pocketsmith:
+        icon: https://play-lh.googleusercontent.com/zyMIPDy4MB_sx7lRpNnNayctyaozKj5IFl2fW017CZ1JKTSX>
+        description: My finances.
+        href: https://pocketsmith.com/dashboard
+        siteMonitor: https://pocketsmith.com/
+
