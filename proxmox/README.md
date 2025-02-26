@@ -6,7 +6,8 @@ This section covers setting up a new `jmpa-server` phyical machine.
 **Contents:**
 
 * [Prerequisites](#prerequisites).
-* [Setup `Proxmox`](#setting-up-proxmox).
+* [Setup `Proxmox` on new machine](#setting-up-proxmox-on-new-machine).
+* [Add new machine to the existing Proxmox cluster](#add-new-machine-to-the-existing-proxmox-cluster).
 
 ## `Prerequisites`
 
@@ -103,7 +104,7 @@ ssh <user>@<new-machine-ip>
 ```
 Replacing `<user>` with the name of the user you've set up, and `<new-machine-ip>` with the IP Address of the new machine.
 
-## Setting up `Proxmox`
+## Setting up `Proxmox` on new machine
 
 The following is [based on this wiki guide](https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_12_Bookworm).
 
@@ -140,5 +141,49 @@ sha512sum /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
 sudo apt update && sudo apt full-upgrade
 
 # Install Proxmox VE Kernel.
-sudo apt install proxmox-default-kernel proxmox-ve postfix open-iscsi chrony
+sudo apt install proxmox-default-kernel
+sudo apt install proxmox-ve postfix open-iscsi chrony
+sudo reboot
+
+# Run community scripts.
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=post-pve-install
+bash -c "$(wget -qLO - https://github.com/community-scripts/ProxmoxVE/raw/main/misc/post-pve-install.sh)"
 ```
+
+The Proxmox UI should now be accessible via:
+
+```bash
+http://<new-machine-ip>:8006
+```
+If not, you have a problem somewhere along the way above and need to debug these steps.
+
+## Connect new machine to the existing Proxmox cluster.
+
+1. Gather the existing Proxmox cluster join information.
+
+Login to https://proxmox.jmpa.io > `Datacenter` > `Cluster` > `Join Information` > Click `Copy Information`.
+
+2. In another tab, login to the Proxmox UI for the new machine:
+
+```bash
+http://<new-machine-ip>:8006
+```
+
+The login credentials should be:
+
+```bash
+username: root
+password: <password-for-root-user>
+```
+
+If you didn't set a password for the `root` user, run the following on the new machine:
+
+```bash
+sudo passwd root
+```
+
+And try again to login with the password you just set for the `root` user.
+
+3. Navigate to `Datacenter` > `Cluster` > `Join Cluster` - paste the information & enter the password for the root user of the IP address printed.
+
+4. Refresh the page and login again - you should now see the other nodes in the cluster. You should also see this new machine in the list of nodes in https://proxmox.jmpa.io.
