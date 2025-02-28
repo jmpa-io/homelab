@@ -1,0 +1,31 @@
+
+# {{ ansible_managed }}
+
+# Source other interfaces.
+source /etc/network/interfaces.d/*
+
+# The loopback network interface.
+auto lo
+iface lo inet loopback
+
+# Ethernet.
+auto eno1
+allow-hotplug eno1
+iface eno1 inet manual
+
+# Wi-Fi.
+auto {{ hostvars[inventory_hostname].wifi_device_name }}
+iface {{ hostvars[inventory_hostname].wifi_device_name }} inet static
+  address {{ hostvars[inventory_hostname].ansible_host }}/{{ hostvars[inventory_hostname].ansible_host_cidr }}
+  gateway 192.168.1.1
+  dns-nameserver 1.1.1.1
+  wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+
+# Bridge.
+auto vmbr0
+iface vmbr0 inet static
+  address {{ hostvars[inventory_hostname].bridge_ip }}/{{ hostvars[inventory_hostname].bridge_ip_cidr }}
+  bridge_ports none
+  bridge_stp off
+  bridge_fd 0
+

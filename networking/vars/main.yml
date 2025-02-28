@@ -1,0 +1,8 @@
+---
+
+#
+# Variables for configuring networking.
+#
+
+upgrade: true
+

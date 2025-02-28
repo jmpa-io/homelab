@@ -1,0 +1,35 @@
+---
+
+all:
+  vars:
+
+    # aws.
+    aws_region: "{{ lookup('env', 'AWS_REGION') }}"
+
+    # ansible.
+    ansible_ssh_pass: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/ssh-password', region=aws_region) }}"
+    ansible_become_pass: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/root-password', region=aws_region) }}"
+    ansible_python_interpreter: /usr/bin/python3.11
+
+  hosts:
+    # jmpa_server_1:
+    #   ansible_host: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-1/ipv4-address', region=aws_region) }}"
+    #   ansible_host_cidr: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-2/ipv4-address/cidr', region=aws_region) }}"
+    #   bridge_ip: 10.0.1.1
+    #   bridge_ip_cidr: 24
+    #   wifi_device_name: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-1/wifi-device-name', region=aws_region) }}"
+
+    # jmpa_server_2:
+    #   ansible_host: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-2/ipv4-address', region=aws_region) }}"
+    #   ansible_host_cidr: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-2/ipv4-address/cidr', region=aws_region) }}"
+    #   bridge_ip: 10.0.2.1
+    #   bridge_ip_cidr: 24
+    #   wifi_device_name: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-2/wifi-device-name', region=aws_region) }}"
+
+    jmpa_server_3:
+      ansible_host: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-3/ipv4-address', region=aws_region) }}"
+      ansible_host_cidr: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-3/ipv4-address/cidr', region=aws_region) }}"
+      bridge_ip: 10.0.3.1
+      bridge_ip_cidr: 24
+      wifi_device_name: "{{ lookup('amazon.aws.ssm_parameter', '/homelab/jmpa-server-3/wifi-device-name', region=aws_region) }}"
+

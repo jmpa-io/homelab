@@ -1,0 +1,7 @@
+
+# {{ ansible_managed }}
+# See https://wiki.debian.org/SourcesList for more information.
+
+{% for repo in repositories %}
+deb {{ repo.url }} {{ repo.distribution }} {{ repo.components | join(" ") }}
+{% endfor %}

@@ -1,0 +1,8 @@
+---
+
+- name: Setup homeserver
+  hosts: all
+  roles:
+    # - apt
+    # - networking
+    - proxmox/tailscale

@@ -1,7 +1,7 @@
 
 # Proxmox
 
-This section covers setting up a new `jmpa-server` phyical machine.
+This section covers setting up a new `jmpa-server` physical machine.
 
 **Contents:**
 

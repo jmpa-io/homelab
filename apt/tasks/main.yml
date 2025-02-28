@@ -1,0 +1,52 @@
+---
+
+- name: Use own sources.list
+  become: true
+  ansible.builtin.template:
+    src: templates/sources.list
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+# - name: Update packages
+#   become: true
+#   package:
+#     update_cache: yes
+#
+# - name: Upgrade packages
+#   become: true
+#   package:
+#     upgrade: yes
+#   when: upgrade is not defined or upgrade
+
+- name: Install packages
+  become: true
+  block:
+    - name: Install from stable
+      package:
+        name: "{{ packages }}"
+        state: latest
+      when: packages is defined
+
+- name: Setup auto-update apt packages cronjob
+  become: true
+  cron:
+    name: auto-update apt packages
+    hour:   "3"
+    minute: "0"
+    job: apt-get update -y && apt-get upgrade -y
+    state: present
+    user: root
+
+- name: Setup auto-clean apt packages cronjob
+  become: true
+  cron:
+    name: auto-clean apt packages
+    hour:    "3"
+    minute:  "15"
+    weekday: "6"
+    job: apt-get autoclean -y && apt-get autoremove -y
+    state: present
+    user: root

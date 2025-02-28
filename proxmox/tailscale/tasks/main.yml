@@ -1,0 +1,12 @@
+---
+
+- name: Create LXC Container
+  community.general.proxmox:
+    api_host: 192.168.1.180
+    api_token_id: xxxx
+    api_token_secret: xxxx
+    node: jmpa-server-3
+    api_user: root
+    hostname: tailscale
+    ostemplate: local://debian-12.9.0-amd64.iso
+    state: present

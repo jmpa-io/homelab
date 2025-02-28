@@ -1,0 +1,28 @@
+---
+
+- name: Update /etc/network/interfaces
+  become: true
+  ansible.builtin.template:
+    src: templates/interfaces
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Update /etc/hosts
+  become: true
+  ansible.builtin.template:
+    src: templates/interfaces
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Restart networking
+  become: true
+  ansible.builtin.systemd:
+    name: networking
+    state: restarted
+
