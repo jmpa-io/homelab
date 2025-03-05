@@ -1,8 +1,29 @@
 ---
 
-- name: Setup homeserver
-  hosts: all
+
+# - name: Setup homeserver
+#   # hosts: all
+#   hosts: jmpa_server_3
+#   roles:
+#
+#     # packages.
+#     - apt
+
+    # proxmox networking.
+    #- networking
+
+# - name: Setup nfs server
+#   hosts: jmpa_server_1
+#   roles:
+#     - proxmox/nfs-server
+
+# - name: Setup nfs clients
+#   hosts: jmpa_server_2, jmpa_server_3
+#   roles:
+#     - proxmox/nfs-client
+
+- name: Setup required containers
+  hosts: jmpa_server_3
   roles:
-    # - apt
-    # - networking
     - proxmox/tailscale
+

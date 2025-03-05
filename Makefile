@@ -11,7 +11,7 @@ ping-inventory: inventory.yml
 
 run-playbook: ## Executes the Ansible playbook.
 run-playbook: playbook.yml
-	ansible-playbook $<
+	ansible-playbook -vv $<
 
 ---: ## ---
 

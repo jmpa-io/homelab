@@ -1,7 +1,7 @@
 ---
 
 #
-# Variables for configuring apt, upgrading and installing packages.
+# Variables for configuring apt + upgrading & installing packages.
 #
 
 upgrade: true
@@ -31,3 +31,6 @@ repositories:
 packages:
   - dnsmasq
   - dnsutils
+  - python3-pip
+  - python3-proxmoxer
+

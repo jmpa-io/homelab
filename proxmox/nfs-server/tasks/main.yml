@@ -1,0 +1,38 @@
+---
+
+- name: install required apt packages, if missing
+  become: true
+  ansible.builtin.apt:
+    name: "{{ packages }}"
+    state: latest
+  when: packages is defined
+
+- name: create nfs share
+  become: true
+  file:
+    path: /mnt/share
+    state: directory
+    mode: '0777'
+
+- name: update /etc/exports
+  become: true
+  ansible.builtin.template:
+    src: templates/etc/exports
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: apply nfs export
+  become: true
+  command: exportfs -a
+
+- name: restart nfs-kernel-service
+  systemd:
+    name: nfs-kernel-server
+    state: restarted
+    enabled: true
+
+# TODO setup isos nfs here in Proxmox UI.
+# TODO setup lxc nfs here in Proxmox UI.

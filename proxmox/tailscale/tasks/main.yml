@@ -1,12 +1,29 @@
 ---
 
 - name: Create LXC Container
+  become: true
   community.general.proxmox:
-    api_host: 192.168.1.180
-    api_token_id: xxxx
-    api_token_secret: xxxx
-    node: jmpa-server-3
-    api_user: root
+    vmid: "{{ hostvars[inventory_hostname].id }}15"
+    api_host: "{{ hostvars[inventory_hostname].ansible_host }}"
+    api_token_id: proxmox-api-token
+    api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
+    node: "{{ inventory_hostname | replace('_', '-') }}"
+    password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
+    api_user: root@pam
     hostname: tailscale
-    ostemplate: local://debian-12.9.0-amd64.iso
+    ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
     state: present
+    timeout: 300 # 5 mins.
+    force: true
+
+- name: Check if LXC container is running
+  become: true
+  command: "pct status {{ hostvars[inventory_hostname].id }}15"
+  register: lxc_status
+  changed_when: false
+  failed_when: false  # Don't fail if the container doesn't exist yet
+
+- name: Start LXC Container if not running
+  become: true
+  command: "pct start {{ hostvars[inventory_hostname].id }}15"
+  when: "'status: stopped' in lxc_status.stdout"

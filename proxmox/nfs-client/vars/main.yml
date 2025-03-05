@@ -1,0 +1,11 @@
+---
+
+#
+# Variables for configuring this machine as an NFS client.
+#
+
+upgrade: true
+
+packages:
+  - nfs-common
+

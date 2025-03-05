@@ -1,0 +1,11 @@
+---
+
+#
+# Variables for configuring the nfs server.
+#
+
+upgrade: true
+
+packages:
+  - nfs-kernel-server
+
