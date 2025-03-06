@@ -17,6 +17,10 @@
 [![CI/CD](https://github.com/jmpa-io/homelab/actions/workflows/cicd.yml/badge.svg)](https://github.com/jmpa-io/homelab/actions/workflows/cicd.yml)
 [![Codecov](https://codecov.io/github/jmpa-io/homelab/graph/badge.svg)](https://codecov.io/github/jmpa-io/homelab)
 
+<table>
+<tr>
+<td>
+
 <details open="open">
 
 <summary>🤔 <b>Why set up this homelab?</b></summary><br/>
@@ -27,6 +31,9 @@ I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup
 
 </details>
 
+</td>
+</tr>
+</table>
 
 ## 🖼️ `Architecture`
 
