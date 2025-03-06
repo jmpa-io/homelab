@@ -17,7 +17,16 @@
 [![CI/CD](https://github.com/jmpa-io/homelab/actions/workflows/cicd.yml/badge.svg)](https://github.com/jmpa-io/homelab/actions/workflows/cicd.yml)
 [![Codecov](https://codecov.io/github/jmpa-io/homelab/graph/badge.svg)](https://codecov.io/github/jmpa-io/homelab)
 
----
+<details open="open">
+
+<summary>🤔 <b>Why set up this homelab?</b></summary><br/>
+
+After moving to the other side of the world, I found myself in a job market where higher-level roles require different skills than I’m used to. To adapt to this change, I've created this homelab setup to expand my knowledge from the cloud to on-prem.
+
+I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup gives me the option to easily run my own services, written in various languages, that I'd like to try out.
+
+</details>
+
 
 ## 🖼️ `Architecture`
 
@@ -32,21 +41,7 @@
 
 </details>
 
-## 🤔 `Why set up a homelab?`
-
-After moving to the other side of the world, I found myself in a job market
-where higher-level roles require different skills than I’m used to.
-
-To adapt to this different job market, I've created this homelab setup to
-expand my knowledge from the cloud to on-prem.
-
-I'm primarly a DevOps Engineer who has been focused on the cloud, but this
-setup gives me the option to easily run my own services in various languages
-that I'd like to try out.
-
-👍🏻
-
-## 🏗️ `How do I get started?`
+## 🏗️ `Getting started`
 
 To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./proxmox/README.md).
 
