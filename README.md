@@ -19,10 +19,10 @@
 
 ---
 
-## `Architecture`
+## 🖼️ `Architecture`
 
 <details open="open">
-<summary><b>🟠 Click here to hide.</b></summary>
+<summary><b>Click here to hide.</b></summary>
 
 <br/>
 
@@ -32,24 +32,23 @@
 
 </details>
 
-## `Why?`
+## 🤔 `Why set up a homelab?`
 
-<table>
-<tr>
-<td>
+```text
+After moving to the other side of the world, I found myself in a job market
+where higher-level roles require different skills than I’m used to.
 
-After moving to the other side of the world, I found myself in a job market where higher-level roles require different skills than I’m used to.
+To adapt to this different job market, I've created this homelab setup to
+expand my knowledge from the cloud to on-prem.
 
-To adapt to this different job market, I've created this homelab setup to expand my knowledge from the cloud to on-prem.
-
-I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup gives me the option to easily run my own services in various languages that I'd like to try out.
+I'm primarly a DevOps Engineer who has been focused on the cloud, but this
+setup gives me the option to easily run my own services in various languages
+that I'd like to try out.
 
 👍🏻
-</td>
-</tr>
-</table>
+```
 
-## `How do I get started?`
+## 🏗️ `How do I get started?`
 
 To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./proxmox/README.md).
 
@@ -71,7 +70,7 @@ make help
 # To see a list of available commands in this repository.
 ```
 
-## `References`
+## 📖 `References`
 
 Below are a few references I've used to help me on this homelab journey:
 
@@ -127,7 +126,7 @@ Below are a few references I've used to help me on this homelab journey:
 
 </details>
 
-## `License`
+## 🪪 `License`
 
 This work is published under the MIT license.
 
