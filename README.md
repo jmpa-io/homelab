@@ -34,7 +34,6 @@
 
 ## 🤔 `Why set up a homelab?`
 
-```text
 After moving to the other side of the world, I found myself in a job market
 where higher-level roles require different skills than I’m used to.
 
@@ -46,7 +45,6 @@ setup gives me the option to easily run my own services in various languages
 that I'd like to try out.
 
 👍🏻
-```
 
 ## 🏗️ `How do I get started?`
 
