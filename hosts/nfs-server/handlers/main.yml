@@ -1,0 +1,12 @@
+---
+
+- name: Apply network directory share
+  become: true
+  command: exportfs -a
+
+- name: Restart nfs-kernel-service
+  become: true
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    state: restarted
+

@@ -1,11 +1,5 @@
 ---
 
-#
-# Variables for configuring apt + upgrading & installing packages.
-#
-
-upgrade: true
-
 repositories:
   - url: http://deb.debian.org/debian
     distribution: bookworm

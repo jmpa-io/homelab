@@ -1,10 +1,8 @@
 ---
 
-#
-# Variables for configuring this machine as an NFS client.
-#
-
-upgrade: true
+nfs:
+  src: "{{ hostvars['jmpa_server_1'].ansible_host }}"
+  dest: /mnt/share"
 
 packages:
   - nfs-common

@@ -1,0 +1,18 @@
+---
+
+# auth.
+api_token_id: proxmox-api-token
+api_user: root@pam
+
+# container resources.
+ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
+cores: 4
+memory: 2048
+disk: 2GB
+
+# networking.
+netif: "name=eth0,bridge=vmbr0,ip={{ ipv4_address }},gw={{ ipv4_gateway }}"
+
+# extras.
+state: present
+timeout: 300 # 5 mins.

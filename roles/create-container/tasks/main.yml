@@ -1,0 +1,60 @@
+---
+
+- name: "Ensure required variables are set"
+  fail:
+    msg: "Required variable {{ item }} is missing!"
+  when: vars[item] is not defined
+  loop:
+    - vmid
+    - hostname
+    - node
+    - api_host
+    - api_token_secret
+
+- name: "Create LXC Container: {{ hostname }}"
+  become: true
+  community.general.proxmox:
+    vmid: "{{ vmid }}"
+    hostname: "{{ hostname }}"
+    node: "{{ node }}"
+
+    # auth.
+    api_host: "{{ api_host }}"
+    api_token_id: "{{ api_token_id }}"
+    api_token_secret: "{{ api_token_secret }}"
+    api_user: "{{ api_user }}"
+    password: "{{ password }}"
+
+    # container resources.
+    ostemplate: "{{ ostemplate }}"
+    cores: "{{ cores }}"
+    memory: "{{ memory }}"
+    disk: "{{ disk }}"
+
+    # networking.
+    netif:
+      net0: "{{ netif }}"
+
+    # ssh.
+    ssh_public_keys: "{{ lookup('file', ssh_key) }}"
+
+    # extras.
+    state: "{{ state }}"
+    timeout: "{{ timeout }}"
+    unprivileged: true
+    features:
+      - nesting=1
+      - keyctl=1
+
+- name: "Start LXC Container: {{ hostname }}"
+  command: "pct start {{ vmid }}"
+  register: start_result
+  changed_when: "'started' in start_result.stdout or 'running' in start_result.stdout"
+  failed_when: start_result.rc != 0 and 'is already running' not in start_result.stdout
+
+- name: "Wait for SSH to become avalable on LXC Container: {{ hostname }}"
+  wait_for:
+    host: "{{ ipv4_address }}"
+    port: 22
+    delay: 10
+    timeout: 60

@@ -22,8 +22,6 @@
 #   roles:
 #     - proxmox/nfs-client
 
-- name: Setup required containers
-  hosts: jmpa_server_3
-  roles:
-    - proxmox/tailscale
+
+- import_playbook: proxmox/containers/tailscale/main.yml
 

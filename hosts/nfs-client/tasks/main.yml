@@ -1,17 +1,17 @@
 ---
 
-- name: install required apt packages, if missing
+- name: Install required apt packages
   become: true
   ansible.builtin.apt:
     name: "{{ packages }}"
     state: latest
-  when: packages is defined
+  when: packages is defined and packages | length > 0
 
-- name: mount nfs share
+- name: Mount network directory
   become: true
   ansible.builtin.mount:
-    name: /mnt/share
-    src: "{{ hostvars['jmpa_server_1'].ansible_host }}:/mnt/share"
+    name: "{{ nfs.dest }}"
+    src: "{{ nfs.src }}:{{ nfs.dest }}"
     fstype: nfs
     state: mounted
     opts: defaults

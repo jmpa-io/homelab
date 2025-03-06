@@ -1,0 +1,21 @@
+---
+
+- name: Setup Tailscale
+  hosts: jmpa_server_3
+  become: true
+  vars:
+    container_id: 15
+
+    vmid: "{{ hostvars[inventory_hostname].id }}15"
+    hostname: tailscale
+    node: "{{ inventory_hostname | replace('_', '-') }}"
+
+    api_host: "{{ hostvars[inventory_hostname].ansible_host }}"
+    api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
+    password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
+
+  tasks:
+    - name: Create Tailscale LXC container
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-container"
+
