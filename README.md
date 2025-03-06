@@ -31,7 +31,7 @@ I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup
 ## 🖼️ `Architecture`
 
 <details open="open">
-<summary><b>Click here to hide.</b></summary>
+<summary>✋🏼 <b>Click here to hide.</b></summary>
 
 <br/>
 
@@ -68,7 +68,7 @@ make help
 Below are a few references I've used to help me on this homelab journey:
 
 <details>
-<summary><b>👇🏼Click here to show.</b></summary>
+<summary><b>👇🏼 Click here to show.</b></summary>
 
 <br/>
 
