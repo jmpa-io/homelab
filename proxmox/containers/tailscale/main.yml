@@ -4,9 +4,8 @@
   hosts: jmpa_server_3
   become: true
   vars:
+    id: "{{ hostvars[inventory_hostname].id }}"
     container_id: 15
-
-    vmid: "{{ hostvars[inventory_hostname].id }}15"
     hostname: tailscale
     node: "{{ inventory_hostname | replace('_', '-') }}"
 

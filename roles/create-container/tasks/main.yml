@@ -5,11 +5,32 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-    - vmid
+    - id
+    - container_id
     - hostname
     - node
     - api_host
     - api_token_secret
+    - password
+
+- name: "Check if LXC container {{ hostname }} exists"
+  shell: "pct list | awk '{print $1}' | grep -w {{ vmid }}"
+  register: container_check
+  ignore_errors: true
+  changed_when: false
+
+- name: "Stop LXC container {{ hostname }} if it exists"
+  command: "pct stop {{ vmid }}"
+  when: container_check.rc == 0
+  ignore_errors: true
+  register: stop_result
+  changed_when: stop_result.rc == 0
+
+- name: "Destroy LXC container {{ hostname }} if it exists"
+  command: "pct destroy {{ vmid }}"
+  when: container_check.rc == 0
+  register: destroy_result
+  changed_when: destroy_result.rc == 0
 
 - name: "Create LXC Container: {{ hostname }}"
   become: true
@@ -32,11 +53,10 @@
     disk: "{{ disk }}"
 
     # networking.
-    netif:
-      net0: "{{ netif }}"
+    netif: "{{ netif }}"
 
     # ssh.
-    ssh_public_keys: "{{ lookup('file', ssh_key) }}"
+    pubkey: "{{ lookup('file', ssh_key) }}"
 
     # extras.
     state: "{{ state }}"
@@ -46,13 +66,17 @@
       - nesting=1
       - keyctl=1
 
+- name: "Check if LXC container {{ hostname }} is running"
+  shell: "pct status {{ vmid }} 2>/dev/null | grep -q 'status: running' || true"
+  register: container_status
+  ignore_errors: true
+  changed_when: false
+
 - name: "Start LXC Container: {{ hostname }}"
   command: "pct start {{ vmid }}"
-  register: start_result
-  changed_when: "'started' in start_result.stdout or 'running' in start_result.stdout"
-  failed_when: start_result.rc != 0 and 'is already running' not in start_result.stdout
+  when: container_status.rc != 0
 
-- name: "Wait for SSH to become avalable on LXC Container: {{ hostname }}"
+- name: "Wait for SSH to become available on LXC Container: {{ hostname }}"
   wait_for:
     host: "{{ ipv4_address }}"
     port: 22
