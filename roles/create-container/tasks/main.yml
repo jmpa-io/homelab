@@ -14,25 +14,43 @@
     - password
 
 - name: "Check if LXC container {{ hostname }} exists"
-  shell: "pct list | awk '{print $1}' | grep -w {{ vmid }}"
-  register: container_check
+  shell: "pct status {{ vmid }} 2>/dev/null"
+  register: pre_run_check_container
   ignore_errors: true
-  changed_when: false
 
 - name: "Stop LXC container {{ hostname }} if it exists"
-  command: "pct stop {{ vmid }}"
-  when: container_check.rc == 0
-  ignore_errors: true
-  register: stop_result
-  changed_when: stop_result.rc == 0
+  when: pre_run_check_container.rc == 0
+  shell: "pct stop {{ vmid }} 2>/dev/null"
+  register: stop_container
+  failed_when: stop_container.rc != 0
+  changed_when: stop_container.rc == 0
 
 - name: "Destroy LXC container {{ hostname }} if it exists"
-  command: "pct destroy {{ vmid }}"
-  when: container_check.rc == 0
-  register: destroy_result
-  changed_when: destroy_result.rc == 0
+  when: pre_run_check_container.rc == 0
+  shell: "pct destroy {{ vmid }} 2>/dev/null"
+  register: destroy_container
+  failed_when: destroy_container.rc != 0
+  changed_when: destroy_container.rc == 0
+
+- name: "Debug: Check required variables before container creation"
+  debug:
+    msg:
+      - "VMID: {{ vmid }}"
+      - "Hostname: {{ hostname }}"
+      - "Node: {{ node }}"
+      - "API Host: {{ api_host }}"
+      - "API Token ID: {{ api_token_id }}"
+      - "OSTemplate: {{ ostemplate }}"
+      - "Cores: {{ cores }}"
+      - "Memory: {{ memory }}"
+      # - "Disk: {{ disk }}"
+      - "IPv4 Address: {{ ipv4_address }}"
+      - "IPv4 Gateway: {{ ipv4_gateway }}"
+      - "Netif: {{ netif }}"
+      - "Generated MAC: 02:{{ id }}:{{ container_id }}:00:00:01"
 
 - name: "Create LXC Container: {{ hostname }}"
+  when: pre_run_check_container.rc != 0
   become: true
   community.general.proxmox:
     vmid: "{{ vmid }}"
@@ -50,7 +68,7 @@
     ostemplate: "{{ ostemplate }}"
     cores: "{{ cores }}"
     memory: "{{ memory }}"
-    disk: "{{ disk }}"
+    # disk: "{{ disk }}"
 
     # networking.
     netif: "{{ netif }}"
@@ -66,17 +84,21 @@
       - nesting=1
       - keyctl=1
 
-- name: "Check if LXC container {{ hostname }} is running"
-  shell: "pct status {{ vmid }} 2>/dev/null | grep -q 'status: running' || true"
-  register: container_status
-  ignore_errors: true
-  changed_when: false
+- name: "Check if LXC container {{ hostname }} exists and is running"
+  shell: "pct status {{ vmid }} 2>/dev/null | grep -q 'status: running'"
+  register: check_container
+  failed_when: check_container.rc != 0
+  changed_when: check_container.rc == 0
 
 - name: "Start LXC Container: {{ hostname }}"
+  when: check_container.rc == 0
   command: "pct start {{ vmid }}"
-  when: container_status.rc != 0
+  register: start_container
+  failed_when: start_container.rc != 0
+  changed_when: start_container.rc == 0
 
 - name: "Wait for SSH to become available on LXC Container: {{ hostname }}"
+  when: container_status.rc == 0
   wait_for:
     host: "{{ ipv4_address }}"
     port: 22

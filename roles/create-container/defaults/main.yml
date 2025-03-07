@@ -12,12 +12,14 @@ ssh_key: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
 ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
 cores: 4
 memory: 2048
-disk: 2GB
+# disk: 2G
 
 # networking.
 ipv4_address: "10.0.{{ id }}.1{{ container_id }}"
 ipv4_gateway: "10.0.{{ id }}.1"
-netif: '{"net0": "bridge=vmbr0,ip={{ ipv4_address }},gw={{ ipv4_gateway }},hwaddr=02:{{ id }}:{{ container_id }}:00:00:01"}'
+netif:
+  net0: "bridge=vmbr0,ip={{ ipv4_address }},gw={{ ipv4_gateway }},hwaddr=02:{{ id }}:{{ container_id }}:00:00:01"
+
 
 # extras.
 state: present
