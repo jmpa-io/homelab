@@ -16,10 +16,9 @@ memory: 2048
 
 # networking.
 ipv4_address: "10.0.{{ id }}.1{{ container_id }}"
+ipv4_address_cidr: 24
 ipv4_gateway: "10.0.{{ id }}.1"
-netif:
-  net0: "bridge=vmbr0,ip={{ ipv4_address }},gw={{ ipv4_gateway }},hwaddr=02:{{ id }}:{{ container_id }}:00:00:01"
-
+bridge: vmbr0
 
 # extras.
 state: present

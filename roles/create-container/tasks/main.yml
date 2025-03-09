@@ -1,5 +1,4 @@
 ---
-
 - name: "Ensure required variables are set"
   fail:
     msg: "Required variable {{ item }} is missing!"
@@ -13,94 +12,65 @@
     - api_token_secret
     - password
 
-- name: "Check if LXC container {{ hostname }} exists"
-  shell: "pct status {{ vmid }} 2>/dev/null"
-  register: pre_run_check_container
-  ignore_errors: true
-
 - name: "Stop LXC container {{ hostname }} if it exists"
-  when: pre_run_check_container.rc == 0
-  shell: "pct stop {{ vmid }} 2>/dev/null"
-  register: stop_container
-  failed_when: stop_container.rc != 0
-  changed_when: stop_container.rc == 0
-
-- name: "Destroy LXC container {{ hostname }} if it exists"
-  when: pre_run_check_container.rc == 0
-  shell: "pct destroy {{ vmid }} 2>/dev/null"
-  register: destroy_container
-  failed_when: destroy_container.rc != 0
-  changed_when: destroy_container.rc == 0
-
-- name: "Debug: Check required variables before container creation"
-  debug:
-    msg:
-      - "VMID: {{ vmid }}"
-      - "Hostname: {{ hostname }}"
-      - "Node: {{ node }}"
-      - "API Host: {{ api_host }}"
-      - "API Token ID: {{ api_token_id }}"
-      - "OSTemplate: {{ ostemplate }}"
-      - "Cores: {{ cores }}"
-      - "Memory: {{ memory }}"
-      # - "Disk: {{ disk }}"
-      - "IPv4 Address: {{ ipv4_address }}"
-      - "IPv4 Gateway: {{ ipv4_gateway }}"
-      - "Netif: {{ netif }}"
-      - "Generated MAC: 02:{{ id }}:{{ container_id }}:00:00:01"
-
-- name: "Create LXC Container: {{ hostname }}"
-  when: pre_run_check_container.rc != 0
-  become: true
   community.general.proxmox:
-    vmid: "{{ vmid }}"
-    hostname: "{{ hostname }}"
-    node: "{{ node }}"
-
-    # auth.
     api_host: "{{ api_host }}"
+    api_user: "{{ api_user }}"
     api_token_id: "{{ api_token_id }}"
     api_token_secret: "{{ api_token_secret }}"
-    api_user: "{{ api_user }}"
-    password: "{{ password }}"
+    node: "{{ node }}"
+    vmid: "{{ vmid }}"
+    state: stopped
+  ignore_errors: true
 
-    # container resources.
+- name: "Remove LXC container {{ hostname }} if it exists"
+  community.general.proxmox:
+    api_host: "{{ api_host }}"
+    api_user: "{{ api_user }}"
+    api_token_id: "{{ api_token_id }}"
+    api_token_secret: "{{ api_token_secret }}"
+    node: "{{ node }}"
+    vmid: "{{ vmid }}"
+    state: absent
+  ignore_errors: true
+
+- name: "Create and start LXC container {{ hostname }}"
+  community.general.proxmox:
+    api_host: "{{ api_host }}"
+    api_user: "{{ api_user }}"
+    api_token_id: "{{ api_token_id }}"
+    api_token_secret: "{{ api_token_secret }}"
+    node: "{{ node }}"
+    vmid: "{{ vmid }}"
+    hostname: "{{ hostname }}"
     ostemplate: "{{ ostemplate }}"
     cores: "{{ cores }}"
     memory: "{{ memory }}"
     # disk: "{{ disk }}"
-
-    # networking.
-    netif: "{{ netif }}"
-
-    # ssh.
-    pubkey: "{{ lookup('file', ssh_key) }}"
-
-    # extras.
-    state: "{{ state }}"
-    timeout: "{{ timeout }}"
+    password: "{{ password }}"
+    netif:
+      net0: "name=eth0,gw={{ ipv4_gateway }},ip={{ ipv4_address }}/{{ ipv4_address_cidr }},bridge={{ bridge }}"
     unprivileged: true
     features:
       - nesting=1
-      - keyctl=1
-
-- name: "Check if LXC container {{ hostname }} exists and is running"
-  shell: "pct status {{ vmid }} 2>/dev/null | grep -q 'status: running'"
-  register: check_container
-  failed_when: check_container.rc != 0
-  changed_when: check_container.rc == 0
+    pubkey: "{{ lookup('file', ssh_key) }}"
+    onboot: 1
+    state: present
 
 - name: "Start LXC Container: {{ hostname }}"
-  when: check_container.rc == 0
-  command: "pct start {{ vmid }}"
-  register: start_container
-  failed_when: start_container.rc != 0
-  changed_when: start_container.rc == 0
+  community.general.proxmox:
+    api_host: "{{ api_host }}"
+    api_user: "{{ api_user }}"
+    api_token_id: "{{ api_token_id }}"
+    api_token_secret: "{{ api_token_secret }}"
+    node: "{{ node }}"
+    vmid: "{{ vmid }}"
+    state: started
 
 - name: "Wait for SSH to become available on LXC Container: {{ hostname }}"
-  when: container_status.rc == 0
   wait_for:
     host: "{{ ipv4_address }}"
     port: 22
     delay: 10
-    timeout: 60
+    timeout: 30
+
