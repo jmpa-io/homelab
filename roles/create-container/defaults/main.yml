@@ -1,26 +1,17 @@
 ---
 
-# general.
-vmid: "{{ id }}{{ container_id }}"
+# node.
+node_bridge_name: vmbr0
 
-# auth.
-api_token_id: proxmox-api-token
-api_user: root@pam
-ssh_key: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
+# proxmox.
+proxmox_api_user: root@pam
+proxmox_api_token_id: proxmox-api-token
 
-# container resources.
-ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
-cores: 4
-memory: 2048
-# disk: 2G
-
-# networking.
-ipv4_address: "10.0.{{ id }}.1{{ container_id }}"
-ipv4_address_cidr: 24
-ipv4_gateway: "10.0.{{ id }}.1"
-bridge: vmbr0
-
-# extras.
-state: present
-timeout: 300 # 5 mins.
+# container.
+container_vmid: "{{ node_id }}{{ container_id }}"
+container_ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
+container_cores: 4
+container_memory: 2048
+# container_disk: 2G
+container_ssh_pubkey: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
 

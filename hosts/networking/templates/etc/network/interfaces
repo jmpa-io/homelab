@@ -1,16 +1,12 @@
 
 # {{ ansible_managed }}
 
-# Source other interfaces.
-source /etc/network/interfaces.d/*
-
 # The loopback network interface.
 auto lo
 iface lo inet loopback
 
 # Ethernet.
 auto eno1
-allow-hotplug eno1
 iface eno1 inet manual
 
 # Wi-Fi.
@@ -18,7 +14,6 @@ auto {{ hostvars[inventory_hostname].wifi_device_name }}
 iface {{ hostvars[inventory_hostname].wifi_device_name }} inet static
   address {{ hostvars[inventory_hostname].ansible_host }}/{{ hostvars[inventory_hostname].ansible_host_cidr }}
   gateway 192.168.1.1
-  dns-nameserver 1.1.1.1
   wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 
 # Bridge.
@@ -29,3 +24,24 @@ iface vmbr0 inet static
   bridge_stp off
   bridge_fd 0
 
+  # Enable IP forwarding.
+  post-up echo 1 > /proc/sys/net/ipv4/ip_forward
+
+  # Allow translation of container IP address to hosts external address.
+  post-up iptables -t nat -A POSTROUTING -o {{ hostvars[inventory_hostname].wifi_device_name }} -j MASQUERADE
+
+  # Allow return traffic from the internet for already-established connections.
+  post-up iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+  # Allow forwarding from bridge.
+  post-up iptables -A FORWARD -i vmbr0 -o {{ hostvars[inventory_hostname].wifi_device_name }} -j ACCEPT
+
+  # Add static routes to all other servers.
+  {% for host in groups['all'] %}
+  {% if host != inventory_hostname %}
+  post-up ip route add {{ hostvars[host].bridge_ip_subnet }}/{{ hostvars[host].bridge_ip_cidr }} via {{ hostvars[inventory_hostname].bridge_ip }} dev vmbr0
+  {% endif %}
+  {% endfor %}
+
+# Source other interfaces.
+source /etc/network/interfaces.d/*

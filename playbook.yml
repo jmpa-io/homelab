@@ -1,27 +1,27 @@
 ---
 
 
-# - name: Setup homeserver
-#   # hosts: all
-#   hosts: jmpa_server_3
-#   roles:
-#
-#     # packages.
-#     - apt
+- name: Setup homeserver.
+  # hosts: all
+  hosts: jmpa_server_3
+  roles:
+
+    # # packages.
+    # - hosts/apt
 
     # proxmox networking.
-    #- networking
+    # - hosts/networking
 
-# - name: Setup nfs server
+# - name: Setup nfs servers.
 #   hosts: jmpa_server_1
 #   roles:
-#     - proxmox/nfs-server
-
-# - name: Setup nfs clients
+#     - hosts/nfs-server
+#
+# - name: Setup nfs clients.
 #   hosts: jmpa_server_2, jmpa_server_3
 #   roles:
 #     - proxmox/nfs-client
 
-
+# lxc.
 - import_playbook: proxmox/lxc/tailscale/main.yml
 

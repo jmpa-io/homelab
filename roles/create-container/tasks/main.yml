@@ -1,76 +1,118 @@
 ---
+
 - name: "Ensure required variables are set"
   fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-    - id
-    - container_id
-    - hostname
-    - node
-    - api_host
-    - api_token_secret
-    - password
 
-- name: "Stop LXC container {{ hostname }} if it exists"
-  community.general.proxmox:
-    api_host: "{{ api_host }}"
-    api_user: "{{ api_user }}"
-    api_token_id: "{{ api_token_id }}"
-    api_token_secret: "{{ api_token_secret }}"
-    node: "{{ node }}"
-    vmid: "{{ vmid }}"
-    state: stopped
-  ignore_errors: true
+    # node.
+    - node_name                 # name of the proxmox node;                       eg. jmpa-server-1.
+    - node_id                   # id in node name;                                eg. jmpa-server-1 <- just the '1'.
+    - node_bridge_ip            # the ip address of the bridge on the host.       eg. 10.0.1.1.
 
-- name: "Remove LXC container {{ hostname }} if it exists"
-  community.general.proxmox:
-    api_host: "{{ api_host }}"
-    api_user: "{{ api_user }}"
-    api_token_id: "{{ api_token_id }}"
-    api_token_secret: "{{ api_token_secret }}"
-    node: "{{ node }}"
-    vmid: "{{ vmid }}"
-    state: absent
-  ignore_errors: true
+    # proxmox api.
+    - proxmox_api_ip            # ip address for proxmox api;                     eg. 192.168.1.158.
+    - proxmox_api_token_secret  # api token for proxmox api;                      eg. xxxx.
 
-- name: "Create and start LXC container {{ hostname }}"
-  community.general.proxmox:
-    api_host: "{{ api_host }}"
-    api_user: "{{ api_user }}"
-    api_token_id: "{{ api_token_id }}"
-    api_token_secret: "{{ api_token_secret }}"
-    node: "{{ node }}"
-    vmid: "{{ vmid }}"
-    hostname: "{{ hostname }}"
-    ostemplate: "{{ ostemplate }}"
-    cores: "{{ cores }}"
-    memory: "{{ memory }}"
-    # disk: "{{ disk }}"
-    password: "{{ password }}"
-    netif:
-      net0: "name=eth0,gw={{ ipv4_gateway }},ip={{ ipv4_address }}/{{ ipv4_address_cidr }},bridge={{ bridge }}"
-    unprivileged: true
-    features:
-      - nesting=1
-    pubkey: "{{ lookup('file', ssh_key) }}"
-    onboot: 1
-    state: present
+    # container.
+    - container_id              # id of container;                                eg. 15.
+    - container_hostname        # name of container;                              eg. tailscale.
+    - container_root_password   # root password;                                  eg. xxxx.
+    - container_ip              # static ipv4 address for container;              eg. 10.0.1.115.
+    - container_ip_cidr         # cidr for static ipv4 address for container_gw;  eg. 24.
 
-- name: "Start LXC Container: {{ hostname }}"
-  community.general.proxmox:
-    api_host: "{{ api_host }}"
-    api_user: "{{ api_user }}"
-    api_token_id: "{{ api_token_id }}"
-    api_token_secret: "{{ api_token_secret }}"
-    node: "{{ node }}"
-    vmid: "{{ vmid }}"
-    state: started
+- name: "Debug LXC Container variables"
+  debug:
+    msg:
+      - "node_name: {{ node_name }}"
+      - "node_id: {{ node_id }}"
+      - "node_bridge_name: {{ node_bridge_name }}"
+      - "node_bridge_ip: {{ node_bridge_ip }}"
 
-- name: "Wait for SSH to become available on LXC Container: {{ hostname }}"
-  wait_for:
-    host: "{{ ipv4_address }}"
-    port: 22
-    delay: 10
-    timeout: 30
+      - "proxmox_api_ip: {{ proxmox_api_ip }}"
+      - "proxmox_api_user: {{ proxmox_api_user }}"
+      - "proxmox_api_token_id: {{ proxmox_api_token_id }}"
+      - "proxmox_api_token_secret: {{ proxmox_api_token_secret }}"
+
+      - "container_id: {{ container_id }}"
+      - "container_vmid: {{ container_vmid }}"
+      - "container_hostname: {{ container_hostname }}"
+      - "container_root_password: {{ container_root_password }}"
+      - "container_ip/container_ip_cidr: {{ container_ip }}/{{ container_ip_cidr }}"
+      - "container_ostemplate: {{ container_ostemplate }}"
+      - "container_cores: {{ container_cores }}"
+      - "container_memory: {{ container_memory }}"
+      # - "container_disk: {{ container_disk }}"
+      - "container_ssh_pubkey: {{ container_ssh_pubkey }}"
+      - "container_tags: {{ container_tags | join(';') }}"
+
+- name: "Create LXC Container"
+  block:
+    - name: "Stop and remove existing LXC container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_ip }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        node: "{{ node_name }}"
+        vmid: "{{ container_vmid }}"
+        state: "{{ item }}"
+      loop:
+        - stopped
+        - absent
+      ignore_errors: true
+
+    - name: "Create LXC container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_ip }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        node: "{{ node_name }}"
+        vmid: "{{ container_vmid }}"
+        hostname: "{{ container_hostname }}"
+        ostemplate: "{{ container_ostemplate }}"
+        cores: "{{ container_cores }}"
+        memory: "{{ container_memory }}"
+        # disk: "{{ container_disk }}"
+        tags: "{{ container_tags }}"
+        password: "{{ container_root_password }}"
+        netif:
+          net0: "name=eth0,gw={{ node_bridge_ip }},ip={{ container_ip }}/{{ container_ip_cidr }},bridge={{ node_bridge_name }}"
+        unprivileged: true
+        features:
+          - nesting=1
+        pubkey: "{{ lookup('file', container_ssh_pubkey) }}"
+        onboot: 1
+        state: present
+
+    - name: "Start LXC Container"
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_ip }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        node: "{{ node_name }}"
+        vmid: "{{ container_vmid }}"
+        state: started
+
+    - name: "Wait for SSH to become available"
+      wait_for:
+        host: "{{ container_ip }}"
+        port: 22
+        delay: 10
+        timeout: 30
+
+  rescue:
+    - name: "Error encountered, clean up LXC container if needed"
+      community.general.proxmox:
+        api_host: "{{ proxmox_api_ip }}"
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        node: "{{ node_name }}"
+        vmid: "{{ container_vmid }}"
+        state: absent
+      ignore_errors: true
 
