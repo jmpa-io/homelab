@@ -15,8 +15,14 @@
     proxmox_api_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
     proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
 
+    # tailscale.
+    tailscale_oauth_private_key: "{{ hostvars[inventory_hostname].tailscale_oauth_private_key }}"
+    ansible_sensitive_tailscale_oauth_private_key: true
+    tailscale_routes: "{{ groups['all'] | map('extract', hostvars, 'bridge_ip_subnet') | map('regex_replace', '$', '/24') | join(',') }}"
+
     # container.
     container_id: 15
+    container_vmid: "{{ node_id }}{{ container_id }}"
     container_hostname: tailscale
     container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
     container_ip: "10.0.{{ node_id }}.{{ container_id }}"
@@ -24,36 +30,59 @@
     container_tags: [ tailscale, vpn ]
 
   tasks:
+
     - name: Create LXC Container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-container"
       register: create_container
-    #
-    # - name: Install Tailscale.
-    #   # when: create_container is succeeded
-    #   become: true
-    #   ansible.builtin.command: |
-    #     lxc-attach -n "{{ node_id }}{{ container_id }}" -- bash -c "ip a"
-    #   delegate_to: "{{ node_ip }}"
-    #
-    # - name: Download Tailscale package inside LXC container
-    #   ansible.builtin.shell: |
-    #     lxc-attach -n "{{ node_id }}{{ container_id }}"-- wget https://pkgs.tailscale.com/stable/debian/tailscale_1.26.0_amd64.deb -O /tmp/tailscale.deb
-    #   args:
-    #     creates: /tmp/tailscale.deb  # Avoids downloading if already downloaded
-    #   delegate_to: "{{ node_ip }}"
-    #
-    # - name: Install Tailscale inside LXC container
-    #   ansible.builtin.shell: |
-    #     lxc-attach -n "{{ node_id }}{{ container_id}}" -- dpkg -i /tmp/tailscale.deb
-    #     lxc-attach -n "{{ node_id }}{{ container_id}}" -- apt-get install -f -y  # Resolve dependencies
-    #   args:
-    #     creates: /usr/sbin/tailscale  # Avoids installation if already installed
-    #   delegate_to: "{{ node_ip }}"
-    #
-    # - name: Start Tailscale service inside LXC container
-    #   ansible.builtin.shell: |
-    #     lxc-attach -n "{{ node_id }}{{ container_id}}" -- systemctl start tailscale
-    #     lxc-attach -n "{{ node_id }}{{ container_id}}" -- systemctl enable tailscale
-    #   delegate_to: "{{ node_ip }}"
+
+    # PLEASE NOTE:
+    # This task must be done after the creation of the container because the
+    # container is refreshed during the LXC container creation role.
+    - name: Add TUN device configuration for LXC Container.
+      ansible.builtin.blockinfile:
+        path: "/etc/pve/lxc/{{ container_vmid }}.conf"
+        block: |
+          lxc.cgroup2.devices.allow = c 10:200 rwm
+          lxc.mount.entry = /dev/net/tun dev/net/tun none bind,create=file
+        marker: "# {mark} TUN configuration"
+      delegate_to: "{{ node_ip }}"
+
+    - name: Restart LXC Container to apply TUN configuration
+      ansible.builtin.shell: pct reboot "{{ container_vmid }}"
+      delegate_to: "{{ node_ip }}"
+
+    - name: Create install script on Proxmox Host.
+      ansible.builtin.copy:
+        dest: /tmp/install_tailscale.sh
+        content: |
+          #!/bin/bash
+
+          # install tailscale.
+          ID=$(grep '^ID=' /etc/os-release | cut -d'=' -f2)
+          VER=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2)
+          wget -qO- https://pkgs.tailscale.com/stable/$ID/$VER.noarmor.gpg > /usr/share/keyrings/tailscale-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/$ID $VER main" > /etc/apt/sources.list.d/tailscale.list
+          apt-get update 1>/dev/null
+          apt-get install -y tailscale 1>/dev/null
+
+          # start tailscale.
+          # https://tailscale.com/kb/1215/oauth-clients#registering-new-nodes-using-oauth-credentials.
+          tailscale up --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" --advertise-routes="{{ tailscale_routes }}" --accept-routes --advertise-tags=tag:jmpa-server
+      delegate_to: "{{ node_ip }}"
+      no_log: true
+      diff: false
+
+    - name: Install Tailscale, via install script on Proxmox Host copied into the LXC Container.
+      ansible.builtin.shell: |
+        pct push "{{ container_vmid }}" /tmp/install_tailscale.sh /tmp/install_tailscale.sh
+        lxc-attach -n "{{ container_vmid }}" -- chmod +x /tmp/install_tailscale.sh
+        lxc-attach -n "{{ container_vmid }}" -- /tmp/install_tailscale.sh
+      delegate_to: "{{ node_ip }}"
+
+    - name: Clean up.
+      ansible.builtin.file:
+        path: /tmp/install_tailscale.sh
+        state: absent
+      delegate_to: "{{ node_ip }}"
 

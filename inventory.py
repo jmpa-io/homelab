@@ -67,6 +67,9 @@ def generate_inventory(config: dict) -> dict:
 
                 # proxmox.
                 "proxmox_api_token": config['proxmox_api_token'],
+
+                # tailscale.
+                "tailscale_oauth_private_key": config['tailscale_oauth_private_key'],
             },
             "hosts": [],
         },
@@ -123,6 +126,9 @@ def main():
 
     # proxmox.
     "proxmox_api_token": ssm_client.get_parameter("/homelab/proxmox/api-token"),
+
+    # tailscale.
+    "tailscale_oauth_private_key": ssm_client.get_parameter("/homelab/tailscale/oauth/private-key")
 
   }
   config['hosts'] = {

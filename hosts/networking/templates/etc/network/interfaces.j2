@@ -17,8 +17,8 @@ iface {{ hostvars[inventory_hostname].wifi_device_name }} inet static
   wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 
 # Bridge.
-auto vmbr0
-iface vmbr0 inet static
+auto {{ hostvars[inventory_hostname].bridge_name }}
+iface {{ hostvars[inventory_hostname].bridge_name }} inet static
   address {{ hostvars[inventory_hostname].bridge_ip }}/{{ hostvars[inventory_hostname].bridge_ip_cidr }}
   bridge_ports none
   bridge_stp off
@@ -34,14 +34,14 @@ iface vmbr0 inet static
   post-up iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
   # Allow forwarding from bridge.
-  post-up iptables -A FORWARD -i vmbr0 -o {{ hostvars[inventory_hostname].wifi_device_name }} -j ACCEPT
+  post-up iptables -A FORWARD -i {{ hostvars[inventory_hostname].bridge_name }} -o {{ hostvars[inventory_hostname].wifi_device_name }} -j ACCEPT
 
   # Add static routes to all other servers.
   {% for host in groups['all'] %}
   {% if host != inventory_hostname %}
-  post-up ip route add {{ hostvars[host].bridge_ip_subnet }}/{{ hostvars[host].bridge_ip_cidr }} via {{ hostvars[inventory_hostname].bridge_ip }} dev vmbr0
+  post-up ip route add {{ hostvars[host].bridge_ip_subnet }}/{{ hostvars[host].bridge_ip_cidr }} via {{ hostvars[inventory_hostname].bridge_ip }} dev {{ hostvars[inventory_hostname].bridge_name }}
   {% endif %}
-  {% endfor %}
+  {%- endfor %}
 
 # Source other interfaces.
 source /etc/network/interfaces.d/*

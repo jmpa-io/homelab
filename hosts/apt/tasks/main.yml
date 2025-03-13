@@ -13,9 +13,9 @@
 - name: Update and upgrade apt packages
   become: true
   ansible.builtin.apt:
-    # update_cache: yes
+    update_cache: yes
     upgrade: dist
-    cache_value_time: 3600
+    cache_valid_time: 3600
 
 - name: Install required apt packages
   become: true

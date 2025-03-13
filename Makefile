@@ -20,8 +20,8 @@ docker: image-root
 	# TODO: remove 'CI=true' when the Makefile.common.mk is refactored.
 	docker run -it --network host \
 		-v "$(PWD):/app" \
-		-v "$(HOME)/.aws:/root/.aws:ro" \
-		-v "$(HOME)/.ssh:/root/.ssh:ro" \
+		-v "$(HOME)/.aws:/root/.aws" \
+		-v "$(HOME)/.ssh:/root/.ssh" \
 		-e "AWS_REGION=$(AWS_REGION)" \
 		-e "AWS_PROFILE=jmpa" \
 		-e "MITOGEN_STRATEGY_PATH=/usr/local/lib/python3.13/site-packages/ansible_mitogen/plugins/strategy/" \

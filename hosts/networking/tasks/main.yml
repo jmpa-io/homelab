@@ -3,7 +3,7 @@
 - name: Update /etc/network/interfaces
   become: true
   ansible.builtin.template:
-    src: etc/network/interfaces
+    src: etc/network/interfaces.j2
     dest: /etc/network/interfaces
     owner: root
     group: root
