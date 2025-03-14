@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# This script installs and configures Tailscale.
+#
+# {{ ansible_managed }}
+
+# Install Tailscale.
+ID=$(grep '^ID=' /etc/os-release | cut -d'=' -f2)
+VER=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2)
+wget -qO- https://pkgs.tailscale.com/stable/$ID/$VER.noarmor.gpg > /usr/share/keyrings/tailscale-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/$ID $VER main" > /etc/apt/sources.list.d/tailscale.list
+apt-get update -q
+apt-get -y install tailscale
+
+# Start Tailscale.
+# https://tailscale.com/kb/1215/oauth-clients#registering-new-nodes-using-oauth-credentials.
+tailscale up \
+  --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" \
+  --advertise-routes="{{ tailscale_routes }}" \
+  --accept-routes \
+  --advertise-tags="{{ tailscale_tags | map('string') | map('regex_replace', '^', 'tag:') | join(',') }}"
+

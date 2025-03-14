@@ -1,0 +1,21 @@
+---
+
+dns:
+  jmpa_server_2:
+    static_records:
+      - subdomain: swag
+        ip: 10.0.2.5
+      - subdomain: app
+        ip: 10.0.2.10
+      - subdomain: db
+        ip: 10.0.2.15
+
+  jmpa_server_3:
+    static_records:
+      - subdomain: swag2
+        ip: 10.0.3.7
+      - subdomain: app2
+        ip: 10.0.3.8
+      - subdomain: database
+        ip: 10.0.3.10
+

@@ -12,8 +12,8 @@
     # packages.
     - hosts/apt
 
-    # networking.
-    - hosts/networking
+    # networking & dns.
+    - hosts/networking-and-dns
 
     # cronjobs.
     - hosts/crons

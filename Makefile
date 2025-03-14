@@ -4,11 +4,15 @@ ifndef PROJECT
 PROJECT=homelab
 endif
 
-
 # Targets.
 ping-inventory: ## Pings the Ansible inventory.
 ping-inventory: inventory.*
 	ansible all -i $< -m ping
+
+check-playbook: ## Check the Ansible playbook.
+check-playbook: playbook.yml
+	ansible-playbook -vv $< --check \
+		--extra-vars root_playbook_directory="$$PWD"
 
 run-playbook: ## Executes the Ansible playbook.
 run-playbook: playbook.yml

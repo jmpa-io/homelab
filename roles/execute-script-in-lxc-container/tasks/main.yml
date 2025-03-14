@@ -1,0 +1,46 @@
+---
+
+- name: Ensure required variables are set.
+  fail:
+    msg: "Required variable {{ item }} is missing!"
+  when: vars[item] is not defined
+  loop:
+
+    # node.
+    - node_ip
+
+    # container.
+    - container_vmid
+
+    # script.
+    - script_src
+    - script_dest
+
+- name: Copy script to Proxmox node.
+  ansible.builtin.template:
+    src: "{{ script_src }}"
+    dest: "{{ script_dest }}"
+    mode: "{{ script_mode }}"
+  delegate_to: "{{ node_ip }}"
+  no_log: "{{ script_no_log }}"
+  diff: "{{ script_diff }}"
+
+- name: Copy script from Proxmox node to inside LXC container & execute.
+  ansible.builtin.shell: |
+    pct push "{{ container_vmid }}" "{{ script_dest }}" "{{ script_dest }}"
+    lxc-attach -n "{{ container_vmid }}" -- chmod +x "{{ script_dest }}"
+    lxc-attach -n "{{ container_vmid }}" -- "{{ script_dest }}"
+  delegate_to: "{{ node_ip }}"
+  no_log: "{{ execute_no_log }}"
+
+- name: Clean up script from inside LXC container.
+  ansible.builtin.shell: |
+    lxc-attach -n "{{ container_vmid }}" -- rm -f "{{ script_dest }}"
+  delegate_to: "{{ node_ip }}"
+
+- name: Clean up script from Proxmox node.
+  ansible.builtin.file:
+    path: "{{ script_dest }}"
+    state: absent
+  delegate_to: "{{ node_ip }}"
+

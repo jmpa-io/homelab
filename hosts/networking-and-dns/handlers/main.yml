@@ -1,0 +1,17 @@
+---
+
+- name: Restart networking
+  become: true
+  ansible.builtin.systemd:
+    name: networking
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: Restart dnsmasq
+  become: true
+  ansible.builtin.systemd:
+    name: dnsmasq
+    state: restarted
+    enabled: yes
+    daemon_reload: yes

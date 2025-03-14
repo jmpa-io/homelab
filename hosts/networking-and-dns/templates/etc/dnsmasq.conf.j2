@@ -1,0 +1,35 @@
+
+# {[ ansible_managed ]}
+
+# Set the network interface that dnsmasq will listen on.
+interface={{ hostvars[inventory_hostname].bridge_name }}
+
+# Ensure local queries for this domain do not go to upstream DNS servers.
+local=/{{ hostvars[inventory_hostname].default_domain }}/
+
+# Static DNS records.
+{% if dns[inventory_hostname].static_records %}
+  {% for record in dns[inventory_hostname].static_records %}
+host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].default_domain }},{{ record.ip }}
+  {% endfor %}
+{% endif %}
+
+# Upstream DNS servers.
+server=1.1.1.1
+server=8.8.8.8
+
+# Prevent dnsmasq from reading /etc/resolv.conf.
+no-resolv
+
+# Enable caching for faster DNS responses.
+cache-size=1000
+
+# Ensure dnsmasq only listens on this machine (optional security measure).
+listen-address=127.0.0.1
+
+# Block private IP lookups from being sent to upstream DNS.
+bogus-priv
+
+# Prevent resolving single-label names (e.g., "printer" won't resolve externally).
+domain-needed
+

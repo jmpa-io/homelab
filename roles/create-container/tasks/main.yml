@@ -1,6 +1,6 @@
 ---
 
-- name: "Ensure required variables are set"
+- name: Ensure required variables are set.
   fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
@@ -9,7 +9,9 @@
     # node.
     - node_name                 # name of the proxmox node;                       eg. jmpa-server-1.
     - node_id                   # id in node name;                                eg. jmpa-server-1 <- just the '1'.
+    - node_ip                   # the ip address of the node.                     eg. 192.168.1.158.
     - node_bridge_ip            # the ip address of the bridge on the host.       eg. 10.0.1.1.
+    - node_bridge_name          # the name of the bridge on the host.             eg. vmbr0.
 
     # proxmox api.
     - proxmox_api_ip            # ip address for proxmox api;                     eg. 192.168.1.158.
@@ -22,34 +24,9 @@
     - container_ip              # static ipv4 address for container;              eg. 10.0.1.115.
     - container_ip_cidr         # cidr for static ipv4 address for container_gw;  eg. 24.
 
-# - name: "Debug LXC Container variables"
-#   debug:
-#     msg:
-#       - "node_name: {{ node_name }}"
-#       - "node_id: {{ node_id }}"
-#       - "node_bridge_name: {{ node_bridge_name }}"
-#       - "node_bridge_ip: {{ node_bridge_ip }}"
-#
-#       - "proxmox_api_ip: {{ proxmox_api_ip }}"
-#       - "proxmox_api_user: {{ proxmox_api_user }}"
-#       - "proxmox_api_token_id: {{ proxmox_api_token_id }}"
-#       - "proxmox_api_token_secret: {{ proxmox_api_token_secret }}"
-#
-#       - "container_id: {{ container_id }}"
-#       - "container_vmid: {{ container_vmid }}"
-#       - "container_hostname: {{ container_hostname }}"
-#       - "container_root_password: {{ container_root_password }}"
-#       - "container_ip/container_ip_cidr: {{ container_ip }}/{{ container_ip_cidr }}"
-#       - "container_ostemplate: {{ container_ostemplate }}"
-#       - "container_cores: {{ container_cores }}"
-#       - "container_memory: {{ container_memory }}"
-#       # - "container_disk: {{ container_disk }}"
-#       - "container_ssh_pubkey: {{ container_ssh_pubkey }}"
-#       - "container_tags: {{ container_tags | join(';') }}"
-
-- name: "Create LXC Container"
+- name: Create LXC Container, refreshed if needed.
   block:
-    - name: "Stop and remove existing LXC container"
+    - name: Stop and / or remove existing LXC container.
       community.general.proxmox:
         api_host: "{{ proxmox_api_ip }}"
         api_user: "{{ proxmox_api_user }}"
@@ -64,7 +41,7 @@
         - absent
       ignore_errors: true
 
-    - name: "Create LXC container"
+    - name: Create LXC container.
       community.general.proxmox:
         api_host: "{{ proxmox_api_ip }}"
         api_user: "{{ proxmox_api_user }}"
@@ -81,6 +58,7 @@
         password: "{{ container_root_password }}"
         netif:
           net0: "name=eth0,gw={{ node_bridge_ip }},ip={{ container_ip }}/{{ container_ip_cidr }},bridge={{ node_bridge_name }}"
+        nameserver: "{{ node_ip }}"
         unprivileged: true
         features:
           - nesting=1
@@ -88,7 +66,7 @@
         onboot: 1
         state: present
 
-    - name: "Start LXC Container"
+    - name: Start LXC container.
       community.general.proxmox:
         api_host: "{{ proxmox_api_ip }}"
         api_user: "{{ proxmox_api_user }}"
@@ -98,45 +76,22 @@
         vmid: "{{ container_vmid }}"
         state: started
 
-    - name: "Wait for SSH to become available"
+    - name: Wait for SSH to become available.
       wait_for:
         host: "{{ container_ip }}"
         port: 22
         delay: 10
         timeout: 30
 
-    - name: Create install script on Proxmox Host.
-      ansible.builtin.copy:
-        dest: /tmp/install_deps.sh
-        content: |
-          #!/bin/bash
-
-          # install deps.
-          apt-get update 1>/dev/null
-          apt-get install -y locales 1>/dev/null
-          echo "en_AU.UTF-8 UTF-8" > /etc/locale.gen
-          locale-gen en_AU.UTF-8
-          update-locale LANG=en_AU.UTF-8 LC_ALL=en_AU.UTF-8
-          export LANG=en_AU.UTF-8
-          export LC_ALL=en_AU.UTF-8
-
-      delegate_to: "{{ node_ip }}"
-
-    - name: Install any additional deps, via install script on Proxmox Host copied into the LXC Container.
-      ansible.builtin.shell: |
-        pct push "{{ container_vmid }}" /tmp/install_deps.sh /tmp/install_deps.sh
-        lxc-attach -n "{{ container_vmid }}" -- chmod +x /tmp/install_deps.sh
-        lxc-attach -n "{{ container_vmid }}" -- /tmp/install_deps.sh
-      delegate_to: "{{ node_ip }}"
-
-    - name: Clean up.
-      ansible.builtin.file:
-        path: /tmp/install_deps.sh
-        state: absent
-      delegate_to: "{{ node_ip }}"
+    - name: Install dependencies inside LXC container.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc-container"
+      vars:
+        script_src: "{{ root_playbook_directory }}/roles/create-container/templates/install-deps.sh.j2"
+        script_dest: /tmp/install_deps.sh
 
   rescue:
-    - name: "Error encountered, clean up LXC container if needed"
+    - name: Error encountered, clean up LXC container if needed.
       community.general.proxmox:
         api_host: "{{ proxmox_api_ip }}"
         api_user: "{{ proxmox_api_user }}"
@@ -144,6 +99,10 @@
         api_token_secret: "{{ proxmox_api_token_secret }}"
         node: "{{ node_name }}"
         vmid: "{{ container_vmid }}"
-        state: absent
+        state: "{{ item }}"
+        unprivileged: true
+      loop:
+        - stopped
+        - absent
       ignore_errors: true
 

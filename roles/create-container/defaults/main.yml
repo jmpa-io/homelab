@@ -1,8 +1,5 @@
 ---
 
-# node.
-node_bridge_name: vmbr0
-
 # proxmox.
 proxmox_api_user: root@pam
 proxmox_api_token_id: proxmox-api-token

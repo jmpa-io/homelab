@@ -59,6 +59,7 @@ def generate_inventory(config: dict) -> dict:
                 # networking.
                 "default_subnet": config['default_subnet'],
                 "default_subnet_cidr": config['default_subnet_cidr'],
+                "default_domain": config['default_domain'],
 
                 # ansible.
                 "ansible_ssh_pass": config['ansible_ssh_pass'],
@@ -102,6 +103,7 @@ def main():
   server_count = read_env_var("SERVER_COUNT", 3, False, int)
   aws_region = read_env_var("AWS_REGION", None, True, str)
   bridge_name = read_env_var("BRIDGE_NAME", "vmbr0", False, str)
+  default_domain = read_env_var("DOMAIN", "jmpa.io", False, str)
 
   # Setup ssm client.
   ssm_client = SSMClient(aws_region)
@@ -119,6 +121,7 @@ def main():
     # networking.
     "default_subnet": ssm_client.get_parameter("/homelab/subnet"),
     "default_subnet_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
+    "default_domain": default_domain,
 
     # ansible.
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
