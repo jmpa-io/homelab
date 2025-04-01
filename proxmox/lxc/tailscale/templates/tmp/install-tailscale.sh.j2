@@ -15,6 +15,7 @@ apt-get -y install tailscale
 # https://tailscale.com/kb/1215/oauth-clients#registering-new-nodes-using-oauth-credentials.
 tailscale up \
   --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" \
+  --hostname "{{ node_name }}" \
   --advertise-routes="{{ tailscale_routes }}" \
   --accept-routes \
   --advertise-tags="{{ tailscale_tags | map('string') | map('regex_replace', '^', 'tag:') | join(',') }}"

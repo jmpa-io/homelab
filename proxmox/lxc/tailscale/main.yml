@@ -32,7 +32,6 @@
     container_tags: [ tailscale, vpn ]
 
   tasks:
-
     - name: Create LXC Container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-container"
@@ -63,4 +62,17 @@
         script_src: tmp/install-tailscale.sh.j2
         script_dest: /tmp/install_tailscale.sh
         script_diff: false
+
+- name: Update Tailscale DNS.
+  hosts: all # NOTE: this must NOT be localhost or else we can't access inventory variables in this section.
+  tasks:
+    - name: Collect DNS nameservers.
+      run_once: true
+      set_fact:
+        dns_nameservers: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | select('defined') | list }}"
+
+    - name: Update Tailscale with DNS nameservers.
+      run_once: true
+      delegate_to: localhost
+      command: bin/update-dns-nameservers.sh "{{ dns_nameservers | join(',') }}"
 

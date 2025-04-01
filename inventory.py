@@ -131,7 +131,7 @@ def main():
     "proxmox_api_token": ssm_client.get_parameter("/homelab/proxmox/api-token"),
 
     # tailscale.
-    "tailscale_oauth_private_key": ssm_client.get_parameter("/homelab/tailscale/oauth/private-key")
+    "tailscale_oauth_private_key": ssm_client.get_parameter("/homelab/tailscale/oauth-tokens/ansible/client-token"),
 
   }
   config['hosts'] = {
