@@ -37,11 +37,11 @@ iface {{ hostvars[inventory_hostname].bridge_name }} inet static
   post-up iptables -A FORWARD -i {{ hostvars[inventory_hostname].bridge_name }} -o {{ hostvars[inventory_hostname].wifi_device_name }} -j ACCEPT
 
   # Add static routes to all other servers.
-  {% for host in groups['all'] %}
-  {% if host != inventory_hostname %}
-  post-up ip route add {{ hostvars[host].bridge_ip_subnet }}/{{ hostvars[host].bridge_ip_cidr }} via {{ hostvars[inventory_hostname].bridge_ip }} dev {{ hostvars[inventory_hostname].bridge_name }}
-  {% endif %}
-  {%- endfor %}
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+  post-up ip route add {{ hostvars[host].bridge_ip_subnet }}/{{ hostvars[host].bridge_ip_cidr }} via {{ hostvars[inventory_hostname].gateway_ip }} dev {{ hostvars[inventory_hostname].bridge_name }}
+{% endif %}
+{%- endfor %}
 
 # Source other interfaces.
 source /etc/network/interfaces.d/*

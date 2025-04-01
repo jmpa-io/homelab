@@ -91,6 +91,8 @@ def generate_inventory(config: dict) -> dict:
         "bridge_ip": f"10.0.{i}.1",
         "bridge_ip_cidr": 24,
         "bridge_ip_subnet": f"10.0.{i}.0",
+        "gateway_ip": f"10.0.{i}.15",
+        "gateway_ip_cidr": 24,
         "wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["wifi_device_name"],
       } for i in range(1, config['server_count'] + 1)
     }

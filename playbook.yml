@@ -6,7 +6,7 @@
 
 - name: Setup hosts.
   # hosts: all
-  hosts: jmpa_server_3
+  hosts: jmpa_server_3, jmpa_server_2
   roles:
 
     # packages.

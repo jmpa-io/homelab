@@ -1,7 +1,7 @@
 ---
 
 - name: Setup Tailscale.
-  hosts: jmpa_server_3
+  hosts: jmpa_server_3, jmpa_server_2
   become: true
   vars:
 
@@ -23,12 +23,12 @@
     tailscale_tags: [ jmpa-server ]
 
     # container.
-    container_id: 15
+    container_id: 15 # TODO: get from gateway_ip
     container_vmid: "{{ node_id }}{{ container_id }}"
     container_hostname: tailscale
     container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    container_ip: "10.0.{{ node_id }}.{{ container_id }}"
-    container_ip_cidr: 24
+    container_ip: "{{ hostvars[inventory_hostname].gateway_ip }}"
+    container_ip_cidr: "{{ hostvars[inventory_hostname].gateway_ip_cidr }}"
     container_tags: [ tailscale, vpn ]
 
   tasks:
