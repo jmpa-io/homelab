@@ -9,9 +9,9 @@ local=/{{ hostvars[inventory_hostname].default_domain }}/
 
 # Static DNS records.
 {% if dns[inventory_hostname].static_records %}
-  {% for record in dns[inventory_hostname].static_records %}
+{% for record in dns[inventory_hostname].static_records %}
 host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].default_domain }},{{ record.ip }}
-  {% endfor %}
+{% endfor %}
 {% endif %}
 
 # Upstream DNS servers.

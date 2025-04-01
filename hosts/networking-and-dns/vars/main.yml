@@ -1,21 +1,28 @@
 ---
 
 dns:
+  jmpa_server_1:
+    static_records:
+      - subdomain: proxmox
+        ip: 10.0.1.4
+
+      - subdomain: homepage
+        ip: 10.0.1.4
+      - subdomain: uptimekuma
+        ip: 10.0.1.4
+
   jmpa_server_2:
     static_records:
-      - subdomain: swag
-        ip: 10.0.2.5
-      - subdomain: app
-        ip: 10.0.2.10
-      - subdomain: db
-        ip: 10.0.2.15
+      - subdomain: proxmox
+        ip: 10.0.1.4
+
+      - subdomain: grafana
+        ip: 10.0.1.4
+      - subdomain: code
+        ip: 10.0.1.4
 
   jmpa_server_3:
     static_records:
-      - subdomain: swag2
-        ip: 10.0.3.7
-      - subdomain: app2
-        ip: 10.0.3.8
-      - subdomain: database
-        ip: 10.0.3.10
+      - subdomain: proxmox
+        ip: 10.0.1.4
 
