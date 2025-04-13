@@ -1,35 +1,52 @@
 
-# {[ ansible_managed ]}
+# {{ ansible_managed }}
 
-# Set the network interface that dnsmasq will listen on.
-interface={{ hostvars[inventory_hostname].bridge_name }}
-
-# Ensure local queries for this domain do not go to upstream DNS servers.
-local=/{{ hostvars[inventory_hostname].default_domain }}/
-
-# Static DNS records.
+# Local static DNS records.
+# These records are resolved locally by this machine and are not forwarded to other jmpa-servers.
 {% if dns[inventory_hostname].static_records %}
 {% for record in dns[inventory_hostname].static_records %}
-host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].default_domain }},{{ record.ip }}
+host-record={{ record.subdomain }}.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].default_domain }},{{ record.ip }}
 {% endfor %}
 {% endif %}
 
-# Upstream DNS servers.
+# Root domain DNS records (to prevent DNS loops).
+host-record={{ hostvars[inventory_hostname].default_domain }},{{ hostvars[inventory_hostname].ansible_host }}
+
+# Assign subdomain based on inventory hostname (e.g., server1.jmpa.lab, server2.jmpa.lab)
+host-record={{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].default_domain }},{{ hostvars[inventory_hostname].ansible_host }}
+
+# Internal DNS routing.
+# DNS records not found on this machine are forwarded to these other jmpa-servers.
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+server=/{{ host.split('_')[-1] }}.{{ hostvars[inventory_hostname].default_domain }}/{{ hostvars[host].ansible_host }}
+{% endif %}
+{%- endfor %}
+
+# Public upstream DNS servers.
 server=1.1.1.1
 server=8.8.8.8
 
-# Prevent dnsmasq from reading /etc/resolv.conf.
-no-resolv
-
-# Enable caching for faster DNS responses.
-cache-size=1000
-
-# Ensure dnsmasq only listens on this machine (optional security measure).
+# DNS interface bindings.
 listen-address=127.0.0.1
+listen-address={{ hostvars[inventory_hostname].ansible_host }}
+bind-interfaces # Makes dnsmasq ONLY bind to the above interfaces.
 
-# Block private IP lookups from being sent to upstream DNS.
-bogus-priv
+# Domain handling.
+domain={{ hostvars[inventory_hostname].default_domain }} # The default domain used for this server..
+local=/{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].default_domain }}/ # Force local resolution for this subdomain.
+no-resolv # Prevent dnsmasq from reading /etc/resolv.conf.
+expand-hosts # Auto-appends 'domain=' to host-records and /etc/hosts.
 
-# Prevent resolving single-label names (e.g., "printer" won't resolve externally).
-domain-needed
+# Performance.
+cache-size=1000 # Enable caching for faster DNS responses.
+dns-forward-max=600 # Increase max-concurrent DNS queries to handle higher load.
+local-ttl=60 # Set TTL for local DNS responses.
 
+# Security & Safety.
+bogus-priv # Block private IP lookups from being sent to upstream DNS.
+domain-needed # Prevent resolving single-label names.
+no-ping # Don't reply to ICMP pings.
+stop-dns-rebind # Block rebind attacks on private IPs.
+rebind-domain-ok={{ hostvars[inventory_hostname].default_domain }} # Allow rebinds for this domain.
+no-poll  # To prevent polling for upstream servers when there's no record.

@@ -24,7 +24,7 @@ iface {{ hostvars[inventory_hostname].bridge_name }} inet static
   bridge_stp off
   bridge_fd 0
 
-  # Enable IP forwarding.
+  # Enable IPv4 forwarding.
   post-up echo 1 > /proc/sys/net/ipv4/ip_forward
 
   # Allow translation of container IP address to hosts external address.

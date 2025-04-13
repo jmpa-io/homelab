@@ -105,7 +105,7 @@ def main():
   server_count = read_env_var("SERVER_COUNT", 3, False, int)
   aws_region = read_env_var("AWS_REGION", None, True, str)
   bridge_name = read_env_var("BRIDGE_NAME", "vmbr0", False, str)
-  default_domain = read_env_var("DOMAIN", "jmpa.io", False, str)
+  default_domain = read_env_var("DOMAIN", "jmpa.lab", False, str)
 
   # Setup ssm client.
   ssm_client = SSMClient(aws_region)

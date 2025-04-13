@@ -10,6 +10,8 @@ dns:
         ip: 10.0.1.4
       - subdomain: uptimekuma
         ip: 10.0.1.4
+      - subdomain: myspeed
+        ip: 10.0.1.4
 
   jmpa_server_2:
     static_records:

@@ -9,7 +9,7 @@
 
 - name: Mount network directory
   become: true
-  ansible.builtin.mount:
+  ansible.posix.mount:
     name: "{{ nfs.dest }}"
     src: "{{ nfs.src }}:{{ nfs.dest }}"
     fstype: nfs
