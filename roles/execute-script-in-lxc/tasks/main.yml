@@ -13,34 +13,28 @@
     - container_vmid
 
     # script.
-    - script_src
-    - script_dest
+    - script_source
+    - script_destination
 
-- name: Copy script to Proxmox node.
-  ansible.builtin.template:
-    src: "{{ script_src }}"
-    dest: "{{ script_dest }}"
-    mode: "{{ script_mode }}"
-  delegate_to: "{{ node_ip }}"
-  no_log: "{{ script_no_log }}"
-  diff: "{{ script_diff }}"
+- name: Copy script into LXC Container.
+  ansible.builtin.include_role:
+    name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+  vars:
+    node_ip: "{{ node_ip }}"
+    container_vmid: "{{ container_vmid }}"
+    file_source: "{{ script_source }}"
+    file_destination: "{{ script_destination }}"
+    file_show_difference: "{{ copy_show_difference }}"
 
-- name: Copy script from Proxmox node to inside LXC container & execute.
+- name: Execute script inside LXC Container.
   ansible.builtin.shell: |
-    pct push "{{ container_vmid }}" "{{ script_dest }}" "{{ script_dest }}"
-    lxc-attach -n "{{ container_vmid }}" -- chmod +x "{{ script_dest }}"
-    lxc-attach -n "{{ container_vmid }}" -- "{{ script_dest }}"
+    lxc-attach -n "{{ container_vmid }}" -- chmod +x "{{ script_destination }}"
+    lxc-attach -n "{{ container_vmid }}" -- "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
   no_log: "{{ execute_no_log }}"
 
-- name: Clean up script from inside LXC container.
+- name: Clean up script inside LXC container.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ container_vmid }}" -- rm -f "{{ script_dest }}"
-  delegate_to: "{{ node_ip }}"
-
-- name: Clean up script from Proxmox node.
-  ansible.builtin.file:
-    path: "{{ script_dest }}"
-    state: absent
+    lxc-attach -n "{{ container_vmid }}" -- rm -f "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
 

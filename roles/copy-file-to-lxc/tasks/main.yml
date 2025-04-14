@@ -1,0 +1,37 @@
+---
+
+- name: Ensure required variables are set.
+  fail:
+    msg: "Required variable {{ item }} is missing!"
+  when: vars[item] is not defined
+  loop:
+
+    # node.
+    - node_ip
+
+    # container.
+    - container_vmid
+
+    # file.
+    - file_source
+    - file_destination
+
+- name: Copy file to Proxmox node.
+  ansible.builtin.template:
+    src:  "{{ file_source }}"
+    dest: "{{ temporary_directory }}/{{ file_destination | basename }}"
+    mode: "{{ file_mode }}"
+  delegate_to: "{{ node_ip }}"
+  diff: "{{ copy_show_difference }}"
+
+- name: Copy file into LXC container via pct.
+  ansible.builtin.shell: |
+    pct push "{{ container_vmid }}" "{{ temporary_directory }}" "{{ file_destination }}"
+  delegate_to: "{{ node_ip }}"
+
+- name: Clean up file from Proxmox node.
+  ansible.builtin.file:
+    path: "{{ temporary_directory }}"
+    state: absent
+  delegate_to: "{{ node_ip }}"
+

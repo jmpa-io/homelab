@@ -2,8 +2,10 @@
 
 # script.
 script_mode: "0755"
-script_no_log: false
-script_diff: true
+
+# copy.
+copy_show_difference: true
+copy_no_log: false
 
 # execute.
 execute_no_log: false

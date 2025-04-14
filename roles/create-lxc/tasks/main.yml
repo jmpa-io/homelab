@@ -87,8 +87,10 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        script_src: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
-        script_dest: /tmp/install_deps.sh
+        node_ip: "{{ node_ip }}"
+        container_vmid: "{{ container_vmid }}"
+        script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
+        script_destination: /tmp/install_deps.sh
 
   rescue:
     - name: Error encountered, clean up LXC container if needed.
