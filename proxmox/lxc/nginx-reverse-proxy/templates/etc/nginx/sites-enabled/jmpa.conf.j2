@@ -2,6 +2,54 @@
 # logs.
 log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
 
+#
+# Proxmox.
+#
+
+upstream proxmox-backend {
+  least_conn; # serve the server with the least number of connections.
+
+  {% for host in groups['all'] %}
+  server {{ hostvars[inventory_hostname].ansible_host }};
+}
+
+#
+# Servers.
+#
+
+{% if servers[inventory_hostname].records %}
+{% for server in servers[inventory_hostname].records %}
+
+upstream {{ server.url }}-backend {
+  server {{ server.ip }};
+}
+
+{% endfor %}
+{% endif %}
+
+#
+# HTTP -> HTTPS redirect.
+#
+
+server {
+        listen 80;
+        listen [::]:80;
+        server_name _;
+        return 301 https://$host$request_uri;
+}
+
+#
+# SSL settings.
+#
+
+ssl_certificate /etc/ssl/certs/selfsigned.crt;
+ssl_certificate_key /etc/ssl/private/selfsigned.key;
+
+# ------------------------------------
+
+# logs.
+log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
+
 # Proxmox.
 upstream proxmox-backend {
         least_conn; # serve the server with the least number of connections.

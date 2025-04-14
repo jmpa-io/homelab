@@ -34,7 +34,7 @@
   tasks:
     - name: Create LXC Container.
       ansible.builtin.include_role:
-        name: "{{ root_playbook_directory }}/roles/create-container"
+        name: "{{ root_playbook_directory }}/roles/create-lxc"
       register: create_container
 
     # PLEASE NOTE:
@@ -57,7 +57,7 @@
     - name: Install Tailscale.
       when: create_container is success
       ansible.builtin.include_role:
-        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc-container"
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
         script_src: tmp/install-tailscale.sh.j2
         script_dest: /tmp/install_tailscale.sh

@@ -1,0 +1,42 @@
+---
+
+- name: Setup nginx-reverse-proxy.
+  hosts: jmpa_server_3
+  become: true
+  vars:
+
+    # proxmox.
+    node_name: "{{ inventory_hostname | replace('_', '-') }}"
+    node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    node_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    node_bridge_ip: "{{ hostvars[inventory_hostname].bridge_ip }}"
+    node_bridge_name: "{{ hostvars[inventory_hostname].bridge_name }}"
+
+    # proxmox api.
+    proxmox_api_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
+
+    # container.
+    container_id: 4 # TODO: get from gateway_ip
+    container_vmid: "{{ node_id }}0{{ container_id }}"
+    container_hostname: nginx-reverse-proxy
+    container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
+    container_ip: "{{ hostvars[inventory_hostname].gateway_ip }}"
+    container_ip_cidr: "{{ hostvars[inventory_hostname].gateway_ip_cidr }}"
+    container_tags: [ nginx, reverse-proxy ]
+
+  tasks:
+    - name: Create LXC Container.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-lxc"
+      register: create_container
+
+    - name: Install nginx.
+      when: create_container is success
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
+      vars:
+        script_src: tmp/install-nginx.sh.j2
+        script_dest: /tmp/install_nginx.sh
+        script_diff: true
+

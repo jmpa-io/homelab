@@ -85,9 +85,9 @@
 
     - name: Install dependencies inside LXC container.
       ansible.builtin.include_role:
-        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc-container"
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        script_src: "{{ root_playbook_directory }}/roles/create-container/templates/install-deps.sh.j2"
+        script_src: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
         script_dest: /tmp/install_deps.sh
 
   rescue:
