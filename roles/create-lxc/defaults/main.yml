@@ -5,7 +5,7 @@ proxmox_api_user: root@pam
 proxmox_api_token_id: proxmox-api-token
 
 # container.
-container_vmid: "{{ node_id }}{{ container_id }}"
+container_vmid: "{{ proxmox_node_id }}{{ container_id }}"
 container_ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
 container_cores: 4
 container_memory: 2048

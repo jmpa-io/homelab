@@ -51,15 +51,15 @@ def generate_inventory(config: dict) -> dict:
         "all": {
             "vars": {
                 # general.
-                "bridge_name": config['bridge_name'],
+                "domain": config['domain'],
 
                 # aws.
                 "aws_region": config['aws_region'],
 
-                # networking.
-                "default_subnet": config['default_subnet'],
-                "default_subnet_cidr": config['default_subnet_cidr'],
-                "default_domain": config['default_domain'],
+                # networking - host.
+                "host_default_subnet_ipv4": config['host_default_subnet_ipv4'],
+                "host_default_subnet_ipv4_cidr": config['host_default_subnet_ipv4_cidr'],
+                "host_default_subnet_ipv4_with_cidr": f"{config['host_default_subnet_ipv4']}/{config['host_default_subnet_ipv4_cidr']}",
 
                 # ansible.
                 "ansible_ssh_pass": config['ansible_ssh_pass'],
@@ -86,14 +86,32 @@ def generate_inventory(config: dict) -> dict:
     # Populate variables for hosts.
     inventory['_meta']['hostvars'] = {
       f"jmpa_server_{i}": {
+
+        # ansible.
         "ansible_host": config["hosts"][f"jmpa_server_{i}"]["ansible_host"],
-        "ansible_host_cidr": config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"],
-        "bridge_ip": f"10.0.{i}.1",
-        "bridge_ip_cidr": 24,
-        "bridge_ip_subnet": f"10.0.{i}.0",
-        "gateway_ip": f"10.0.{i}.15",
-        "gateway_ip_cidr": 24,
-        "wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["wifi_device_name"],
+
+        # host.
+        "host_name": f"jmpa-server-{i}",
+        "host_ipv4": config["hosts"][f"jmpa_server_{i}"]["ansible_host"],
+        "host_ipv4_cidr": config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"],
+        "host_ipv4_with_cidr": f"{config['hosts'][f'jmpa_server_{i}']['ansible_host']}/{config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"]}",
+
+        "host_bridge_name": config['host_bridge_name'],
+
+        "host_bridge_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.1",
+        "host_bridge_ipv4_cidr": config['host_bridge_default_ipv4_cidr'],
+        "host_bridge_subnet": f"{config['host_bridge_default_ipv4_prefix']}.{i}.0",
+        "host_bridge_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.1/{config['host_bridge_default_ipv4_cidr']}",
+        "host_bridge_default_ipv4_prefix": config['host_bridge_default_ipv4_prefix'],
+        "host_bridge_default_ipv4_cidr": config['host_bridge_default_ipv4_cidr'],
+
+        "host_wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["host_wifi_device_name"],
+
+        # tailscale.
+        "tailscale_gateway_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.15",
+        "tailscale_gateway_ipv4_cidr": f"{config['host_bridge_default_ipv4_cidr']}",
+        "tailscale_gateway_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.15/{config['host_bridge_default_ipv4_cidr']}",
+
       } for i in range(1, config['server_count'] + 1)
     }
 
@@ -101,29 +119,27 @@ def generate_inventory(config: dict) -> dict:
 
 def main():
 
-  # read environment variables.
-  server_count = read_env_var("SERVER_COUNT", 3, False, int)
-  aws_region = read_env_var("AWS_REGION", None, True, str)
-  bridge_name = read_env_var("BRIDGE_NAME", "vmbr0", False, str)
-  default_domain = read_env_var("DOMAIN", "jmpa.lab", False, str)
-
   # Setup ssm client.
+  aws_region = read_env_var("AWS_REGION", None, True, str)
   ssm_client = SSMClient(aws_region)
 
   # Setup config.
   config = {
 
     # general.
-    "server_count": server_count,
-    "bridge_name": bridge_name,
+    "server_count": read_env_var("SERVER_COUNT", 3, False, int),
+    "domain": read_env_var("DOMAIN", "jmpa.lab", False, str),
 
     # aws.
     "aws_region": aws_region,
 
-    # networking.
-    "default_subnet": ssm_client.get_parameter("/homelab/subnet"),
-    "default_subnet_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
-    "default_domain": default_domain,
+    # networking - host.
+    "host_default_subnet_ipv4": ssm_client.get_parameter("/homelab/subnet"),
+    "host_default_subnet_ipv4_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
+
+    "host_bridge_name": read_env_var("HOST_BRIDGE_NAME", "vmbr0", False, str),
+    "host_bridge_default_ipv4_prefix": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_PREFIX", "10.0", False, str),
+    "host_bridge_default_ipv4_cidr": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_CIDR", 24, False, str),
 
     # ansible.
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
@@ -138,10 +154,14 @@ def main():
   }
   config['hosts'] = {
     f"jmpa_server_{i}": {
+
+      # ansible.
       "ansible_host": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/ipv4-address"),
       "ansible_host_cidr": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/ipv4-address/cidr"),
-      "wifi_device_name": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/wifi-device-name"),
-    } for i in range(1, server_count + 1)
+
+      # networking - host.
+      "host_wifi_device_name": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/wifi-device-name"),
+    } for i in range(1, config['server_count'] + 1)
   }
 
   # Setup inventory.

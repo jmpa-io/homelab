@@ -6,23 +6,23 @@
   vars:
 
     # proxmox.
-    node_name: "{{ inventory_hostname | replace('_', '-') }}"
-    node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
-    node_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
-    node_bridge_ip: "{{ hostvars[inventory_hostname].bridge_ip }}"
-    node_bridge_name: "{{ hostvars[inventory_hostname].bridge_name }}"
+    proxmox_node_name: "{{ inventory_hostname | replace('_', '-') }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ hostvars[inventory_hostname].host_ipv4 }}"
+    proxmox_node_bridge_ip: "{{ hostvars[inventory_hostname].host_bridge_ipv4 }}"
+    proxmox_node_bridge_name: "{{ hostvars[inventory_hostname].host_bridge_name }}"
 
     # proxmox api.
-    proxmox_api_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
     proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
 
-    # container.
-    container_id: 4 # TODO: get from gateway_ip
-    container_vmid: "{{ node_id }}0{{ container_id }}"
+    # lxc - container.
+    container_id: 4
+    container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(container_id) }}"
     container_hostname: nginx-reverse-proxy
     container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    container_ip: "10.0.3.4"
-    container_ip_cidr: "24"
+    container_ip: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_prefix }}.{{ proxmox_node_id }}.{{ container_id }}"
+    container_ip_cidr: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_cidr }}"
     container_tags: [ nginx, reverse-proxy ]
 
   tasks:
@@ -36,15 +36,17 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        script_src: tmp/install-nginx.sh.j2
-        script_dest: /tmp/install_nginx.sh
-        script_diff: true
+        script_source: tmp/install-nginx.sh.j2
+        script_destination: /tmp/install_nginx.sh
+        script_show_difference: true
 
     - name: Copy files to LXC Container.
       when: create_container is success
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
       vars:
+        node_ip: "{{ proxmox_node_ip }}"
+        lxc_container_vmid: "{{ container_vmid }}"
         file_source: tmp/install-nginx.sh.j2
         file_destination: /tmp/install_nginx.sh
         file_show_difference: true

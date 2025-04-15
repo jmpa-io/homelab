@@ -6,23 +6,27 @@
   when: vars[item] is not defined
   loop:
 
-    # node.
-    - node_name                 # name of the proxmox node;                       eg. jmpa-server-1.
-    - node_id                   # id in node name;                                eg. jmpa-server-1 <- just the '1'.
-    - node_ip                   # the ip address of the node.                     eg. 192.168.1.158.
-    - node_bridge_ip            # the ip address of the bridge on the host.       eg. 10.0.1.1.
-    - node_bridge_name          # the name of the bridge on the host.             eg. vmbr0.
+    # proxmox - node.
+    - proxmox_node_name                 # name of the proxmox node;                       eg. jmpa-server-1.
+    - proxmox_node_id                   # id in node name;                                eg. jmpa-server-1 <- just the '1'.
+    - proxmox_node_ip                   # the ip address of the node.                     eg. 192.168.1.158.
+    - proxmox_node_bridge_ip            # the ip address of the bridge on the host.       eg. 10.0.1.1.
+    - proxmox_node_bridge_name          # the name of the bridge on the host.             eg. vmbr0.
 
-    # proxmox api.
+    # proxmox - api.
     - proxmox_api_ip            # ip address for proxmox api;                     eg. 192.168.1.158.
     - proxmox_api_token_secret  # api token for proxmox api;                      eg. xxxx.
 
-    # container.
+    # lxc - container.
     - container_id              # id of container;                                eg. 15.
     - container_hostname        # name of container;                              eg. tailscale.
     - container_root_password   # root password;                                  eg. xxxx.
     - container_ip              # static ipv4 address for container;              eg. 10.0.1.115.
     - container_ip_cidr         # cidr for static ipv4 address for container_gw;  eg. 24.
+
+- name: Debug
+  debug:
+    var: proxmox_node_name
 
 - name: Create LXC Container, refreshed if needed.
   block:
@@ -32,7 +36,7 @@
         api_user: "{{ proxmox_api_user }}"
         api_token_id: "{{ proxmox_api_token_id }}"
         api_token_secret: "{{ proxmox_api_token_secret }}"
-        node: "{{ node_name }}"
+        node: "{{ proxmox_node_name }}"
         vmid: "{{ container_vmid }}"
         state: "{{ item }}"
         unprivileged: true
@@ -47,7 +51,7 @@
         api_user: "{{ proxmox_api_user }}"
         api_token_id: "{{ proxmox_api_token_id }}"
         api_token_secret: "{{ proxmox_api_token_secret }}"
-        node: "{{ node_name }}"
+        node: "{{ proxmox_node_name }}"
         vmid: "{{ container_vmid }}"
         hostname: "{{ container_hostname }}"
         ostemplate: "{{ container_ostemplate }}"
@@ -57,8 +61,8 @@
         tags: "{{ container_tags }}"
         password: "{{ container_root_password }}"
         netif:
-          net0: "name=eth0,gw={{ node_bridge_ip }},ip={{ container_ip }}/{{ container_ip_cidr }},bridge={{ node_bridge_name }}"
-        nameserver: "{{ node_ip }}"
+          net0: "name=eth0,gw={{ proxmox_node_bridge_ip }},ip={{ container_ip }}/{{ container_ip_cidr }},bridge={{ proxmox_node_bridge_name }}"
+        nameserver: "{{ proxmox_node_ip }}"
         unprivileged: true
         features:
           - nesting=1
@@ -72,8 +76,9 @@
         api_user: "{{ proxmox_api_user }}"
         api_token_id: "{{ proxmox_api_token_id }}"
         api_token_secret: "{{ proxmox_api_token_secret }}"
-        node: "{{ node_name }}"
+        node: "{{ proxmox_node_name }}"
         vmid: "{{ container_vmid }}"
+        hostname: "{{ container_hostname }}"
         state: started
 
     - name: Wait for SSH to become available.
@@ -87,19 +92,19 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        node_ip: "{{ node_ip }}"
+        proxmox_node_ip: "{{ proxmox_node_ip }}"
         container_vmid: "{{ container_vmid }}"
         script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
         script_destination: /tmp/install_deps.sh
 
   rescue:
-    - name: Error encountered, clean up LXC container if needed.
+    - name: Error encountered, clean up LXC container if able.
       community.general.proxmox:
         api_host: "{{ proxmox_api_ip }}"
         api_user: "{{ proxmox_api_user }}"
         api_token_id: "{{ proxmox_api_token_id }}"
         api_token_secret: "{{ proxmox_api_token_secret }}"
-        node: "{{ node_name }}"
+        node: "{{ proxmox_node_name }}"
         vmid: "{{ container_vmid }}"
         state: "{{ item }}"
         unprivileged: true

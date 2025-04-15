@@ -9,24 +9,39 @@
     # node.
     - node_ip
 
-    # container.
-    - container_vmid
+    # lxc container.
+    - lxc_container_vmid
 
     # file.
     - file_source
     - file_destination
 
+- name: Setup temporary directory.
+  ansible.builtin.set_fact:
+    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ lxc_container_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+
+- name: Setup temporary directory filepath.
+  ansible.builtin.set_fact:
+    temporary_directory_filepath: "{{ temporary_directory }}/{{ file_destination | basename }}"
+
+- name: Ensure temporary directory exists on Proxmox node.
+  ansible.builtin.file:
+    path: "{{ temporary_directory }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ node_ip }}"
+
 - name: Copy file to Proxmox node.
   ansible.builtin.template:
     src:  "{{ file_source }}"
-    dest: "{{ temporary_directory }}/{{ file_destination | basename }}"
+    dest: "{{ temporary_directory_filepath }}"
     mode: "{{ file_mode }}"
   delegate_to: "{{ node_ip }}"
   diff: "{{ copy_show_difference }}"
 
 - name: Copy file into LXC container via pct.
   ansible.builtin.shell: |
-    pct push "{{ container_vmid }}" "{{ temporary_directory }}" "{{ file_destination }}"
+    pct push "{{ lxc_container_vmid }}" "{{ temporary_directory_filepath }}" "{{ file_destination }}"
   delegate_to: "{{ node_ip }}"
 
 - name: Clean up file from Proxmox node.

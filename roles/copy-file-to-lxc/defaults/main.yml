@@ -6,6 +6,3 @@ file_mode: "0755"
 # copy.
 copy_show_difference: false
 
-# node.
-temporary_directory: "/tmp/ansible/{{ proxmox_node_ip }}/{{ container_vmid }}/{{ role_path | baseline }}_{{ ansible_date_time.epoch }}"
-

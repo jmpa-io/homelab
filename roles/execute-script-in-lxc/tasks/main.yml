@@ -16,15 +16,33 @@
     - script_source
     - script_destination
 
-- name: Copy script into LXC Container.
-  ansible.builtin.include_role:
-    name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
-  vars:
-    node_ip: "{{ node_ip }}"
-    container_vmid: "{{ container_vmid }}"
-    file_source: "{{ script_source }}"
-    file_destination: "{{ script_destination }}"
-    file_show_difference: "{{ copy_show_difference }}"
+- name: Setup temporary directory.
+  ansible.builtin.set_fact:
+    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ container_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+
+- name: Setup temporary directory filepath.
+  ansible.builtin.set_fact:
+    temporary_directory_filepath: "{{ temporary_directory }}/{{ script_destination | basename }}"
+
+- name: Ensure temporary directory exists on Proxmox node.
+  ansible.builtin.file:
+    path: "{{ temporary_directory }}"
+    state: directory
+    mode: "0755"
+  delegate_to: "{{ node_ip }}"
+
+- name: Copy file to Proxmox node.
+  ansible.builtin.template:
+    src:  "{{ script_source }}"
+    dest: "{{ temporary_directory_filepath }}"
+    mode: "{{ script_mode }}"
+  delegate_to: "{{ node_ip }}"
+  diff: "{{ copy_show_difference }}"
+
+- name: Copy file into LXC container via pct.
+  ansible.builtin.shell: |
+    pct push "{{ container_vmid }}" "{{ temporary_directory_filepath }}" "{{ script_destination }}"
+  delegate_to: "{{ node_ip }}"
 
 - name: Execute script inside LXC Container.
   ansible.builtin.shell: |
@@ -32,6 +50,12 @@
     lxc-attach -n "{{ container_vmid }}" -- "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
   no_log: "{{ execute_no_log }}"
+
+- name: Clean up file from Proxmox node.
+  ansible.builtin.file:
+    path: "{{ temporary_directory }}"
+    state: absent
+  delegate_to: "{{ node_ip }}"
 
 - name: Clean up script inside LXC container.
   ansible.builtin.shell: |
