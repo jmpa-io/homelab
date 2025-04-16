@@ -3,6 +3,9 @@
 # file.
 file_mode: "0755"
 
-# copy.
-copy_show_difference: false
+# copy to node, from host.
+copy_to_node_show_logs: true
+copy_to_node_show_difference: false
 
+# copy to lxc, from node.
+copy_to_lxc_show_logs: true

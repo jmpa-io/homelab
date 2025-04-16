@@ -6,11 +6,11 @@
   when: vars[item] is not defined
   loop:
 
-    # node.
+    # proxmox - node.
     - node_ip
 
     # lxc container.
-    - lxc_container_vmid
+    - container_id
 
     # file.
     - file_source
@@ -18,7 +18,7 @@
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ lxc_container_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ container_id }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -37,12 +37,14 @@
     dest: "{{ temporary_directory_filepath }}"
     mode: "{{ file_mode }}"
   delegate_to: "{{ node_ip }}"
-  diff: "{{ copy_show_difference }}"
+  diff: "{{ copy_to_node_show_difference }}"
+  no_log: "{{ copy_to_node_show_logs }}"
 
-- name: Copy file into LXC container via pct.
+- name: Copy file to LXC container via pct
   ansible.builtin.shell: |
-    pct push "{{ lxc_container_vmid }}" "{{ temporary_directory_filepath }}" "{{ file_destination }}"
+    pct push "{{ container_id }}" "{{ temporary_directory_filepath }}" "{{ file_destination }}"
   delegate_to: "{{ node_ip }}"
+  no_log: "{{ copy_to_lxc_show_logs }}"
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:

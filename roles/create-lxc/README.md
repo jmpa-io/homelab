@@ -1,33 +1,27 @@
 
-## `copy-file-to-lxc`
+## `create-lxc`
 
 ```diff
-+ This role copies a local file to the Proxmox host, then uses pct to copy the
-+ file into the given LXC container.
++ This role creates an LXC container and installs all the default required
++ dependencies expected to ensure the container is secure.
 ```
 
-### `Usage`
-
-Below is a breakdown of the variables for this role.
-
-|Required|Variable|Description|Default Value|
-|:---|:---|:---|:---
-| |`proxmox_api_user`|User for the Proxmox API.|`root@pam`
-| |`proxmox_api_token_id`|API token ID for Proxmox.|`proxmox-api-token`
-|x|`container_vmid`|VMID for the container.|`{{ node_id }}{{ container_id }}`
-| |`container_ostemplate`|OS template for the container.|`lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst`
-| |`container_cores`|Number of CPU cores for the container.|`4`
-| |`container_memory`|Amount of RAM for the container in MB.|`2048`
-| |`container_ssh_pubkey`|Path to the SSH public key for root access.|`{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}`
-| |`container_hostname`|Hostname for the LXC container.|`tailscale`
-|x|`container_root_password`|Root password for the LXC container.|`xxxx`
-|x|`container_ip`|Static IPv4 address for the container.|`10.0.1.115`
-|x|`container_ip_cidr`|CIDR for the container's static IP.|`24`
-|x|`proxmox_node_name`|Name of the Proxmox node.|`jmpa-server-1`
-| |`proxmox_node_id`|ID for the Proxmox node.|`1`
-| |`proxmox_node_ip`|IP address of the Proxmox node.|`192.168.1.158`
-| |`proxmox_node_bridge_ip`|Bridge IP address on the Proxmox node.|`10.0.1.1`
-| |`proxmox_node_bridge_name`|Name of the bridge on the Proxmox node.|`vmbr0`
-| |`tailscale_gateway_ipv4`|IP address for the Tailscale gateway.|`10.0.1.15`
-| |`tailscale_gateway_ipv4_cidr`|CIDR for the Tailscale gateway IP.|`24`
-
+Variable|Required|Description|Default
+:---|:---:|:---|:---:
+`node_ip`| ✅ |The IPv4 address of the Proxmox node running the LXC container you want to copy a file into.|-
+`node_name`| ✅ |The name of the Proxmox node.|-
+`node_bridge_ip`| ✅ |The IPv4 address of the Linux bridge on the Proxmox node.|-
+`node_bridge_name`| ✅ |The name of the Linux bridge on the Proxmox node.|-
+|||
+`api_ip`| ✅ |The IPv4 address of the Proxmox API used to send queries against.|-
+`api_user`| - |The name of the user used when sending queries to the `api_ip`.|`root@pam`
+`api_token_id`| - |The id of the token used when sending queries to the `api_ip`.|`proxmox-api-token`
+`api_token_secret`| ✅ |The value of the API token used when sending queries to the `api_ip`.|-
+|||
+`container_id`| ✅ |The id used when creating the new LXC container|-
+`container_ostemplate`| - |The `tar.zst` image used as the base of the LXC container.|`lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst`
+`container_hostname`| ✅ |The hostname used when creating the new LXC container.|-
+`container_root_password`| ✅ |The root user used when creating the new LXC container.|-
+`container_subnet`| ✅ |The IPv4 address + CIDR used when creating the new LXC container.|-
+`container_cores`| - |The number of CPU cores allocated to the new LXC container.|`4`
+`container_memory`| - |The amount of memory allocated to the new LXC container.|`2048`

@@ -1,5 +1,5 @@
 
-# Proxmox
+## `proxmox`
 
 This section covers setting up a new `jmpa-server` physical machine.
 

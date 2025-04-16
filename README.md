@@ -10,7 +10,6 @@
 
 ! Please note:
 ! This repository is a work-in-progress. Use at your own risk!
-! This is my first project using Ansible.
 ```
 
 <a href="LICENSE" target="_blank"><img src="https://img.shields.io/github/license/jmpa-io/homelab.svg" alt="GitHub License"></a>
@@ -28,6 +27,8 @@
 After moving to the other side of the world, I found myself in a job market where higher-level roles require different skills than I’m used to. To adapt to this change, I've created this homelab setup to expand my knowledge from the cloud to on-prem.
 
 I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup gives me the option to easily run my own services, written in various languages, that I'd like to try out.
+
+This is my first time setting up a homelab, so any feedback would be greatly appreciated!
 
 </details>
 
@@ -52,12 +53,14 @@ I'm primarly a DevOps Engineer who has been focused on the cloud, but this setup
 
 To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./proxmox/README.md).
 
-This setup uses `3` Proxmox hosts, as of writing, which is configured in the [`inventory.yml`](./inventory.yml). You would need to configure this file to match the number of servers you're running.
+This setup uses `3` Proxmox hosts, as of writing, which is dynamically configured in the [`inventory.py`](./inventory.py). You would need to configure this file to match the number of servers you're running.
 
-Once this is setup, using a terminal, you can run:
+This repository also uses Ansible - you can see a collection of custom roles under [./roles/](./roles/) that are used under the [./hosts/](./hosts/) & [./proxmox/](./proxmox/) directories.
+
+Once this all makes sense, and you've configured the [`inventory.py`](./inventory.py) for your needs, using a terminal, you can run:
 
 ```bash
-make run-playbooks
+make run-playbook
 ```
 
 And this repository should do the rest.
@@ -69,6 +72,7 @@ make
 make help
 # To see a list of available commands in this repository.
 ```
+
 
 ## 📖 `References`
 

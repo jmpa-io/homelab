@@ -3,9 +3,12 @@
 # script.
 script_mode: "0755"
 
-# copy.
-copy_show_difference: true
-copy_no_log: false
+# copy to node, from host.
+copy_to_node_show_logs: true
+copy_to_node_show_difference: false
 
-# execute.
-execute_no_log: false
+# copy to lxc, from node.
+copy_to_lxc_show_logs: true
+
+# execute script, from lxc.
+execute_script_show_logs: true
