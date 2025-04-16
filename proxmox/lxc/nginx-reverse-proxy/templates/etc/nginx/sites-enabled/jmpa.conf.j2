@@ -11,21 +11,8 @@ upstream proxmox-backend {
 
   {% for host in groups['all'] %}
   server {{ hostvars[inventory_hostname].ansible_host }};
+  {% endfor %}
 }
-
-#
-# Servers.
-#
-
-{% if servers[inventory_hostname].records %}
-{% for server in servers[inventory_hostname].records %}
-
-upstream {{ server.url }}-backend {
-  server {{ server.ip }};
-}
-
-{% endfor %}
-{% endif %}
 
 #
 # HTTP -> HTTPS redirect.

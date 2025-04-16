@@ -7,48 +7,48 @@
   loop:
 
     # proxmox - node.
-    - node_ip
+    - copy_file_to_lxc_node_ip
 
     # lxc container.
-    - container_id
+    - copy_file_to_lxc_container_id
 
     # file.
-    - file_source
-    - file_destination
+    - copy_file_to_lxc_file_source
+    - copy_file_to_lxc_file_destination
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ container_id }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc_node_ip }}/{{ copy_file_to_lxc_container_id }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
-    temporary_directory_filepath: "{{ temporary_directory }}/{{ file_destination | basename }}"
+    temporary_directory_filepath: "{{ temporary_directory }}/{{ copy_file_to_lxc_file_destination | basename }}"
 
 - name: Ensure temporary directory exists on Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: directory
     mode: "0755"
-  delegate_to: "{{ node_ip }}"
+  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
 
 - name: Copy file to Proxmox node.
   ansible.builtin.template:
-    src:  "{{ file_source }}"
+    src: "{{ copy_file_to_lxc_file_source }}"
     dest: "{{ temporary_directory_filepath }}"
-    mode: "{{ file_mode }}"
-  delegate_to: "{{ node_ip }}"
-  diff: "{{ copy_to_node_show_difference }}"
-  no_log: "{{ copy_to_node_show_logs }}"
+    mode: "{{ copy_file_to_lxc_file_mode }}"
+  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
+  diff: "{{ copy_file_to_lxc_copy_to_node_show_difference }}"
+  no_log: "{{ copy_file_to_lxc_copy_to_node_no_log }}"
 
 - name: Copy file to LXC container via pct
   ansible.builtin.shell: |
-    pct push "{{ container_id }}" "{{ temporary_directory_filepath }}" "{{ file_destination }}"
-  delegate_to: "{{ node_ip }}"
-  no_log: "{{ copy_to_lxc_show_logs }}"
+    pct push "{{ copy_file_to_lxc_container_id }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc_file_destination }}"
+  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
+  no_log: "{{ copy_file_to_lxc_copy_to_lxc_no_log }}"
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: absent
-  delegate_to: "{{ node_ip }}"
+  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
 
