@@ -36,9 +36,10 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
+        node_ip: "{{ proxmox_node_ip }}"
+        lxc_container_vmid: "{{ container_vmid }}"
         script_source: tmp/install-nginx.sh.j2
         script_destination: /tmp/install_nginx.sh
-        script_show_difference: true
 
     - name: Copy files to LXC Container.
       when: create_container is success

@@ -10,7 +10,7 @@
     - node_ip
 
     # container.
-    - container_vmid
+    - lxc_container_vmid
 
     # script.
     - script_source
@@ -18,7 +18,7 @@
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ container_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ node_ip }}/{{ lxc_container_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -41,13 +41,13 @@
 
 - name: Copy file into LXC container via pct.
   ansible.builtin.shell: |
-    pct push "{{ container_vmid }}" "{{ temporary_directory_filepath }}" "{{ script_destination }}"
+    pct push "{{ lxc_container_vmid }}" "{{ temporary_directory_filepath }}" "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
 
 - name: Execute script inside LXC Container.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ container_vmid }}" -- chmod +x "{{ script_destination }}"
-    lxc-attach -n "{{ container_vmid }}" -- "{{ script_destination }}"
+    lxc-attach -n "{{ lxc_container_vmid }}" -- chmod +x "{{ script_destination }}"
+    lxc-attach -n "{{ lxc_container_vmid }}" -- "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
   no_log: "{{ execute_no_log }}"
 
@@ -59,6 +59,6 @@
 
 - name: Clean up script inside LXC container.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ container_vmid }}" -- rm -f "{{ script_destination }}"
+    lxc-attach -n "{{ lxc_container_vmid }}" -- rm -f "{{ script_destination }}"
   delegate_to: "{{ node_ip }}"
 

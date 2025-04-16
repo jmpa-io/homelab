@@ -24,10 +24,6 @@
     - container_ip              # static ipv4 address for container;              eg. 10.0.1.115.
     - container_ip_cidr         # cidr for static ipv4 address for container_gw;  eg. 24.
 
-- name: Debug
-  debug:
-    var: proxmox_node_name
-
 - name: Create LXC Container, refreshed if needed.
   block:
     - name: Stop and / or remove existing LXC container.
@@ -92,8 +88,8 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        proxmox_node_ip: "{{ proxmox_node_ip }}"
-        container_vmid: "{{ container_vmid }}"
+        node_ip: "{{ proxmox_node_ip }}"
+        lxc_container_vmid: "{{ container_vmid }}"
         script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
         script_destination: /tmp/install_deps.sh
 
