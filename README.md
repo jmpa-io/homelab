@@ -79,7 +79,7 @@ make help
 Below are a few references I've used to help me on this homelab journey:
 
 <details>
-<summary><b>👇🏼 Click here to show.</b></summary>
+<summary><b>👇🏼 Click here to show, since it's quite long.</b></summary>
 
 <br/>
 
