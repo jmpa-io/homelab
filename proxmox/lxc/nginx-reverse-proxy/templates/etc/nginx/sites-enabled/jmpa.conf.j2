@@ -1,214 +1,70 @@
 
-# logs.
-log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
+# Logs.
+# log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
 
-#
-# Proxmox.
-#
-
-upstream proxmox-backend {
-  least_conn; # serve the server with the least number of connections.
-
-  {% for host in groups['all'] %}
-  server {{ hostvars[inventory_hostname].ansible_host }};
-  {% endfor %}
-}
-
-#
-# HTTP -> HTTPS redirect.
-#
-
-server {
-        listen 80;
-        listen [::]:80;
-        server_name _;
-        return 301 https://$host$request_uri;
-}
-
-#
-# SSL settings.
-#
-
-ssl_certificate /etc/ssl/certs/selfsigned.crt;
-ssl_certificate_key /etc/ssl/private/selfsigned.key;
-
-# ------------------------------------
-
-# logs.
-log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
+# # HTTP -> HTTPS redirect.
+# server {
+#     listen 80;
+#     listen [::]:80;
+#     server_name _;
+#     return 301 https://$host$request_uri;
+# }
 
 # Proxmox.
-upstream proxmox-backend {
-        least_conn; # serve the server with the least number of connections.
+upstream proxmox {
+    least_conn;
 
-        server 192.168.1.158:8006;  # jmpa-server-1.
-        server 192.168.1.146:8006;  # jmpa-server-2.
+{% for host in groups['all'] %}
+    server {{ hostvars[host].ansible_host }}; # {{ host }}.
+{% endfor -%}
 }
 
-#
-# jmpa-server-1.
-#
+{# Group services across servers. #}
+{% set service_map = {} %}
+{% for server in servers.values() %}
+    {% for record in server.records %}
+        {% if record.url in service_map %}
+            {% set _ = service_map[record.url].append(record.ip) %}
+        {% else %}
+            {% set _ = service_map.update({ record.url: [record.ip] }) %}
+        {% endif -%}
+    {% endfor -%}
+{% endfor -%}
 
-# Homepage.
-upstream homepage-backend {
-        server 10.0.1.2:3000;
+{# Create entries. #}
+{% for url, ips in service_map.items() %}
+
+# {{ url | title }}.
+upstream {{ url }} {
+    least_conn;
+
+{% for ip in ips %}
+    server {{ ip }};
+{% endfor %}
 }
 
-# UptimeKuma.
-upstream uptimekuma-backend {
-        server 10.0.1.20:3001;
-}
-
-# MySpeed.
-upstream myspeed-backend {
-        server 10.0.1.30:5216;
-}
-
-#
-# jmpa-server-2.
-#
-
-# Grafana.
-upstream grafana-backend {
-        server 10.0.2.5:3000;
-}
-
-# VS-Code.
-upstream code-backend {
-        server 10.0.2.30:8680;
-}
-
-#
-# ---
-#
-
-# HTTP -> HTTPS redirect.
 server {
-        listen 80;
-        listen [::]:80;
-        server_name _;
-        return 301 https://$host$request_uri;
+    # server_name "{{ url }}.{{ hostvars[inventory_hostname].domain }}";
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name "{{ url }}";
+
+    # access_log "/var/log/nginx/{{ url }}-access-logs.log" custom_log;
+    # error_log  "/var/log/nginx/{{ url }}-errors-logs.log" warn;
+
+    # ssl_certificate /etc/ssl/certs/selfsigned.crt;
+    # ssl_certificate_key /etc/ssl/private/selfsigned.key;
+
+    location / {
+        proxy_pass "https://{{ url }}";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+    }
 }
 
-#
-# ---
-#
-
-# SSL settings.
-ssl_certificate /etc/ssl/certs/selfsigned.crt;
-ssl_certificate_key /etc/ssl/private/selfsigned.key;
-
-# Proxmox - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name proxmox.jmpa.io;
-
-        access_log /var/log/nginx/proxmox-proxy-access-logs.log custom_log;
-        error_log  /var/log/nginx/proxmox-proxy-error-logs.log warn;
-
-        location / {
-                proxy_pass https://proxmox-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
-
-# Homepage - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name homepage.jmpa.io;
-
-        access_log /var/log/nginx/homepage-access-logs.log custom_log;
-        error_log  /var/log/nginx/homepage-error-logs.log warn;
-
-        location / {
-                proxy_pass http://homepage-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
-
-# UptimeKuma - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name uptimekuma.jmpa.io;
-
-        access_log /var/log/nginx/uptimekuma-access-logs.log custom_log;
-        error_log  /var/log/nginx/uptimekuma-error-logs.log warn;
-
-        location / {
-                proxy_pass http://uptimekuma-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
-
-# MySpeed - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name myspeed.jmpa.io;
-
-        access_log /var/log/nginx/myspeed-access-logs.log custom_log;
-        error_log  /var/log/nginx/myspeed-error-logs.log warn;
-
-        location / {
-                proxy_pass http://myspeed-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
-
-# Grafana - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name grafana.jmpa.io;
-
-        access_log /var/log/nginx/grafana-access-logs.log custom_log;
-        error_log  /var/log/nginx/grafana-error-logs.log warn;
-
-        location / {
-                proxy_pass http://grafana-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
-
-# VSCode - https.
-server {
-        listen 443 ssl;
-        listen [::]:443 ssl;
-        server_name code.jmpa.io;
-
-        access_log /var/log/nginx/code-access-logs.log custom_log;
-        error_log  /var/log/nginx/code-error-logs.log warn;
-
-        location / {
-                proxy_pass http://code-backend;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header Upgrade $http_upgrade;
-                proxy_set_header Connection "Upgrade";
-        }
-}
+{% endfor %}
 

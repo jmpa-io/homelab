@@ -11,7 +11,7 @@ ping-inventory: inventory.*
 
 check-playbook: ## Check the Ansible playbook.
 check-playbook: playbook.yml
-	ansible-playbook -vv $< --check \
+	ansible-playbook -vvv $< --check \
 		--extra-vars root_playbook_directory="$$PWD"
 
 run-playbook: ## Executes the Ansible playbook.

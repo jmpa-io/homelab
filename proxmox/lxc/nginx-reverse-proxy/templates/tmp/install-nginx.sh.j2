@@ -3,5 +3,14 @@
 
 # {{ ansible_managed }}
 
-# Install nginx.
-apt-get -y install nginx
+# Install nginx & certbot.
+apt-get -y install nginx certbot
+
+# remove default nginx config.
+rm -rf /etc/nginx/sites-enabled/default
+
+# generate a cert.
+certbot certonly --webroot -w /var/www/html -d {{ hostvars[inventory_hostname].domain }}
+
+# start nginx.
+nginx -s reload -c /etc/nginx/sites-enabled/{{ hostvars[inventory_hostname].domain }}.conf

@@ -22,4 +22,6 @@ servers:
 
   jmpa_server_3:
     records:
+      - url: grafana
+        ip: 10.0.2.5:3000
 

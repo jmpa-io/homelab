@@ -26,6 +26,10 @@
     lxc_container_tags: [ nginx, reverse-proxy ]
 
   tasks:
+
+    - name: Load playbook variables.
+      include_vars: "{{ playbook_dir }}/vars/main.yml"
+
     - name: Create LXC Container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
@@ -48,16 +52,6 @@
         create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
-    - name: Install nginx.
-      when: create_container is success
-      ansible.builtin.include_role:
-        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
-      vars:
-        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
-        execute_script_in_lxc_container_id: "{{ lxc_container_vmid }}"
-        execute_script_in_lxc_script_source: tmp/install-nginx.sh.j2
-        execute_script_in_lxc_script_destination: /tmp/install_nginx.sh
-
     - name: Copy nginx config.
       when: create_container is success
       ansible.builtin.include_role:
@@ -70,3 +64,14 @@
         copy_file_to_lxc_show_difference: true
         copy_file_to_lxc_copy_to_node_no_log: false
         copy_file_to_lxc_copy_to_lxc_no_log: false
+
+    - name: Install nginx.
+      when: create_container is success
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
+      vars:
+        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc_container_id: "{{ lxc_container_vmid }}"
+        execute_script_in_lxc_script_source: tmp/install-nginx.sh.j2
+        execute_script_in_lxc_script_destination: /tmp/install_nginx.sh
+

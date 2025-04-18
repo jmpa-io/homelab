@@ -42,6 +42,7 @@
 
 - name: Copy file to LXC container via pct
   ansible.builtin.shell: |
+    pct exec "{{ copy_file_to_lxc_container_id }}" -- mkdir -p "{{ copy_file_to_lxc_file_destination | dirname }}"
     pct push "{{ copy_file_to_lxc_container_id }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc_file_destination }}"
   delegate_to: "{{ copy_file_to_lxc_node_ip }}"
   no_log: "{{ copy_file_to_lxc_copy_to_lxc_no_log }}"
