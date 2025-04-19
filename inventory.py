@@ -71,6 +71,11 @@ def generate_inventory(config: dict) -> dict:
 
                 # tailscale.
                 "tailscale_oauth_private_key": config['tailscale_oauth_private_key'],
+
+                # ssl.
+                "ssl_private_key": config['ssl_private_key'],
+                "ssl_cert": config['ssl_cert'],
+
             },
             "hosts": [],
         },
@@ -150,6 +155,10 @@ def main():
 
     # tailscale.
     "tailscale_oauth_private_key": ssm_client.get_parameter("/homelab/tailscale/oauth-tokens/ansible/client-token"),
+
+    # ssl.
+    "ssl_private_key": ssm_client.get_parameter("/homelab/ssl/private-key"),
+    "ssl_cert": ssm_client.get_parameter("/homelab/ssl/cert"),
 
   }
   config['hosts'] = {

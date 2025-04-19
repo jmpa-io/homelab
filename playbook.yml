@@ -23,11 +23,11 @@
 # # #   roles:
 # # #     - hosts/nfs-server
 # #
-# # # nfs - clients.
-# # - name: Setup nfs - clients.
-# #   hosts: jmpa_server_2, jmpa_server_3
-# #   roles:
-# #     - hosts/nfs-client
+# nfs - clients.
+- name: Setup nfs - clients.
+  hosts: jmpa_server_2, jmpa_server_3
+  roles:
+    - hosts/nfs-client
 #
 # #
 # # Setup services.

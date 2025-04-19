@@ -4,6 +4,7 @@
   hosts: jmpa_server_3
   become: true
   vars:
+    domain: "{{ hostvars[inventory_hostname].domain }}"
 
     # proxmox - node.
     proxmox_node_name: "{{ inventory_hostname | replace('_', '-') }}"
@@ -52,15 +53,28 @@
         create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
-    - name: Copy nginx config.
+    - name: Copy /etc/nginx/conf.d/upstreams.conf.
       when: create_container is success
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
       vars:
         copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
         copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
-        copy_file_to_lxc_file_source: etc/nginx/sites-enabled/jmpa.conf.j2
-        copy_file_to_lxc_file_destination: /etc/nginx/sites-enabled/jmpa.conf
+        copy_file_to_lxc_file_source: etc/nginx/conf.d/upstreams.conf.j2
+        copy_file_to_lxc_file_destination: /etc/nginx/conf.d/{{ domain }}-upstreams.conf
+        copy_file_to_lxc_show_difference: true
+        copy_file_to_lxc_copy_to_node_no_log: false
+        copy_file_to_lxc_copy_to_lxc_no_log: false
+
+    - name: Copy /etc/nginx/sites-enabled/servers.conf.
+      when: create_container is success
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+      vars:
+        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
+        copy_file_to_lxc_file_source: etc/nginx/sites-enabled/servers.conf.j2
+        copy_file_to_lxc_file_destination: /etc/nginx/sites-enabled/{{ domain }}-servers.conf
         copy_file_to_lxc_show_difference: true
         copy_file_to_lxc_copy_to_node_no_log: false
         copy_file_to_lxc_copy_to_lxc_no_log: false

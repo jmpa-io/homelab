@@ -1,0 +1,42 @@
+
+# {{ ansible_managed }}
+
+{# Group services across servers. #}
+{% set service_map = {} %}
+{% for server in servers.values() %}
+    {% for record in server.records %}
+        {% if record.url in service_map %}
+            {% set _ = service_map[record.url].append(record.ip) %}
+        {% else %}
+            {% set _ = service_map.update({ record.url: [record.ip] }) %}
+        {% endif -%}
+    {% endfor -%}
+{% endfor -%}
+
+
+{# Create server entries. #}
+{% for url, ips in service_map.items() %}
+server {
+    # server_name "{{ url }}.{{ hostvars[inventory_hostname].domain }}";
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name "{{ url }}";
+
+    # access_log "/var/log/nginx/{{ url }}-access-logs.log" custom_log;
+    # error_log  "/var/log/nginx/{{ url }}-errors-logs.log" warn;
+
+    ssl_certificate /etc/ssl/certs/self-signed.crt;
+    ssl_certificate_key /etc/ssl/private/self-signed.key;
+
+    location / {
+        proxy_pass "https://{{ url }}";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+    }
+}
+{% endfor %}
+
