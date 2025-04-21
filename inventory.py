@@ -102,7 +102,6 @@ def generate_inventory(config: dict) -> dict:
         "host_ipv4_with_cidr": f"{config['hosts'][f'jmpa_server_{i}']['ansible_host']}/{config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"]}",
 
         "host_bridge_name": config['host_bridge_name'],
-
         "host_bridge_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.1",
         "host_bridge_ipv4_cidr": config['host_bridge_default_ipv4_cidr'],
         "host_bridge_subnet": f"{config['host_bridge_default_ipv4_prefix']}.{i}.0",
@@ -113,9 +112,10 @@ def generate_inventory(config: dict) -> dict:
         "host_wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["host_wifi_device_name"],
 
         # tailscale.
-        "tailscale_gateway_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.15",
+        "tailscale_gateway_container_id": config['host_bridge_default_container_id'],
+        "tailscale_gateway_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['host_bridge_default_container_id']}",
         "tailscale_gateway_ipv4_cidr": f"{config['host_bridge_default_ipv4_cidr']}",
-        "tailscale_gateway_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.15/{config['host_bridge_default_ipv4_cidr']}",
+        "tailscale_gateway_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['host_bridge_default_container_id']}/{config['host_bridge_default_ipv4_cidr']}",
 
       } for i in range(1, config['server_count'] + 1)
     }
@@ -143,6 +143,7 @@ def main():
     "host_default_subnet_ipv4_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
 
     "host_bridge_name": read_env_var("HOST_BRIDGE_NAME", "vmbr0", False, str),
+    "host_bridge_default_container_id": read_env_var("HOST_BRIDGE_DEFAULT_CONTAINER_ID", 15, False, str),
     "host_bridge_default_ipv4_prefix": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_PREFIX", "10.0", False, str),
     "host_bridge_default_ipv4_cidr": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_CIDR", 24, False, str),
 

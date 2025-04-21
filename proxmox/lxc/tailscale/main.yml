@@ -1,40 +1,57 @@
 ---
 
 - name: Setup Tailscale.
-  hosts: jmpa_server_3, jmpa_server_2
+  hosts: all
   become: true
   vars:
 
-    # proxmox.
-    node_name: "{{ inventory_hostname | replace('_', '-') }}"
-    node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
-    node_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
-    node_bridge_ip: "{{ hostvars[inventory_hostname].bridge_ip }}"
-    node_bridge_name: "{{ hostvars[inventory_hostname].bridge_name }}"
+    # proxmox - node.
+    proxmox_node_name: "{{ inventory_hostname | replace('_', '-') }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ hostvars[inventory_hostname].host_ipv4 }}"
+    proxmox_node_bridge_ip: "{{ hostvars[inventory_hostname].host_bridge_ipv4 }}"
+    proxmox_node_bridge_name: "{{ hostvars[inventory_hostname].host_bridge_name }}"
 
-    # proxmox api.
-    proxmox_api_ip: "{{ hostvars[inventory_hostname].ansible_host }}"
+    # proxmox - api.
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
     proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
 
     # tailscale.
     tailscale_oauth_private_key: "{{ hostvars[inventory_hostname].tailscale_oauth_private_key }}"
-    tailscale_routes: "{{ groups['all'] | map('extract', hostvars, 'bridge_ip_subnet') | map('regex_replace', '$', '/24') | join(',') }}"
+    tailscale_routes: "{{ hostvars[inventory_hostname].host_bridge_subnet}}/{{ hostvars[inventory_hostname].host_bridge_ipv4_cidr }}"
     tailscale_dns: 127.0.0.1
     tailscale_tags: [ jmpa-server ]
 
-    # container.
-    container_id: 15 # TODO: get from gateway_ip
-    container_vmid: "{{ node_id }}{{ container_id }}"
-    container_hostname: tailscale
-    container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    container_ip: "{{ hostvars[inventory_hostname].gateway_ip }}"
-    container_ip_cidr: "{{ hostvars[inventory_hostname].gateway_ip_cidr }}"
-    container_tags: [ tailscale, vpn ]
+    # lxc - container.
+    lxc_container_id: "{{ hostvars[inventory_hostname].tailscale_gateway_container_id }}"
+    lxc_container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_container_id) }}"
+    lxc_container_hostname: tailscale
+    lxc_container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
+    lxc_container_ip: "{{ hostvars[inventory_hostname].tailscale_gateway_ipv4 }}"
+    lxc_container_ip_cidr: "{{ hostvars[inventory_hostname].tailscale_gateway_ipv4_cidr }}"
+    lxc_container_tags: [ tailscale, vpn ]
 
   tasks:
     - name: Create LXC Container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
+      vars:
+        # proxmox - node.
+        create_lxc_node_ip: "{{ proxmox_node_ip }}"
+        create_lxc_node_name: "{{ proxmox_node_name }}"
+        create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
+        create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+
+        # proxmox - api.
+        create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+
+        # lxc - container.
+        create_lxc_container_id: "{{ lxc_container_vmid }}"
+        create_lxc_container_hostname: "{{ lxc_container_hostname }}"
+        create_lxc_container_root_password: "{{ lxc_container_root_password }}"
+        create_lxc_container_subnet: "{{ lxc_container_ip }}/{{ lxc_container_ip_cidr }}"
+        create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
     # PLEASE NOTE:
@@ -43,25 +60,27 @@
     - name: Add TUN device configuration for LXC Container.
       when: create_container is success
       ansible.builtin.blockinfile:
-        path: "/etc/pve/lxc/{{ container_vmid }}.conf"
+        path: "/etc/pve/lxc/{{ lxc_container_vmid }}.conf"
         block: |
           lxc.cgroup2.devices.allow = c 10:200 rwm
           lxc.mount.entry = /dev/net/tun dev/net/tun none bind,create=file
-      delegate_to: "{{ node_ip }}"
+      delegate_to: "{{ proxmox_node_ip }}"
 
     - name: Restart LXC Container to apply TUN configuration.
       when: create_container is success
-      ansible.builtin.shell: pct reboot "{{ container_vmid }}"
-      delegate_to: "{{ node_ip }}"
+      ansible.builtin.shell: pct reboot "{{ lxc_container_vmid }}"
+      delegate_to: "{{ proxmox_node_ip }}"
 
     - name: Install Tailscale.
       when: create_container is success
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        script_src: tmp/install-tailscale.sh.j2
-        script_dest: /tmp/install_tailscale.sh
-        script_diff: false
+        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc_container_id: "{{ lxc_container_vmid }}"
+        execute_script_in_lxc_script_source: tmp/install-tailscale.sh.j2
+        execute_script_in_lxc_script_destination: /tmp/install_tailscale.sh
+        execute_script_in_lxc_copy_to_node_show_difference: false
 
 - name: Update Tailscale DNS.
   hosts: all # NOTE: this must NOT be localhost or else we can't access inventory variables in this section.

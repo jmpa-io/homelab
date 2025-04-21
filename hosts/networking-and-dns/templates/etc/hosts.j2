@@ -5,5 +5,5 @@
 127.0.0.1       localhost.localdomain localhost {{ inventory_hostname | replace('_', '-') }}
 
 # Proxmox.
-{{ hostvars[inventory_hostname].ansible_host }}   {{ inventory_hostname | replace('_', '-') }}.palnet.net {{ inventory_hostname | replace('_', '-') }}
+{{ hostvars[inventory_hostname].host_ipv4 }}   {{ inventory_hostname | replace('_', '-') }}.palnet.net {{ inventory_hostname | replace('_', '-') }}
 
