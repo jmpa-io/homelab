@@ -5,7 +5,7 @@
 #
 
 - name: Setup hosts.
-  hosts: jmpa_server_3
+  hosts: all
   roles:
 
     # packages.
@@ -13,28 +13,28 @@
 
     # networking & dns.
     - hosts/networking-and-dns
-    #
-    # # cronjobs.
-    # - hosts/crons
+
+    # cronjobs.
+    - hosts/crons
 
 #
 # Setup NFS.
 #
 
-# - name: Setup nfs - servers.
+# - name: Setup NFS (servers).
 #   hosts: jmpa_server_1
 #   roles:
 #     - hosts/nfs-server
-#
-# # nfs - clients.
-# - name: Setup nfs - clients.
-#   hosts: jmpa_server_2, jmpa_server_3
-#   roles:
-#     - hosts/nfs-client
+
+# Setup NFS (clients).
+- name: Setup nfs - clients.
+  hosts: jmpa_server_2, jmpa_server_3
+  roles:
+    - hosts/nfs-client
 
 #
 # Setup services.
 #
 
 - import_playbook: proxmox/lxc/tailscale/main.yml
-# - import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
+- import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
