@@ -11,7 +11,7 @@ VER=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2)
 wget -qO- https://pkgs.tailscale.com/stable/$ID/$VER.noarmor.gpg > /usr/share/keyrings/tailscale-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/$ID $VER main" > /etc/apt/sources.list.d/tailscale.list
 apt-get update -q 1>/dev/null
-apt-get -y install tailscale 1>/dev/null
+apt-get -y install tailscale --fix-missing 1>/dev/null
 
 # Configure IP forwarding for Tailscale.
 # https://tailscale.com/kb/1019/subnets?tab=linux#enable-ip-forwarding.
