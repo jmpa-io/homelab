@@ -111,6 +111,19 @@ def generate_inventory(config: dict) -> dict:
 
         "host_wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["host_wifi_device_name"],
 
+        # reverse_proxy.
+        "reverse_proxy_default_container_id": config['reverse_proxy_default_container_id'],
+        "reverse_proxy_default_container_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['reverse_proxy_default_container_id']}",
+
+        # reverse_proxy - static_records.
+        "reverse_proxy": [
+          {
+            "subdomain": "proxmox",
+            "forward_to_ipv4": f"{config['hosts'][f"jmpa_server_{i}"]['ansible_host']}:{config['host_proxmox_ui_default_port']}",
+          },
+          *config["reverse_proxy"].get(f"jmpa_server_{i}", {}).get("static_records", []),
+        ],
+
         # tailscale.
         "tailscale_gateway_container_id": config['host_bridge_default_container_id'],
         "tailscale_gateway_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['host_bridge_default_container_id']}",
@@ -138,7 +151,7 @@ def main():
     # aws.
     "aws_region": aws_region,
 
-    # networking - host.
+    # host - networking.
     "host_default_subnet_ipv4": ssm_client.get_parameter("/homelab/subnet"),
     "host_default_subnet_ipv4_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
 
@@ -147,11 +160,17 @@ def main():
     "host_bridge_default_ipv4_prefix": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_PREFIX", "10.0", False, str),
     "host_bridge_default_ipv4_cidr": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_CIDR", 24, False, str),
 
+    # host - proxmox.
+    "host_proxmox_ui_default_port": read_env_var("HOST_PROXMOX_UI_DEFAULT_PORT", 8006, False, str),
+
+    # reverse-proxy.
+    "reverse_proxy_default_container_id": read_env_var("REVERSE_PROXY_DEFAULT_CONTAINER_ID", 4, False, str),
+
     # ansible.
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
     "ansible_become_pass": ssm_client.get_parameter("/homelab/root-password"),
 
-    # proxmox.
+    # proxmox - api.
     "proxmox_api_token": ssm_client.get_parameter("/homelab/proxmox/api-token"),
 
     # tailscale.
@@ -162,6 +181,8 @@ def main():
     "ssl_cert": ssm_client.get_parameter("/homelab/ssl/cert"),
 
   }
+
+  # Setup config - hosts.
   config['hosts'] = {
     f"jmpa_server_{i}": {
 
@@ -171,7 +192,30 @@ def main():
 
       # networking - host.
       "host_wifi_device_name": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/wifi-device-name"),
+
     } for i in range(1, config['server_count'] + 1)
+  }
+
+  # Setup config - reverse-proxy.
+  config["reverse_proxy"] = {
+    "jmpa_server_1": {
+      "static_records": [
+        { "subdomain": "homepage", "forward_to_ipv4": "10.0.1.2:3000" },
+        { "subdomain": "uptimekuma", "forward_to_ipv4": "10.0.1.20:3001" },
+        { "subdomain": "myspeed", "forward_to_ipv4": "10.0.1.30:5326" },
+      ],
+    },
+    "jmpa_server_2": {
+      "static_records": [
+        { "subdomain": "grafana", "forward_to_ipv4": "10.0.2.5:3000" },
+        { "subdomain": "code", "forward_to_ipv4": "10.0.2.30:8680" },
+      ],
+    },
+    "jmpa_server_3": {
+      "static_records": [
+        { "subdomain": "grafana", "forward_to_ipv4": "10.0.2.5:3000" },
+      ],
+    },
   }
 
   # Setup inventory.

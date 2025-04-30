@@ -1,40 +1,62 @@
 ---
 
+# ▖▖    ▗
+# ▙▌▛▌▛▘▜▘▛▘
+# ▌▌▙▌▄▌▐▖▄▌
 #
-# Setup hosts.
+
+# - name: Setup hosts.
+#   hosts: all
+#   roles:
 #
-
-- name: Setup hosts.
-  hosts: all
-  roles:
-
-    # packages.
-    - hosts/apt
-
-    # networking & dns.
-    - hosts/networking-and-dns
-
-    # cronjobs.
-    - hosts/crons
-
+#     # packages.
+#     - hosts/apt
 #
-# Setup NFS.
+#     # networking & dns.
+#     - hosts/networking-and-dns
+#
+#     # cronjobs.
+#     - hosts/crons
+
+# ▖ ▖▄▖▄▖
+# ▛▖▌▙▖▚
+# ▌▝▌▌ ▄▌
 #
 
 # - name: Setup NFS (servers).
 #   hosts: jmpa_server_1
-#   roles:
-#     - hosts/nfs-server
+#   roles: [hosts/nfs-server]
 
-# Setup NFS (clients).
-- name: Setup nfs - clients.
-  hosts: jmpa_server_2, jmpa_server_3
-  roles:
-    - hosts/nfs-client
+# - name: Setup NFS (client).
+#   hosts: jmpa_server_2, jmpa_server_3
+#   roles: [hosts/nfs-client]
 
-#
-# Setup services.
+# ▖ ▖▖▄▖ ▄▖    ▗   ▘
+# ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
+# ▙▖▌▌▙▖ ▙▖▙▌▌▌▐▖█▌▌▌▌▙▖▌ ▄▌
 #
 
-- import_playbook: proxmox/lxc/tailscale/main.yml
+# - import_playbook: proxmox/lxc/tailscale/main.yml
 - import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
+# - import_playbook: proxmox/lxc/buildkite-runner/main.yml
+
+# ▖▖▄▖
+# ▙▘▙▌▛▘
+# ▌▌▙▌▄▌
+
+# TODO:
+
+# ▄     ▌
+# ▌▌▛▌▛▘▙▘█▌▛▘
+# ▙▘▙▌▙▖▛▖▙▖▌
+
+# TODO:
+
+# --- --- ---
+# ▖ ▖  ▗
+# ▛▖▌▛▌▜▘█▌▛▘
+# ▌▝▌▙▌▐▖▙▖▄▌
+#
+#
+# https://patorjk.com/software/taag/#p=display&h=1&v=1&f=miniwi&t=LOGO
+#

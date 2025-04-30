@@ -64,7 +64,7 @@ upload-cert: $$HOME/.ssl/certs/self-signed.crt
 # Docker.
 #
 
-docker: ## Run this project locally inside a docker container.
+docker: ## Run this project locally inside a Docker container.
 docker: image-root
 	# TODO: remove 'CI=true' when the Makefile.common.mk is refactored.
 	docker run -it --network host \

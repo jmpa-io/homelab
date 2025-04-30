@@ -1,36 +1,37 @@
 
 # {{ ansible_managed }}
 
-{# Group services across servers. #}
+{# Build a mapping of subdomain to list of IP:port #}
 {% set service_map = {} %}
-{% for server in servers.values() %}
-    {% for record in server.records %}
-        {% if record.url in service_map %}
-            {% set _ = service_map[record.url].append(record.ip) %}
-        {% else %}
-            {% set _ = service_map.update({ record.url: [record.ip] }) %}
-        {% endif -%}
-    {% endfor -%}
-{% endfor -%}
+{% for host, vars in hostvars.items() %}
+  {% if 'reverse_proxy' in vars %}
+    {% for service in vars.reverse_proxy %}
+      {% set name = service.subdomain %}
+      {% set target = service.forward_to_ipv4 %}
+      {% if name in service_map %}
+        {% set _ = service_map[name].append(target) %}
+      {% else %}
+        {% set _ = service_map.update({ name: [target] }) %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
 
-
-{# Create server entries. #}
-{% for url, ips in service_map.items() %}
+{# Create nginx server blocks #}
+{% for subdomain, targets in service_map.items() %}
 server {
-    # server_name "{{ url }}.{{ hostvars[inventory_hostname].domain }}";
-
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name "{{ url }}";
+    server_name {{ subdomain }};
 
-    # access_log "/var/log/nginx/{{ url }}-access-logs.log" custom_log;
-    # error_log  "/var/log/nginx/{{ url }}-errors-logs.log" warn;
+    # access_log "/var/log/nginx/{{ subdomain }}-access-logs.log" custom_log;
+    # error_log  "/var/log/nginx/{{ subdomain }}-errors-logs.log" warn;
 
     ssl_certificate /etc/ssl/certs/self-signed.crt;
     ssl_certificate_key /etc/ssl/private/self-signed.key;
 
     location / {
-        proxy_pass "https://{{ url }}";
+        proxy_pass http://{{ subdomain }};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -39,4 +40,3 @@ server {
     }
 }
 {% endfor %}
-

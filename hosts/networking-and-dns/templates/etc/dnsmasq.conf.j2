@@ -3,11 +3,9 @@
 
 # Local static DNS records.
 # These records are resolved locally by this machine and are not forwarded to other jmpa-servers.
-{% if dns[inventory_hostname].static_records %}
-{% for record in dns[inventory_hostname].static_records %}
-host-record={{ record.subdomain }}.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ record.ip }}
+{% for record in hostvars[inventory_hostname].reverse_proxy %}
+host-record={{ record.subdomain }}.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].reverse_proxy_default_container_ipv4 }}
 {% endfor %}
-{% endif %}
 
 # Root domain DNS records (to prevent DNS loops).
 host-record={{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}

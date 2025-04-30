@@ -1,4 +1,3 @@
-
 # {{ ansible_managed }}
 
 # Logs.
@@ -14,31 +13,35 @@
 
 {# Group services across servers. #}
 {% set service_map = {} %}
-{% for server in servers.values() %}
-    {% for record in server.records %}
-        {% if record.url in service_map %}
-            {% set _ = service_map[record.url].append(record.ip) %}
-        {% else %}
-            {% set _ = service_map.update({ record.url: [record.ip] }) %}
-        {% endif -%}
-    {% endfor -%}
-{% endfor -%}
+{% for host, vars in hostvars.items() %}
+  {% if 'reverse_proxy' in vars %}
+    {% for service in vars.reverse_proxy %}
+      {% set name = service.subdomain %}
+      {% set target = service.forward_to_ipv4 %}
+      {% if name in service_map %}
+        {% set _ = service_map[name].append(target) %}
+      {% else %}
+        {% set _ = service_map.update({ name: [target] }) %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endfor %}
 
 # Proxmox.
 upstream proxmox {
     least_conn;
-{% for host in groups['all'] %}
-    server {{ hostvars[host].ansible_host }}; # {{ host }}.
-{% endfor -%}
+{% for ip in service_map.get('proxmox', []) %}
+    server {{ ip }};
+{% endfor %}
 }
 
 {# Create entries. #}
-{% for url, ips in service_map.items() %}
+{% for subdomain, targets in service_map.items() if subdomain != 'proxmox' %}
 
-# {{ url | title }}.
-upstream {{ url }} {
+# {{ subdomain | title }}.
+upstream {{ subdomain }} {
     least_conn;
-{% for ip in ips %}
+{% for ip in targets %}
     server {{ ip }};
 {% endfor %}
 }

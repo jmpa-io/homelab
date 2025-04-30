@@ -28,9 +28,6 @@
 
   tasks:
 
-    - name: Load playbook variables.
-      include_vars: "{{ playbook_dir }}/vars/main.yml"
-
     - name: Create LXC Container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"

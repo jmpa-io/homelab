@@ -12,6 +12,7 @@ wget -qO- https://pkgs.tailscale.com/stable/$ID/$VER.noarmor.gpg > /usr/share/ke
 echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/$ID $VER main" > /etc/apt/sources.list.d/tailscale.list
 apt-get update -q 1>/dev/null
 apt-get -y install tailscale --fix-missing 1>/dev/null
+systemctl enable --now tailscaled
 
 # Configure IP forwarding for Tailscale.
 # https://tailscale.com/kb/1019/subnets?tab=linux#enable-ip-forwarding.
@@ -22,9 +23,9 @@ sysctl -p /etc/sysctl.conf
 # Configure Tailscale UDP/GRO optimizations.
 # https://tailscale.com/kb/1320/performance-best-practices#linux-optimizations-for-subnet-routers-and-exit-nodes.
 apt-get -y install ethtool 1>/dev/null
-cat << EOF > /etc/systemd/system/tailscale-optimizations.service
+cat << EOF > /etc/systemd/system/tailscale-optimizer.service
 [Unit]
-Description=Tailscale UDP/GRO optimizations
+Description=UDP/GRO optimizations for Tailscale.
 Documentation=https://tailscale.com/kb/1320/performance-best-practices
 After=network-online.target
 Wants=network-online.target
@@ -39,15 +40,32 @@ ExecStart=/usr/bin/env bash -c '\
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
-systemctl enable tailscale-optimizations.service
-systemctl start tailscale-optimizations.service
+systemctl enable --now tailscale-optimizer.service
 
-# Start Tailscale.
+# Setup Tailscale on-boot.
 # https://tailscale.com/kb/1215/oauth-clients#registering-new-nodes-using-oauth-credentials.
-tailscale up \
-  --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" \
-  --hostname "{{ proxmox_node_name }}" \
-  --advertise-routes="{{ tailscale_routes }}" \
-  --accept-routes \
-  --advertise-tags="{{ tailscale_tags | map('string') | map('regex_replace', '^', 'tag:') | join(',') }}"
+cat << EOF > /etc/systemd/system/tailscale-booter.service
+[Unit]
+Description=Runs Tailscale on boot.
+After=network-online.target tailscaled.service tailscale-optimizer.service
+Requires=tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash -c '\
+  /usr/bin/tailscale status &>/dev/null || \
+  /usr/bin/tailscale up \
+    --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" \
+    --hostname "{{ proxmox_node_name }}" \
+    --advertise-routes="{{ tailscale_routes }}" \
+    --accept-routes \
+    --advertise-tags="{{ tailscale_tags | map('string') | map('regex_replace','^','tag:') | join(',') }}" \
+'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload
+systemctl enable --now tailscale-booter.service
 
