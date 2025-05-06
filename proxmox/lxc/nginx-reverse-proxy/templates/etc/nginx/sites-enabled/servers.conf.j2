@@ -22,7 +22,7 @@
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
-    server_name {{ subdomain }};
+    server_name {{ subdomain }}.{{ hostvars[inventory_hostname].domain }} ~^{{ subdomain }}\..+\.{{ hostvars[inventory_hostname].domain }}$;
 
     # access_log "/var/log/nginx/{{ subdomain }}-access-logs.log" custom_log;
     # error_log  "/var/log/nginx/{{ subdomain }}-errors-logs.log" warn;

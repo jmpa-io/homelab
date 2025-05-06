@@ -4,7 +4,7 @@
 # Local static DNS records.
 # These records are resolved locally by this machine and are not forwarded to other jmpa-servers.
 {% for record in hostvars[inventory_hostname].reverse_proxy %}
-host-record={{ record.subdomain }}.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].reverse_proxy_default_container_ipv4 }}
+host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].reverse_proxy_default_container_ipv4 }}
 {% endfor %}
 
 # Root domain DNS records (to prevent DNS loops).
@@ -47,4 +47,5 @@ domain-needed # Prevent resolving single-label names.
 no-ping # Don't reply to ICMP pings.
 stop-dns-rebind # Block rebind attacks on private IPs.
 rebind-domain-ok={{ hostvars[inventory_hostname].domain }} # Allow rebinds for this domain.
-no-poll  # To prevent polling for upstream servers when there's no record.
+no-poll # To prevent polling for upstream servers when there's no record.
+

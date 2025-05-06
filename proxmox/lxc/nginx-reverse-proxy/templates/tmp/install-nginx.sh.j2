@@ -13,6 +13,10 @@ cat <<EOF > /etc/ssl/certs/self-signed.crt
 {{ hostvars[inventory_hostname].ssl_cert }}
 EOF
 
+# ensure the cert is trusted.
+ln -s /etc/ssl/certs/self-signed.crt /usr/local/share/ca-certificates/self-signed.crt
+update-ca-certificates
+
 # Install nginx & certbot.
 apt-get -y install nginx 1>/dev/null
 
