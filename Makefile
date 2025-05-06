@@ -35,30 +35,49 @@ cert: upload-private-key upload-cert
 # Cert.
 #
 
-$$HOME/.ssl/private: # Creates the $HOME/.ssl/private directory.
-$$HOME/.ssl/private:
+$(HOME)/.ssl/private: # Creates the $HOME/.ssl/private directory.
+$(HOME)/.ssl/private:
 	@mkdir -p $@
 
-$$HOME/.ssl/certs: # Creates the $HOME/.ssl/certs directory.
+$(HOME)/.ssl/certs: # Creates the $HOME/.ssl/certs directory.
 	@mkdir -p $@
+
+# The path to the temporary config used by 'openssl' commands.
+OPENSSL_CONFIG ?= dist/.openssl.cnf
+
+# The path to the template used to create the temporary config used by 'openssl' commands.
+OPENSSL_CONFIG_TEMPLATE ?= .openssl.cnf.template
+
+$(OPENSSL_CONFIG): # Creates the temporary config, using the temporary config template.
+$(OPENSSL_CONFIG): $(OPENSSL_CONFIG_TEMPLATE) dist
+	@DOMAIN=$(DOMAIN) envsubst < $< > $@
 
 generate-private-key: ## Generates a private self-signed private key.
-generate-private-key: $$HOME/.ssl/private/self-signed.key
-$$HOME/.ssl/private/self-signed.key: $$HOME/.ssl/private
+generate-private-key: $(HOME)/.ssl/private/self-signed.key
+$(HOME)/.ssl/private/self-signed.key: $(HOME)/.ssl/private
 	openssl genpkey -algorithm RSA -out $@ -pkeyopt rsa_keygen_bits:2048
 
 upload-private-key: ## Uploads the self-signed private key to AWS SSM Parameter Store.
-upload-private-key: $$HOME/.ssl/private/self-signed.key
+upload-private-key: $(HOME)/.ssl/private/self-signed.key
 	aws ssm put-parameter --name "/homelab/ssl/private-key" --value "file://$<" --type SecureString --overwrite
 
 generate-cert: ## Generates a private self-signed cert, using the self-signed private key.
-generate-cert: $$HOME/.ssl/certs/self-signed.crt
-$$HOME/.ssl/certs/self-signed.crt: $$HOME/.ssl/private/self-signed.key $$HOME/.ssl/certs
-	openssl req -new -x509 -key $< -out $@ -days 3650 -subj "/CN=${DOMAIN}"
+generate-cert: $(HOME)/.ssl/certs/self-signed.crt
+$(HOME)/.ssl/certs/self-signed.crt: $(HOME)/.ssl/private/self-signed.key $(HOME)/.ssl/certs $(OPENSSL_CONFIG)
+	openssl req -new -x509 \
+		-key $< \
+		-out $@ \
+		-days 3650 \
+		-subj "/CN=${DOMAIN}" \
+		-extensions req_ext \
+		-config $(OPENSSL_CONFIG)
 
 upload-cert: ## Uploads the self-signed cert to AWS SSM Parameter Store.
-upload-cert: $$HOME/.ssl/certs/self-signed.crt
+upload-cert: $(HOME)/.ssl/certs/self-signed.crt
 	aws ssm put-parameter --name "/homelab/ssl/cert" --value "file://$<" --type SecureString --overwrite
+
+PHONY += $(HOME)/.ssl/private/self-signed.key \
+		 $(HOME)/.ssl/certs/self-signed.crt
 
 #
 # Docker.

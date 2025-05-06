@@ -1,0 +1,10 @@
+[req]
+distinguished_name = req
+req_extensions = req_ext
+prompt = no
+
+[req_distinguished_name]
+
+[req_ext]
+subjectAltName = DNS:*.$DOMAIN,DNS:$DOMAIN
+
