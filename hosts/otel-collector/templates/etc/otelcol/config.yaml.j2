@@ -1,0 +1,72 @@
+---
+
+# {{ ansible_managed }}
+# https://opentelemetry.io/docs/collector/configuration/.
+#
+# NOTE:
+# To limit exposure to denial of service attacks, change the host in endpoints below from 0.0.0.0 to a specific network interface.
+# https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/security-best-practices.md#safeguards-against-denial-of-service-attacks
+
+receivers:
+  # https://github.com/open-telemetry/opentelemetry-collector/tree/main/receiver/otlpreceiver
+  otlp:
+    protocols:
+      grpc:
+        endpoint: {{ hostvars[inventory_hostname].ansible_host }}:4317
+      http:
+        endpoint: {{ hostvars[inventory_hostname].ansible_host }}:4318
+
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver
+  prometheus/internal:
+    config:
+      scrape_configs:
+      - job_name: 'otelcol'
+        scrape_interval: 30s
+        static_configs:
+        - targets: ['{{ hostvars[inventory_hostname].ansible_host }}:8888']
+
+processors:
+  # https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor
+  batch:
+    send_batch_size: 1000
+    timeout: 1s
+
+exporters:
+  # https://github.com/open-telemetry/opentelemetry-collector/tree/main/exporter/debugexporter
+  debug:
+    verbosity: detailed
+
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusexporter
+  prometheus:
+    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:8889
+
+extensions:
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension
+  health_check:
+
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/pprofextension
+  pprof:
+    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:1777
+
+  # https://github.com/open-telemetry/opentelemetry-collector/tree/main/extension/zpagesextension
+  zpages:
+    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+
+    metrics:
+      receivers: [otlp, prometheus/internal]
+      processors: [batch]
+      exporters: [debug, prometheus]
+
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+

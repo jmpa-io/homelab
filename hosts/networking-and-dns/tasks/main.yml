@@ -1,5 +1,12 @@
 ---
 
+- name: Install required apt packages
+  become: true
+  ansible.builtin.apt:
+    name: "{{ packages }}"
+    state: latest
+  when: packages is defined and packages | length > 0
+
 - name: Update /etc/network/interfaces
   become: true
   ansible.builtin.template:
