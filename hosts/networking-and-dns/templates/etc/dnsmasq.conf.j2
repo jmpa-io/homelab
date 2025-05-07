@@ -11,13 +11,13 @@ host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].domain }},{{ 
 host-record={{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}
 
 # Assign subdomain based on inventory hostname (e.g., server1.jmpa.lab, server2.jmpa.lab)
-host-record={{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}
+host-record=proxmox.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}
 
 # Internal DNS routing.
 # DNS records not found on this machine are forwarded to these other jmpa-servers.
 {% for host in groups['all'] %}
 {% if host != inventory_hostname %}
-server=/{{ host.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }}/{{ hostvars[host].host_ipv4 }}
+server=/proxmox.{{ host.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }}/{{ hostvars[host].host_ipv4 }}
 {% endif %}
 {%- endfor %}
 
