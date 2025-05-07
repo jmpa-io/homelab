@@ -17,12 +17,12 @@
     proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
 
     # lxc - container.
-    lxc_container_id: "{{ hostvars[inventory_hostname].prometheus_gateway_container_id }}"
+    lxc_container_id: 40
     lxc_container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_container_id) }}"
     lxc_container_hostname: prometheus
     lxc_container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    lxc_container_ip: "{{ hostvars[inventory_hostname].prometheus_gateway_ipv4 }}"
-    lxc_container_ip_cidr: "{{ hostvars[inventory_hostname].prometheus_gateway_ipv4_cidr }}"
+    lxc_container_ip: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_prefix }}.{{ proxmox_node_id }}.{{ lxc_container_id }}"
+    lxc_container_ip_cidr: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_cidr }}"
     lxc_container_tags: [ prometheus, monitoring ]
 
   tasks:
@@ -48,6 +48,18 @@
         create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
+    - name: Copy /etc/prometheus/prometheus.yml
+      when: create_container is success
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+      vars:
+        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
+        copy_file_to_lxc_file_source: etc/prometheus/prometheus.yml.j2
+        copy_file_to_lxc_file_destination: /etc/prometheus/prometheus.yml
+        copy_file_to_lxc_show_difference: true
+        copy_file_to_lxc_copy_to_node_no_log: false
+        copy_file_to_lxc_copy_to_lxc_no_log: false
 
     - name: Install Prometheus.
       when: create_container is success
@@ -59,3 +71,4 @@
         execute_script_in_lxc_script_source: tmp/install-prometheus.sh.j2
         execute_script_in_lxc_script_destination: /tmp/install_prometheus.sh
         execute_script_in_lxc_copy_to_node_show_difference: false
+

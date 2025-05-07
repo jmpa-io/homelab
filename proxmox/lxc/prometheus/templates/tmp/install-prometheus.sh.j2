@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# This script installs & configures Prometheus.
+#
+# {{ ansible_managed }}
+
+set -e
+
+# Install Prometheus.
+DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confold" prometheus
+
