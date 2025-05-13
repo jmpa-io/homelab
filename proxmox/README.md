@@ -24,7 +24,7 @@ To download the `Proxmox` dependencies (or any dependencies really), you need an
 ```bash
 # Debian 12 - Bookworm.
 
-# Setup /etc/network/interfaces
+# Setup /etc/network/interfaces to look like:
 cat <<EOF | sudo tee /etc/network/interfaces
 
 # The lookback network interface.
@@ -38,11 +38,15 @@ iface enoxxxx inet dhcp
 
 # Wi-Fi.
 auto wlxxxxx
-allow-hotplug wlxxxxx
 iface wlxxxxx inet static
     address 192.168.1.xxx/24
     gateway 192.168.1.1
     dns-nameserver 1.1.1.1
+
+    # if `wpasupplicant` isn't installed (eg. `dpkg -l | grep wpasupplicant`), use:
+    wireless-essid "<name of WIFI to connect to>"
+    wireless-key "<password of WIFI to connect to>"
+    # else, use:
     wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 
 # Source any other network interfaces.
@@ -56,14 +60,19 @@ sudo systemctl restart networking
 # Ensure the network interface is 'UP' and there is an IPv4 Address.
 ip a
 
-# (Wi-Fi only) If that doesn't provide internet access to the Wi-Fi interface, then you'll need to setup internet through Ethernet first to install some dependencies.
+# (Wi-Fi only) If that doesn't provide internet access to the Wi-Fi interface, then you'll need to
+# setup internet through Ethernet first to install some dependencies.
 
 # To use `wpa-conf` in the /etc/network/interfaces file, you need to install:
 sudo apt update && sudo apt install wpasupplicant -y
-wpa_passphrase "SSID" "Password" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
+wpa_passphrase "SSID" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
 # Ensure you go to /etc/wpa_supplicant/wpa_supplicant.conf and remove the #psk field.
 sudo systemctl enable wpa_supplicant
 sudo systemctl start wpa_supplicant
+
+# NOTE:
+# If you used `wpa-ssid` & `wpa-psk` in your `/etc/network/interfaces` file,
+# as suggested above, then be sure to remove these lines and add the `wpa-conf` line now.
 ```
 
 ### Update dependencies
@@ -100,6 +109,7 @@ sudo systemctl start ssh
 On the machine you want to `ssh` from, run:
 
 ```bash
+ssh-copy-id <user>@<new-machine-ip>
 ssh <user>@<new-machine-ip>
 ```
 Replacing `<user>` with the name of the user you've set up, and `<new-machine-ip>` with the IP Address of the new machine.
@@ -128,7 +138,7 @@ EOF
 cat <<EOF | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
 deb [arch=amd64] http://download.proxmox.com/debian/pve bookworm pve-no-subscription
 
-EOF
+EOFdpkg -l | grep wpasupplicant
 
 # Setup Proxmox VE repository key.
 sudo wget https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg -O /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
@@ -147,7 +157,7 @@ sudo reboot
 
 # Run community scripts.
 # https://community-scripts.github.io/ProxmoxVE/scripts?id=post-pve-install
-bash -c "$(wget -qLO - https://github.com/community-scripts/ProxmoxVE/raw/main/misc/post-pve-install.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh)"
 ```
 
 The Proxmox UI should now be accessible via:
