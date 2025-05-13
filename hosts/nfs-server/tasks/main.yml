@@ -23,6 +23,7 @@
     group: root
     mode: '0644'
     backup: true
+  notify:
+    - Reload exportfs
+    - Restart nfs-kernel-service
 
-# TODO setup isos nfs here, which is setup in the Proxmox UI.
-# TODO setup lxc nfs here, which is setip in the Proxmox UI.

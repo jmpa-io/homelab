@@ -1,6 +1,6 @@
 ---
 
-- name: Apply network directory share
+- name: Refresh exportfs
   become: true
   command: exportfs -a
 

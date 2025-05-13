@@ -4,4 +4,4 @@
 # Resolve to use dnsmasq.
 nameserver 127.0.0.1
 
-search {{ hostvars[inventory_hostname].domain }}
+search {{ common.dns.domain }}

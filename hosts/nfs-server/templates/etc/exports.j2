@@ -1,5 +1,5 @@
 
 # {{ ansible_managed }}
 
-/mnt/share {{ hostvars[inventory_hostname].default_subnet }}/{{ hostvars[inventory_hostname].default_subnet_cidr }}(rw,sync,no_subtree_check,no_root_squash)
+/mnt/share {{ common.subnet.ipv4_with_cidr }}(rw,sync,no_subtree_check,no_root_squash)
 

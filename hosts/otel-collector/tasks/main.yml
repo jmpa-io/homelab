@@ -1,11 +1,22 @@
 ---
 
-- name: Download otelcol
+- name: Download otelcol .deb to local machine
+  delegate_to: localhost
+  run_once: true
   ansible.builtin.get_url:
     url: "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{ otel_version }}/{{ otel_deb_file }}"
     dest: "/tmp/{{ otel_deb_file }}"
 
-- name: Install OpenTelemetry Collector
+- name: Distribute otelcol .deb to hosts
+  delegate_to: localhost
+  ansible.posix.synchronize:
+    src: "/tmp/{{ otel_deb_file }}"   # localhost.
+    dest: "/tmp/"                     # server.
+    mode: push
+    rsync_opts:
+      - "--compress"
+
+- name: Install otelcol (from otelcol .deb)
   become: true
   ansible.builtin.apt:
     deb: "/tmp/{{ otel_deb_file }}"
@@ -21,14 +32,14 @@
     backup: true
   notify: Restart otelcol
 
-- name: Ensure OpenTelemetry Collector is enabled and started
+- name: Ensure otelcol is enabled and started
   become: true
   ansible.builtin.systemd:
     name: otelcol
     enabled: yes
     state: started
 
-- name: Cleanup .deb file
+- name: Cleanup otelcol .deb
   ansible.builtin.file:
     path: "/tmp/{{ otel_deb_file }}"
     state: absent

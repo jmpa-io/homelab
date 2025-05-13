@@ -3,21 +3,21 @@
 
 # Local static DNS records.
 # These records are resolved locally by this machine and are not forwarded to other jmpa-servers.
-{% for record in hostvars[inventory_hostname].reverse_proxy %}
-host-record={{ record.subdomain }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].reverse_proxy_default_container_ipv4 }}
+{% for record in services.nginx_reverse_proxy.static_records %}
+host-record={{ record.subdomain }}.{{ common.dns.domain }},{{ services.nginx_reverse_proxy.ipv4 }}
 {% endfor %}
 
 # Root domain DNS records (to prevent DNS loops).
-host-record={{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}
+host-record={{ common.dns.domain }},{{ host.ipv4 }}
 
 # Assign subdomain based on inventory hostname (e.g., server1.jmpa.lab, server2.jmpa.lab)
-host-record=proxmox.{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }},{{ hostvars[inventory_hostname].host_ipv4 }}
+host-record=proxmox.{{ inventory_hostname.split('_')[-1] }}.{{ common.dns.domain }},{{ host.ipv4 }}
 
 # Internal DNS routing.
 # DNS records not found on this machine are forwarded to these other jmpa-servers.
 {% for host in groups['all'] %}
 {% if host != inventory_hostname %}
-server=/proxmox.{{ host.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }}/{{ hostvars[host].host_ipv4 }}
+server=/proxmox.{{ host.split('_')[-1] }}.{{ common.dns.domain }}/{{ hostvars[host].host.ipv4 }}
 {% endif %}
 {%- endfor %}
 
@@ -27,12 +27,12 @@ server=8.8.8.8
 
 # DNS interface bindings.
 listen-address=127.0.0.1
-listen-address={{ hostvars[inventory_hostname].host_ipv4 }}
+listen-address={{ host.ipv4 }}
 bind-interfaces # Makes dnsmasq ONLY bind to the above interfaces.
 
 # Domain handling.
-domain={{ hostvars[inventory_hostname].domain }} # The default domain used for this server..
-local=/{{ inventory_hostname.split('_')[-1] }}.{{ hostvars[inventory_hostname].domain }}/ # Force local resolution for this subdomain.
+domain={{ common.dns.domain }} # The default domain used for this server..
+local=/{{ inventory_hostname.split('_')[-1] }}.{{ common.dns.domain }}/ # Force local resolution for this subdomain.
 no-resolv # Prevent dnsmasq from reading /etc/resolv.conf.
 expand-hosts # Auto-appends 'domain=' to host-records and /etc/hosts.
 
@@ -46,6 +46,6 @@ bogus-priv # Block private IP lookups from being sent to upstream DNS.
 domain-needed # Prevent resolving single-label names.
 no-ping # Don't reply to ICMP pings.
 stop-dns-rebind # Block rebind attacks on private IPs.
-rebind-domain-ok={{ hostvars[inventory_hostname].domain }} # Allow rebinds for this domain.
+rebind-domain-ok={{ common.dns.domain }} # Allow rebinds for this domain.
 no-poll # To prevent polling for upstream servers when there's no record.
 

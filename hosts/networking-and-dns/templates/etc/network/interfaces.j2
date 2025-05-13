@@ -10,16 +10,16 @@ auto eno1
 iface eno1 inet manual
 
 # Wi-Fi.
-auto {{ hostvars[inventory_hostname].host_wifi_device_name }}
-iface {{ hostvars[inventory_hostname].host_wifi_device_name }} inet static
-  address {{ hostvars[inventory_hostname].host_ipv4_with_cidr }}
+auto {{ host.wifi_device_name }}
+iface {{ host.wifi_device_name }} inet static
+  address {{ host.ipv4_with_cidr }}
   gateway 192.168.1.1
   wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 
 # Bridge.
-auto {{ hostvars[inventory_hostname].host_bridge_name }}
-iface {{ hostvars[inventory_hostname].host_bridge_name }} inet static
-  address {{ hostvars[inventory_hostname].host_bridge_ipv4_with_cidr }}
+auto {{ host.bridge.name }}
+iface {{ host.bridge.name }} inet static
+  address {{ host.bridge.ipv4_with_cidr }}
   bridge_ports none
   bridge_stp off
   bridge_fd 0
@@ -28,18 +28,18 @@ iface {{ hostvars[inventory_hostname].host_bridge_name }} inet static
   post-up echo 1 > /proc/sys/net/ipv4/ip_forward
 
   # Allow translation of container IP address to hosts external address.
-  post-up iptables -t nat -A POSTROUTING -o {{ hostvars[inventory_hostname].host_wifi_device_name }} -j MASQUERADE
+  post-up iptables -t nat -A POSTROUTING -o {{ host.wifi_device_name }} -j MASQUERADE
 
   # Allow return traffic from the internet for already-established connections.
   post-up iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
   # Allow forwarding from bridge.
-  post-up iptables -A FORWARD -i {{ hostvars[inventory_hostname].host_bridge_name }} -o {{ hostvars[inventory_hostname].host_wifi_device_name }} -j ACCEPT
+  post-up iptables -A FORWARD -i {{ host.bridge.name }} -o {{ host.wifi_device_name }} -j ACCEPT
 
   # Add static routes to all other servers.
-{% for host in groups['all'] %}
-{% if host != inventory_hostname %}
-  post-up ip route add {{ hostvars[host].host_bridge_subnet }}/{{ hostvars[host].host_bridge_ipv4_cidr }} via {{ hostvars[inventory_hostname].tailscale_gateway_ipv4 }} dev {{ hostvars[inventory_hostname].host_bridge_name }}
+{% for server in groups['all'] %}
+{% if server != inventory_hostname %}
+  post-up ip route add {{ hostvars[server].host.bridge.subnet }}/{{ hostvars[server].host.bridge.ipv4_cidr }} via {{ services.tailscale_gateway.ipv4 }} dev {{ host.bridge.name }}
 {% endif %}
 {%- endfor %}
 

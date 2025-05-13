@@ -2,16 +2,16 @@
 import json
 import os
 import boto3
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict
 
 # SSMClient is a class to encapsulate the boto3 SSM client functionality.
 class SSMClient:
   def __init__(self, region: str):
     self.client = boto3.client('ssm', region_name=region)
 
-  def get_parameter(self, name: str, with_decrption: bool = True) -> Optional[str]:
+  def get_parameter(self, name: str, with_decryption: bool = True) -> Optional[str]:
     try:
-      response = self.client.get_parameter(Name=name, WithDecryption=with_decrption)
+      response = self.client.get_parameter(Name=name, WithDecryption=with_decryption)
       return response['Parameter']['Value']
     except self.client.exceptions.ParameterNotFound:
       print(f"Parameter '{name}' not found.")
@@ -41,7 +41,7 @@ def read_env_var(name: str, default_value: Optional[str] = None, required: bool 
 
 # generate_inventory generates an Ansible inventory, based on the given
 # configuration dictionary.
-def generate_inventory(config: dict) -> dict:
+def generate_inventory(config: Dict) -> Dict:
 
     # Setup basic structure.
     inventory = {
@@ -50,85 +50,107 @@ def generate_inventory(config: dict) -> dict:
         },
         "all": {
             "vars": {
-                # general.
-                "domain": config['domain'],
 
-                # aws.
-                "aws_region": config['aws_region'],
-
-                # networking - host.
-                "host_default_subnet_ipv4": config['host_default_subnet_ipv4'],
-                "host_default_subnet_ipv4_cidr": config['host_default_subnet_ipv4_cidr'],
-                "host_default_subnet_ipv4_with_cidr": f"{config['host_default_subnet_ipv4']}/{config['host_default_subnet_ipv4_cidr']}",
-
-                # ansible.
                 "ansible_ssh_pass": config['ansible_ssh_pass'],
                 "ansible_become_pass": config['ansible_become_pass'],
-                "ansible_python_interpreter": "/usr/bin/python3.11",
+                "ansible_python_interpreter": config['ansible_python_interpreter'],
 
-                # proxmox.
-                "proxmox_api_token": config['proxmox_api_token'],
+                "common": {
+                    "subnet": {
+                        "ipv4": config['host_subnet_ipv4'],
+                        "ipv4_cidr": config['default_cidr'],
+                        "ipv4_with_cidr": f"{config['host_subnet_ipv4']}/{config['default_cidr']}",
+                    },
 
-                # tailscale.
-                "tailscale_oauth_private_key": config['tailscale_oauth_private_key'],
+                    "dns": {
+                        "domain": config['dns_domain'],
+                    },
+                },
 
-                # ssl.
-                "ssl_private_key": config['ssl_private_key'],
-                "ssl_cert": config['ssl_cert'],
+                "proxmox": {
+                    "api_token": config['proxmox_api_token'],
+                },
 
+                "tailscale": {
+                    "oauth_private_key": config['tailscale_oauth_private_key'],
+                },
+
+                "ssl": {
+                    "private_key": config['ssl_private_key'],
+                    "cert": config['ssl_cert'],
+                },
             },
-            "hosts": [],
-        },
-        "all_servers": {
-            "hosts": [],
+
+            # Populate hosts.
+            "hosts": [f"jmpa_server_{i}" for i in range(1, config['server_count'] + 1)],
         }
     }
-
-    # Populate hosts.
-    inventory['all']['hosts'] = [f"jmpa_server_{i}" for i in range(1, config['server_count'] + 1)]
-    inventory['all_servers']['hosts'] = inventory['all']['hosts']
 
     # Populate variables for hosts.
     inventory['_meta']['hostvars'] = {
       f"jmpa_server_{i}": {
 
-        # ansible.
         "ansible_host": config["hosts"][f"jmpa_server_{i}"]["ansible_host"],
 
-        # host.
-        "host_name": f"jmpa-server-{i}",
-        "host_ipv4": config["hosts"][f"jmpa_server_{i}"]["ansible_host"],
-        "host_ipv4_cidr": config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"],
-        "host_ipv4_with_cidr": f"{config['hosts'][f'jmpa_server_{i}']['ansible_host']}/{config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"]}",
+        "host": {
+            "name": f"jmpa-server-{i}",
 
-        "host_bridge_name": config['host_bridge_name'],
-        "host_bridge_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.1",
-        "host_bridge_ipv4_cidr": config['host_bridge_default_ipv4_cidr'],
-        "host_bridge_subnet": f"{config['host_bridge_default_ipv4_prefix']}.{i}.0",
-        "host_bridge_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.1/{config['host_bridge_default_ipv4_cidr']}",
-        "host_bridge_default_ipv4_prefix": config['host_bridge_default_ipv4_prefix'],
-        "host_bridge_default_ipv4_cidr": config['host_bridge_default_ipv4_cidr'],
+            "ipv4": config["hosts"][f"jmpa_server_{i}"]["ansible_host"],
+            "ipv4_cidr": config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"],
+            "ipv4_with_cidr": f"{config['hosts'][f'jmpa_server_{i}']['ansible_host']}/{config["hosts"][f"jmpa_server_{i}"]["ansible_host_cidr"]}",
 
-        "host_wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["host_wifi_device_name"],
+            "wifi_device_name": config["hosts"][f"jmpa_server_{i}"]["host_wifi_device_name"],
 
-        # reverse_proxy.
-        "reverse_proxy_default_container_id": config['reverse_proxy_default_container_id'],
-        "reverse_proxy_default_container_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['reverse_proxy_default_container_id']}",
+            "bridge": {
+                "name": config['host_bridge_name'],
 
-        # reverse_proxy - static_records.
-        "reverse_proxy": [
-          {
-            "subdomain": "proxmox",
-            "forward_to_ipv4": f"{config['hosts'][f"jmpa_server_{i}"]['ansible_host']}:{config['host_proxmox_ui_default_port']}",
-          },
-          *config["reverse_proxy"].get(f"jmpa_server_{i}", {}).get("static_records", []),
-        ],
+                "ipv4": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['host_bridge_ipv4_suffix']}",
+                "ipv4_cidr": config['default_cidr'],
+                "ipv4_with_cidr": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['host_bridge_ipv4_suffix']}/{config['default_cidr']}",
+                "subnet": f"{config['host_bridge_ipv4_prefix']}.{i}.0",
 
-        # tailscale.
-        "tailscale_gateway_container_id": config['host_bridge_default_container_id'],
-        "tailscale_gateway_ipv4": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['host_bridge_default_container_id']}",
-        "tailscale_gateway_ipv4_cidr": f"{config['host_bridge_default_ipv4_cidr']}",
-        "tailscale_gateway_ipv4_with_cidr": f"{config['host_bridge_default_ipv4_prefix']}.{i}.{config['host_bridge_default_container_id']}/{config['host_bridge_default_ipv4_cidr']}",
+                "default_ipv4_prefix": config['host_bridge_ipv4_prefix'],
+                "default_ipv4_suffix": config['host_bridge_ipv4_suffix'],
+            },
+
+            "collector": {
+              "metrics_port": config['host_otelcol_metrics_port'],
+            },
+        },
+
+        "services": {
+            "nginx_reverse_proxy": {
+                "container_id": config['nginx_reverse_proxy_container_id'],
+
+                "ipv4": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['nginx_reverse_proxy_container_id']}",
+                "ipv4_cidr": config['default_cidr'],
+                "ipv4_with_cidr": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['nginx_reverse_proxy_container_id']}/{config['default_cidr']}",
+
+                "static_records": [
+                    {
+                        "subdomain": "proxmox",
+                        "forward_to_ipv4_with_port": f"{config['hosts'][f"jmpa_server_{i}"]['ansible_host']}:{config['host_proxmox_ui_port']}",
+                    },
+                    *config["nginx_reverse_proxy_static_records"].get(f"jmpa_server_{i}", {}).get("static_records", []),
+                ],
+            },
+
+            "tailscale_gateway": {
+                "container_id": config['tailscale_gateway_container_id'],
+
+                "ipv4": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['tailscale_gateway_container_id']}",
+                "ipv4_cidr": config['default_cidr'],
+                "ipv4_with_cidr": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['tailscale_gateway_container_id']}/{config['default_cidr']}",
+            },
+
+            "prometheus": {
+                "container_id": config['prometheus_container_id'],
+
+                "ipv4": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['prometheus_container_id']}",
+                "ipv4_cidr": config['default_cidr'],
+                "ipv4_with_cidr": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['prometheus_container_id']}/{config['default_cidr']}",
+            },
+        },
 
       } for i in range(1, config['server_count'] + 1)
     }
@@ -137,48 +159,71 @@ def generate_inventory(config: dict) -> dict:
 
 def main():
 
-  # Setup ssm client.
-  aws_region = read_env_var("AWS_REGION", None, True, str)
-  ssm_client = SSMClient(aws_region)
+  # Setup client for AWS SSM Parameter Store.
+  ssm_client = SSMClient(read_env_var("AWS_REGION", None, True))
 
   # Setup config.
   config = {
 
-    # general.
+    # General.
     "server_count": read_env_var("SERVER_COUNT", 3, False, int),
-    "domain": read_env_var("DOMAIN", "jmpa.lab", False, str),
 
-    # aws.
-    "aws_region": aws_region,
-
-    # host - networking.
-    "host_default_subnet_ipv4": ssm_client.get_parameter("/homelab/subnet"),
-    "host_default_subnet_ipv4_cidr": ssm_client.get_parameter("/homelab/subnet/cidr"),
-
-    "host_bridge_name": read_env_var("HOST_BRIDGE_NAME", "vmbr0", False, str),
-    "host_bridge_default_container_id": read_env_var("HOST_BRIDGE_DEFAULT_CONTAINER_ID", 15, False, str),
-    "host_bridge_default_ipv4_prefix": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_PREFIX", "10.0", False, str),
-    "host_bridge_default_ipv4_cidr": read_env_var("HOST_BRIDGE_DEFAULT_IPV4_CIDR", 24, False, str),
-
-    # host - proxmox.
-    "host_proxmox_ui_default_port": read_env_var("HOST_PROXMOX_UI_DEFAULT_PORT", 8006, False, str),
-
-    # reverse-proxy.
-    "reverse_proxy_default_container_id": read_env_var("REVERSE_PROXY_DEFAULT_CONTAINER_ID", 4, False, str),
-
-    # ansible.
+    # Ansible.
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
     "ansible_become_pass": ssm_client.get_parameter("/homelab/root-password"),
+    "ansible_python_interpreter": read_env_var("ANSIBLE_PYTHON_INTERPRETER", "/usr/bin/python3.11"),
 
-    # proxmox - api.
+    # Proxmox.
     "proxmox_api_token": ssm_client.get_parameter("/homelab/proxmox/api-token"),
 
-    # tailscale.
+    # Tailscale.
     "tailscale_oauth_private_key": ssm_client.get_parameter("/homelab/tailscale/oauth-tokens/ansible/client-token"),
 
-    # ssl.
+    # SSL.
     "ssl_private_key": ssm_client.get_parameter("/homelab/ssl/private-key"),
     "ssl_cert": ssm_client.get_parameter("/homelab/ssl/cert"),
+
+    # DNS.
+    "dns_domain": read_env_var("DOMAIN", "jmpa.lab"),
+
+    # Networking.
+    "default_cidr": read_env_var("DEFAULT_CIDR", 24, False, int),
+
+    #
+    # Host (aka. the Proxmox node).
+    #
+
+    # Subnet.
+    "host_subnet_ipv4": ssm_client.get_parameter("/homelab/subnet"),
+
+    # Bridge.
+    "host_bridge_name": read_env_var("HOST_BRIDGE_NAME", "vmbr0"),
+    "host_bridge_ipv4_prefix": read_env_var("HOST_BRIDGE_IPV4_PREFIX", "10.0"),
+    "host_bridge_ipv4_suffix": read_env_var("HOST_BRIDGE_IPV4_SUFFIX", "1"),
+
+    # Proxmox UI.
+    "host_proxmox_ui_port": read_env_var("HOST_PROXMOX_UI_PORT", "8006"),
+
+    # Open Telemetry Collector.
+    "host_otelcol_metrics_port": read_env_var("HOST_OTELCOL_METRICS_PORT", "8889"),
+
+    #
+    # LXC Containers.
+    #
+
+    # Nginx (reverse-proxy).
+    "nginx_reverse_proxy_container_id": read_env_var("NGINX_REVERSE_PROXY_CONTAINER_ID", "4"),
+
+    # Tailscale (gateway).
+    "tailscale_gateway_container_id": read_env_var("TAILSCALE_GATEWAY_CONTAINER_ID", "15"),
+
+    # Prometheus.
+    "prometheus_container_id": read_env_var("PROMETHEUS_CONTAINER_ID", "40"),
+    "prometheus_port": read_env_var("PROMETHEUS_PORT", "9090"),
+
+    # Grafana.
+    "grafana_container_id": read_env_var("GRAFANA_CONTAINER_ID", "45"),
+    "grafana_port": read_env_var("GRAFANA_PORT", "3000"),
 
   }
 
@@ -186,34 +231,32 @@ def main():
   config['hosts'] = {
     f"jmpa_server_{i}": {
 
-      # ansible.
       "ansible_host": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/ipv4-address"),
-      "ansible_host_cidr": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/ipv4-address/cidr"),
+      "ansible_host_cidr": config['default_cidr'],
 
-      # networking - host.
       "host_wifi_device_name": ssm_client.get_parameter(f"/homelab/jmpa-server-{i}/wifi-device-name"),
 
     } for i in range(1, config['server_count'] + 1)
   }
 
-  # Setup config - reverse-proxy.
-  config["reverse_proxy"] = {
+  # Setup config - nginx-reverse-proxy | static records.
+  config["nginx_reverse_proxy_static_records"] = {
     "jmpa_server_1": {
       "static_records": [
-        { "subdomain": "homepage", "forward_to_ipv4": "10.0.1.2:3000" },
-        { "subdomain": "uptimekuma", "forward_to_ipv4": "10.0.1.20:3001" },
-        { "subdomain": "myspeed", "forward_to_ipv4": "10.0.1.30:5326" },
+        { "subdomain": "homepage", "forward_to_ipv4_with_port": "10.0.1.2:3000" },
+        { "subdomain": "uptimekuma", "forward_to_ipv4_with_port": "10.0.1.20:3001" },
+        { "subdomain": "myspeed", "forward_to_ipv4_with_port": "10.0.1.30:5326" },
       ],
     },
     "jmpa_server_2": {
       "static_records": [
-        { "subdomain": "grafana", "forward_to_ipv4": "10.0.2.5:3000" },
-        { "subdomain": "code", "forward_to_ipv4": "10.0.2.30:8680" },
+        { "subdomain": "grafana", "forward_to_ipv4_with_port": "10.0.2.5:3000" },
+        { "subdomain": "code", "forward_to_ipv4_with_port": "10.0.2.30:8680" },
       ],
     },
     "jmpa_server_3": {
       "static_records": [
-        { "subdomain": "grafana", "forward_to_ipv4": "10.0.2.5:3000" },
+        { "subdomain": "grafana", "forward_to_ipv4_with_port": "10.0.2.5:3000" },
       ],
     },
   }

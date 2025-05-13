@@ -5,27 +5,30 @@
 # ▌▌▙▌▄▌▐▖▄▌
 #
 
-- name: Setup hosts.
-  hosts: all
-  roles:
-
-    # packages.
-    - hosts/apt
-
-    # networking & dns.
-    - hosts/networking-and-dns
-
-    # cronjobs.
-    - hosts/crons
+# - name: Setup hosts.
+#   hosts: all
+#   roles:
+#
+#     # packages.
+#     - hosts/apt
+#
+#     # networking & dns.
+#     - hosts/networking-and-dns
+#
+#     # cronjobs.
+#     - hosts/crons
+#
+#     # observability.
+#     - hosts/otel-collector
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▙▖▚
 # ▌▝▌▌ ▄▌
 #
 
-# - name: Setup NFS (servers).
-#   hosts: jmpa_server_1
-#   roles: [hosts/nfs-server]
+- name: Setup NFS (servers).
+  hosts: jmpa_server_1
+  roles: [hosts/nfs-server]
 
 - name: Setup NFS (client).
   hosts: jmpa_server_2, jmpa_server_3
@@ -36,9 +39,9 @@
 # ▙▖▌▌▙▖ ▙▖▙▌▌▌▐▖█▌▌▌▌▙▖▌ ▄▌
 #
 
-- import_playbook: proxmox/lxc/tailscale/main.yml
-- import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
-# - import_playbook: proxmox/lxc/buildkite-runner/main.yml
+# - import_playbook: proxmox/lxc/tailscale/main.yml
+# - import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
+# - import_playbook: proxmox/lxc/prometheus/main.yml
 
 # ▖▖▄▖
 # ▙▘▙▌▛▘

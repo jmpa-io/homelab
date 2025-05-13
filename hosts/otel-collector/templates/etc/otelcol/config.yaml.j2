@@ -12,9 +12,12 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: {{ hostvars[inventory_hostname].ansible_host }}:4317
+        endpoint: {{ ansible_host }}:4317
       http:
-        endpoint: {{ hostvars[inventory_hostname].ansible_host }}:4318
+        endpoint: {{ ansible_host }}:4318
+
+  journald:
+    include_units: ["networking.service"]
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver
   prometheus/internal:
@@ -23,7 +26,7 @@ receivers:
       - job_name: 'otelcol'
         scrape_interval: 30s
         static_configs:
-        - targets: ['{{ hostvars[inventory_hostname].ansible_host }}:8888']
+        - targets: ['{{ ansible_host }}:8888']
 
 processors:
   # https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/batchprocessor
@@ -38,7 +41,7 @@ exporters:
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusexporter
   prometheus:
-    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:8889
+    endpoint: {{ ansible_host }}:8889
 
 extensions:
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension
@@ -46,11 +49,11 @@ extensions:
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/pprofextension
   pprof:
-    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:1777
+    endpoint: {{ ansible_host }}:1777
 
   # https://github.com/open-telemetry/opentelemetry-collector/tree/main/extension/zpagesextension
   zpages:
-    endpoint: {{ hostvars[inventory_hostname].ansible_host }}:55679
+    endpoint: {{ ansible_host }}:55679
 
 service:
   extensions: [health_check, pprof, zpages]
