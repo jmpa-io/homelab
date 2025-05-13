@@ -4,25 +4,20 @@
   hosts: jmpa_server_3
   become: true
   vars:
-
-    # proxmox - node.
-    proxmox_node_name: "{{ inventory_hostname | replace('_', '-') }}"
+    proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
-    proxmox_node_ip: "{{ hostvars[inventory_hostname].host_ipv4 }}"
-    proxmox_node_bridge_ip: "{{ hostvars[inventory_hostname].host_bridge_ipv4 }}"
-    proxmox_node_bridge_name: "{{ hostvars[inventory_hostname].host_bridge_name }}"
-
-    # proxmox - api.
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
     proxmox_api_ip: "{{ proxmox_node_ip }}"
-    proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
-
-    # lxc - container.
-    lxc_container_id: 40
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    lxc_container_id: "{{ services.prometheus.container_id }}"
     lxc_container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_container_id) }}"
     lxc_container_hostname: prometheus
-    lxc_container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    lxc_container_ip: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_prefix }}.{{ proxmox_node_id }}.{{ lxc_container_id }}"
-    lxc_container_ip_cidr: "{{ hostvars[inventory_hostname].host_bridge_default_ipv4_cidr }}"
+    lxc_container_root_password: "{{ ansible_become_pass }}"
+    lxc_container_subnet: "{{ services.prometheus.ipv4_with_cidr }}"
     lxc_container_tags: [ prometheus, monitoring ]
 
   tasks:
@@ -30,22 +25,18 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
       vars:
-        # proxmox - node.
-        create_lxc_node_ip: "{{ proxmox_node_ip }}"
-        create_lxc_node_name: "{{ proxmox_node_name }}"
-        create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
-        create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
-
-        # proxmox - api.
-        create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
-        create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
-
-        # lxc - container.
-        create_lxc_container_id: "{{ lxc_container_vmid }}"
-        create_lxc_container_hostname: "{{ lxc_container_hostname }}"
-        create_lxc_container_root_password: "{{ lxc_container_root_password }}"
-        create_lxc_container_subnet: "{{ lxc_container_ip }}/{{ lxc_container_ip_cidr }}"
-        create_lxc_container_tags: "{{ lxc_container_tags }}"
+        create_lxc:
+          node_ip: "{{ proxmox_node_ip }}"
+          node_name: "{{ proxmox_node_name }}"
+          node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
+          node_bridge_name: "{{ proxmox_node_bridge_name }}"
+          proxmox_api_ip: "{{ proxmox_api_ip }}"
+          proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+          container_id: "{{ lxc_container_vmid }}"
+          container_hostname: "{{ lxc_container_hostname }}"
+          container_root_password: "{{ lxc_container_root_password }}"
+          container_subnet: "{{ lxc_container_subnet }}"
+          container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
     - name: Copy /etc/prometheus/prometheus.yml
@@ -53,22 +44,24 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
       vars:
-        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
-        copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
-        copy_file_to_lxc_file_source: etc/prometheus/prometheus.yml.j2
-        copy_file_to_lxc_file_destination: /etc/prometheus/prometheus.yml
-        copy_file_to_lxc_show_difference: true
-        copy_file_to_lxc_copy_to_node_no_log: false
-        copy_file_to_lxc_copy_to_lxc_no_log: false
+        copy_file_to_lxc:
+          node_ip: "{{ proxmox_node_ip }}"
+          container_id: "{{ lxc_container_vmid }}"
+          file_source: etc/prometheus/prometheus.yml.j2
+          file_destination: /etc/prometheus/prometheus.yml
+          show_difference: true
+          copy_to_node_no_log: false
+          copy_to_lxc_no_log: false
 
     - name: Install Prometheus.
       when: create_container is success
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
-        execute_script_in_lxc_container_id: "{{ lxc_container_vmid }}"
-        execute_script_in_lxc_script_source: tmp/install-prometheus.sh.j2
-        execute_script_in_lxc_script_destination: /tmp/install_prometheus.sh
-        execute_script_in_lxc_copy_to_node_show_difference: false
+        execute_script_in_lxc:
+          node_ip: "{{ proxmox_node_ip }}"
+          container_id: "{{ lxc_container_vmid }}"
+          script_source: tmp/install-prometheus.sh.j2
+          script_destination: /tmp/install_prometheus.sh
+          copy_to_node_show_difference: false
 
