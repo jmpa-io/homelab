@@ -1,4 +1,0 @@
----
-
-otel_version: "0.125.0"
-otel_deb_file: "otelcol_{{ otel_version }}_linux_amd64.deb"

@@ -5,21 +5,21 @@
 # ▌▌▙▌▄▌▐▖▄▌
 #
 
-# - name: Setup hosts.
-#   hosts: all
-#   roles:
-#
-#     # packages.
-#     - hosts/apt
-#
-#     # networking & dns.
-#     - hosts/networking-and-dns
-#
-#     # cronjobs.
-#     - hosts/crons
-#
-#     # observability.
-#     - hosts/otel-collector
+- name: Setup hosts.
+  hosts: all
+  roles:
+
+    # packages.
+    - hosts/apt
+
+    # networking & dns.
+    - hosts/networking-and-dns
+
+    # cronjobs.
+    - hosts/crons
+
+    # observability.
+    - hosts/opentelemetry-collector
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▙▖▚
@@ -30,7 +30,7 @@
   hosts: jmpa_server_1
   roles: [hosts/nfs-server]
 
-- name: Setup NFS (client).
+- name: Setup NFS (clients).
   hosts: jmpa_server_2, jmpa_server_3
   roles: [hosts/nfs-client]
 
