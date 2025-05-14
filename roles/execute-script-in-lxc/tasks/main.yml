@@ -5,14 +5,8 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-
-    # proxmox - node.
     - execute_script_in_lxc_node_ip
-
-    # lxc - container.
     - execute_script_in_lxc_container_id
-
-    # script.
     - execute_script_in_lxc_script_source
     - execute_script_in_lxc_script_destination
 

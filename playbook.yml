@@ -38,10 +38,13 @@
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
 # ▙▖▌▌▙▖ ▙▖▙▌▌▌▐▖█▌▌▌▌▙▖▌ ▄▌
 #
+#
+# PLEASE NOTE:
+# - The order of these containers matter here.
 
-# - import_playbook: proxmox/lxc/tailscale/main.yml
-# - import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
-# - import_playbook: proxmox/lxc/prometheus/main.yml
+- import_playbook: proxmox/lxc/tailscale/main.yml
+- import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
+- import_playbook: proxmox/lxc/prometheus/main.yml
 
 # ▖▖▄▖
 # ▙▘▙▌▛▘
@@ -63,3 +66,4 @@
 #
 # https://patorjk.com/software/taag/#p=display&h=1&v=1&f=miniwi&t=LOGO
 #
+

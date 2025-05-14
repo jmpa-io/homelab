@@ -6,26 +6,33 @@
     name: "{{ packages }}"
     state: latest
   when: packages is defined and packages | length > 0
-
-- name: Ensure networking.service.d directory exists
+#
+- name: Copy over check-network.sh script
   become: true
-  ansible.builtin.file:
-    path: /etc/systemd/system/networking.service.d
-    state: directory
+  ansible.builtin.template:
+    src: usr/local/bin/check-network.sh
+    dest: /usr/local/bin/check-network.sh
     owner: root
     group: root
     mode: '0755'
 
-- name: Add auto-restart service for networking.service.d
+- name: Add network-autorestart service
   become: true
   ansible.builtin.template:
-    src: etc/systemd/system/networking.service.d/auto-restart.conf
-    dest: /etc/systemd/system/networking.service.d/auto-restart.conf
+    src: etc/systemd/system/network-autorestart.service
+    dest: /etc/systemd/system/network-autorestart.service
     owner: root
     group: root
     mode: '0644'
     backup: true
     # NOTE: no notify here as networking is restarted & systemd is reloaded below.
+
+- name: Ensure network-autorestart is enabled + started
+  become: true
+  ansible.builtin.systemd:
+    name: network-autorestart
+    enabled: yes
+    state: started
 
 - name: Update /etc/network/interfaces
   become: true

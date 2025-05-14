@@ -14,7 +14,7 @@
     dest: "/tmp/"               # server.
     mode: push
     rsync_opts:
-      - "--compress"
+      - "--compress-level=9"
 
 - name: Install otelcol (from .deb)
   become: true

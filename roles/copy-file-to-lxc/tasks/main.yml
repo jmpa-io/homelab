@@ -5,14 +5,10 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-
-    # proxmox - node.
     - copy_file_to_lxc_node_ip
-
-    # lxc container.
+    # ---
     - copy_file_to_lxc_container_id
-
-    # file.
+    # ---
     - copy_file_to_lxc_file_source
     - copy_file_to_lxc_file_destination
 

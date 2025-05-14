@@ -1,10 +1,8 @@
 ---
 
-# proxmox - api.
 create_lxc_proxmox_api_user: root@pam
 create_lxc_proxmox_api_token_id: proxmox-api-token
-
-# lxc - container.
+# ---
 create_lxc_container_ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
 create_lxc_container_cores: 4
 create_lxc_container_memory: 2048

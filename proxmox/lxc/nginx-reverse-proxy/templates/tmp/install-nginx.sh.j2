@@ -5,12 +5,12 @@
 
 # add private key.
 cat <<EOF > /etc/ssl/private/self-signed.key
-{{ hostvars[inventory_hostname].ssl_private_key }}
+{{ ssl.private_key }}
 EOF
 
 # add self-signed cert.
 cat <<EOF > /etc/ssl/certs/self-signed.crt
-{{ hostvars[inventory_hostname].ssl_cert }}
+{{ ssl.cert }}
 EOF
 
 # ensure the cert is trusted.

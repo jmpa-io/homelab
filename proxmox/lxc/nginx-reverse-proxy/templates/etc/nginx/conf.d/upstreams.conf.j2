@@ -14,14 +14,13 @@
 {# Group services across servers. #}
 {% set service_map = {} %}
 {% for host, vars in hostvars.items() %}
-  {% if 'reverse_proxy' in vars %}
-    {% for service in vars.reverse_proxy %}
-      {% set name = service.subdomain %}
-      {% set target = service.forward_to_ipv4 %}
-      {% if name in service_map %}
-        {% set _ = service_map[name].append(target) %}
-      {% else %}
-        {% set _ = service_map.update({ name: [target] }) %}
+  {% if vars.get('services') %}
+    {% set nginx_service = vars.services.get('nginx_reverse_proxy', {}) %}
+    {% for service in nginx_service.get('static_records', []) %}
+      {% set name = service.get('subdomain') %}
+      {% set target = service.get('forward_to_ipv4_with_port') %}
+      {% if name and target %}
+        {% set _ = service_map.setdefault(name, []).append(target) %}
       {% endif %}
     {% endfor %}
   {% endif %}

@@ -23,7 +23,14 @@
     group: root
     mode: '0644'
     backup: true
-  notify:
-    - Reload exportfs
-    - Restart nfs-kernel-service
+
+- name: Refresh exportfs
+  become: true
+  command: exportfs -a
+
+- name: Restart nfs-kernel-service
+  become: true
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    state: restarted
 

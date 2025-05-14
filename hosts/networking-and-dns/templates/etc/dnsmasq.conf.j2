@@ -2,7 +2,7 @@
 # {{ ansible_managed }}
 
 # Local static DNS records.
-# These records are resolved locally by this machine and are not forwarded to other jmpa-servers.
+# These records are resolved locally by this machine and are not forwarded on.
 {% for record in services.nginx_reverse_proxy.static_records %}
 host-record={{ record.subdomain }}.{{ common.dns.domain }},{{ services.nginx_reverse_proxy.ipv4 }}
 {% endfor %}
@@ -10,16 +10,13 @@ host-record={{ record.subdomain }}.{{ common.dns.domain }},{{ services.nginx_rev
 # Root domain DNS records (to prevent DNS loops).
 host-record={{ common.dns.domain }},{{ host.ipv4 }}
 
-# Assign subdomain based on inventory hostname (e.g., server1.jmpa.lab, server2.jmpa.lab)
-host-record=proxmox.{{ inventory_hostname.split('_')[-1] }}.{{ common.dns.domain }},{{ host.ipv4 }}
+# Assign proxmox subdomains to allow for specific access, when needed.
+{% for server in groups['all'] %}
+host-record=proxmox.{{ server.split('_')[-1] }}.{{ common.dns.domain }},{{ hostvars[server].host.ipv4 }}
+{% endfor %}
 
-# Internal DNS routing.
-# DNS records not found on this machine are forwarded to these other jmpa-servers.
-{% for host in groups['all'] %}
-{% if host != inventory_hostname %}
-server=/proxmox.{{ host.split('_')[-1] }}.{{ common.dns.domain }}/{{ hostvars[host].host.ipv4 }}
-{% endif %}
-{%- endfor %}
+# Route any additional {{ common.dns.domain }} traffic to the nginx-reverse-proxy.
+address=/.{{ common.dns.domain }}/{{ services.nginx_reverse_proxy.ipv4 }}
 
 # Public upstream DNS servers.
 server=1.1.1.1
@@ -31,7 +28,7 @@ listen-address={{ host.ipv4 }}
 bind-interfaces # Makes dnsmasq ONLY bind to the above interfaces.
 
 # Domain handling.
-domain={{ common.dns.domain }} # The default domain used for this server..
+domain={{ common.dns.domain }} # The default domain used for this server.
 local=/{{ inventory_hostname.split('_')[-1] }}.{{ common.dns.domain }}/ # Force local resolution for this subdomain.
 no-resolv # Prevent dnsmasq from reading /etc/resolv.conf.
 expand-hosts # Auto-appends 'domain=' to host-records and /etc/hosts.

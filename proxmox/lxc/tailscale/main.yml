@@ -4,31 +4,25 @@
   hosts: all
   become: true
   vars:
-
-    # proxmox - node.
-    proxmox_node_name: "{{ inventory_hostname | replace('_', '-') }}"
+    proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
-    proxmox_node_ip: "{{ hostvars[inventory_hostname].host_ipv4 }}"
-    proxmox_node_bridge_ip: "{{ hostvars[inventory_hostname].host_bridge_ipv4 }}"
-    proxmox_node_bridge_name: "{{ hostvars[inventory_hostname].host_bridge_name }}"
-
-    # proxmox - api.
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
     proxmox_api_ip: "{{ proxmox_node_ip }}"
-    proxmox_api_token_secret: "{{ hostvars[inventory_hostname].proxmox_api_token }}"
-
-    # tailscale.
-    tailscale_oauth_private_key: "{{ hostvars[inventory_hostname].tailscale_oauth_private_key }}"
-    tailscale_routes: "{{ hostvars[inventory_hostname].host_bridge_subnet}}/{{ hostvars[inventory_hostname].host_bridge_ipv4_cidr }}"
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    tailscale_oauth_private_key: "{{ tailscale_oauth_private_key }}"
+    tailscale_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }}"
     tailscale_dns: 127.0.0.1
     tailscale_tags: [ jmpa-server ]
-
-    # lxc - container.
-    lxc_container_id: "{{ hostvars[inventory_hostname].tailscale_gateway_container_id }}"
+    # ---
+    lxc_container_id: "{{ services.tailscale_gateway.container_id }}"
     lxc_container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_container_id) }}"
     lxc_container_hostname: tailscale
-    lxc_container_root_password: "{{ hostvars[inventory_hostname].ansible_become_pass }}"
-    lxc_container_ip: "{{ hostvars[inventory_hostname].tailscale_gateway_ipv4 }}"
-    lxc_container_ip_cidr: "{{ hostvars[inventory_hostname].tailscale_gateway_ipv4_cidr }}"
+    lxc_container_root_password: "{{ ansible_become_pass }}"
+    lxc_container_ip_with_cidr: "{{ services.tailscale_gateway.ipv4_with_cidr }}"
     lxc_container_tags: [ tailscale, vpn ]
 
   tasks:
@@ -36,21 +30,16 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
       vars:
-        # proxmox - node.
         create_lxc_node_ip: "{{ proxmox_node_ip }}"
         create_lxc_node_name: "{{ proxmox_node_name }}"
         create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
         create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
-
-        # proxmox - api.
         create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
         create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
-
-        # lxc - container.
         create_lxc_container_id: "{{ lxc_container_vmid }}"
         create_lxc_container_hostname: "{{ lxc_container_hostname }}"
         create_lxc_container_root_password: "{{ lxc_container_root_password }}"
-        create_lxc_container_subnet: "{{ lxc_container_ip }}/{{ lxc_container_ip_cidr }}"
+        create_lxc_container_subnet: "{{ lxc_container_ip_with_cidr }}"
         create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
 
@@ -93,5 +82,5 @@
     - name: Update Tailscale with DNS nameservers.
       run_once: true
       delegate_to: localhost
-      command: bin/update-dns-nameservers.sh "{{ dns_nameservers | join(',') }}"
+      command: bin/00-update-dns-nameservers.sh "{{ dns_nameservers | join(',') }}"
 

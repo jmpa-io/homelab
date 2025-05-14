@@ -5,18 +5,14 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-
-    # proxmox - node.
     - create_lxc_node_ip
     - create_lxc_node_name
     - create_lxc_node_bridge_ip
     - create_lxc_node_bridge_name
-
-    # proxmox - api.
+    # ---
     - create_lxc_proxmox_api_ip
     - create_lxc_proxmox_api_token_secret
-
-    # lxc - container.
+    # ---
     - create_lxc_container_id
     - create_lxc_container_hostname
     - create_lxc_container_root_password
@@ -64,6 +60,7 @@
         pubkey: "{{ lookup('file', create_lxc_container_ssh_pubkey) }}"
         onboot: 1
         state: present
+        timeout: 300
 
     - name: Start LXC container.
       community.general.proxmox:

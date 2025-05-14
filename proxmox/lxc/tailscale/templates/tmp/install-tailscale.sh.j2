@@ -55,7 +55,7 @@ Type=oneshot
 ExecStart=/usr/bin/env bash -c '\
   /usr/bin/tailscale status &>/dev/null || \
   /usr/bin/tailscale up \
-    --auth-key="{{ tailscale_oauth_private_key }}?ephemeral=true" \
+    --auth-key="{{ tailscale.oauth_private_key }}?ephemeral=true" \
     --hostname "{{ proxmox_node_name }}" \
     --advertise-routes="{{ tailscale_routes }}" \
     --accept-routes \
