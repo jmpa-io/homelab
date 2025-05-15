@@ -145,6 +145,7 @@ def generate_inventory(config: Dict) -> Dict:
 
             "prometheus": {
                 "container_id": config['prometheus_container_id'],
+                "default_port": config['prometheus_default_port'],
 
                 "ipv4": f"{config['host_bridge_ipv4_prefix']}.{i}.{config['prometheus_container_id']}",
                 "ipv4_cidr": config['default_cidr'],
@@ -219,7 +220,7 @@ def main():
 
     # Prometheus.
     "prometheus_container_id": read_env_var("PROMETHEUS_CONTAINER_ID", "40"),
-    "prometheus_port": read_env_var("PROMETHEUS_PORT", "9090"),
+    "prometheus_default_port": read_env_var("PROMETHEUS_DEFAULT_PORT", "9090"),
 
     # Grafana.
     "grafana_container_id": read_env_var("GRAFANA_CONTAINER_ID", "45"),

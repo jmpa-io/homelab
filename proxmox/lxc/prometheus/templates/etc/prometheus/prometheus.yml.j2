@@ -8,10 +8,6 @@ global:
   scrape_timeout: 15s       # The scrape timeout; Default is 10s.
   evaluation_interval: 30s  # How often rules are evaluated rules; Default is every 1 minute.
 
-# Web configuration.
-web:
-  listen_address: ":"
-
 # Alertmanager configuration.
 #alerting:
 #  alertmanagers:
@@ -31,10 +27,10 @@ scrape_configs:
   # Internal monitoring.
   - job_name: prometheus
     static_configs:
-      - targets: ["localhost:9090"]
+      - targets: ["0.0.0.0:{{ services.prometheus.default_port }}"]
 
   # Open Telemetry Collector.
-  - job_name: "{{ hostvars[inventory_hostname].host.name }}"
+  - job_name: "{{ host.name }}"
     static_configs:
-      - targets: ["{{ hostvars[inventory_hostname].ansible_host }}:{{ hostvars[inventory_hostname].host.collector.metrics_port }}"]
+      - targets: ["{{ ansible_host }}:{{ host.collector.metrics_port }}"]
 

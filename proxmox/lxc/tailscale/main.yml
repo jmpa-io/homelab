@@ -26,7 +26,7 @@
     lxc_container_tags: [ tailscale, vpn ]
 
   tasks:
-    - name: Create LXC Container.
+    - name: Create LXC container.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
       vars:
@@ -41,13 +41,11 @@
         create_lxc_container_root_password: "{{ lxc_container_root_password }}"
         create_lxc_container_subnet: "{{ lxc_container_ip_with_cidr }}"
         create_lxc_container_tags: "{{ lxc_container_tags }}"
-      register: create_container
 
     # PLEASE NOTE:
     # This task must be done after the creation of the container because the
     # container is refreshed during the LXC container creation role.
     - name: Add TUN device configuration for LXC Container.
-      when: create_container is success
       ansible.builtin.blockinfile:
         path: "/etc/pve/lxc/{{ lxc_container_vmid }}.conf"
         block: |
@@ -56,12 +54,10 @@
       delegate_to: "{{ proxmox_node_ip }}"
 
     - name: Restart LXC Container to apply TUN configuration.
-      when: create_container is success
       ansible.builtin.shell: pct reboot "{{ lxc_container_vmid }}"
       delegate_to: "{{ proxmox_node_ip }}"
 
     - name: Install Tailscale.
-      when: create_container is success
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
@@ -70,6 +66,11 @@
         execute_script_in_lxc_script_source: tmp/install-tailscale.sh.j2
         execute_script_in_lxc_script_destination: /tmp/install_tailscale.sh
         execute_script_in_lxc_copy_to_node_show_difference: false
+
+    - name: Check Tailscale is running.
+      ansible.builtin.command: pct exec {{ lxc_container_vmid }} -- systemctl is-active --quiet tailscaled.service
+      register: service_check
+      failed_when: service_check.rc != 0
 
 - name: Update Tailscale DNS.
   hosts: all # NOTE: this must NOT be localhost or else we can't access inventory variables in this section.

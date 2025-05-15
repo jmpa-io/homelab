@@ -1,7 +1,7 @@
 ---
 
-- name: Setup Prometheus.
-  hosts: all
+- create_lxc_name: Setup Grafana.
+  hosts: jmpa_server_3
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
@@ -15,10 +15,10 @@
     # ---
     lxc_container_id: "{{ services.prometheus.container_id }}"
     lxc_container_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_container_id) }}"
-    lxc_container_hostname: prometheus
+    lxc_container_hostname: grafana
     lxc_container_root_password: "{{ ansible_become_pass }}"
-    lxc_container_ip_with_cidr: "{{ services.prometheus.ipv4_with_cidr }}"
-    lxc_container_tags: [ prometheus, monitoring ]
+    lxc_container_ip_with_cidr: "{{ services.grafana.ipv4_with_cidr }}"
+    lxc_container_tags: [ grafana, monitoring ]
 
   tasks:
     - name: Create LXC container.
@@ -36,7 +36,6 @@
         create_lxc_container_root_password: "{{ lxc_container_root_password }}"
         create_lxc_container_subnet: "{{ lxc_container_ip_with_cidr }}"
         create_lxc_container_tags: "{{ lxc_container_tags }}"
-      register: create_container
 
     - name: Copy /etc/prometheus/prometheus.yml
       ansible.builtin.include_role:
@@ -50,17 +49,17 @@
         copy_file_to_lxc_copy_to_node_no_log: false
         copy_file_to_lxc_copy_to_lxc_no_log: false
 
-    - name: Install Prometheus.
+    - name: Install Grafana.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
         execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
         execute_script_in_lxc_container_id: "{{ lxc_container_vmid }}"
-        execute_script_in_lxc_script_source: tmp/install-prometheus.sh.j2
-        execute_script_in_lxc_script_destination: /tmp/install_prometheus.sh
+        execute_script_in_lxc_script_source: tmp/install-grafana.sh.j2
+        execute_script_in_lxc_script_destination: /tmp/install_grafana.sh
         execute_script_in_lxc_copy_to_node_show_difference: false
 
-    - name: Check Prometheus is running.
-      ansible.builtin.command: pct exec {{ lxc_container_vmid }} -- systemctl is-active --quiet prometheus.service
+    - name: Check Grafana is running.
+      ansible.builtin.command: pct exec {{ lxc_container_vmid }} -- systemctl is-active --quiet grafana.service
       register: service_check
       failed_when: service_check.rc != 0

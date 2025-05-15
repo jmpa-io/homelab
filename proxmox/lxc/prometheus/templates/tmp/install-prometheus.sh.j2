@@ -6,5 +6,18 @@
 set -e
 
 # Install Prometheus.
+apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confold" prometheus
+
+# Add args.
+cat << EOF > /etc/default/prometheus
+
+# {{ ansible_managed }}
+
+ARGS="--web.listen-address=0.0.0.0:{{ services.prometheus.default_port }}"
+EOF
+
+# Reload + restart for args to take effect.
+systemctl daemon-reload
+systemctl restart prometheus
 
