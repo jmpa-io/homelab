@@ -128,6 +128,9 @@ Below are a few references I've used to help me on this homelab journey:
 * https://github.com/debops/debops
 * https://github.com/joshrnoll/ansible-playbook-homelab
 
+**Proxmox:**
+* https://forum.proxmox.com/threads/containers-loose-network-until-reboot-of-the-lxc.153588/
+
 </details>
 
 ## 🪪 `License`

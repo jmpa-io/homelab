@@ -3,9 +3,12 @@
 # unreachable, it attempts to restart the networking.service to attempt to fix
 # the issue.
 #
+# PLEASE NOTE:
+# * https://forum.proxmox.com/threads/containers-loose-network-until-reboot-of-the-lxc.153588/.
+#
 # {{ ansible_managed }}
 
 if ! ping -c 5 1.1.1.1 > /dev/null 2>&1; then
-  echo "Network unreachable! Restarting networking.service..."
-  systemctl restart networking.service
+  echo "Network unreachable! Reloading networking (using ifreload)..."
+  ifreload -a
 fi
