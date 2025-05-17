@@ -12,12 +12,14 @@ receivers:
   otlp:
     protocols:
       grpc:
-        endpoint: {{ ansible_host }}:4317
+        endpoint: "{{ ansible_host }}:4317"
       http:
-        endpoint: {{ ansible_host }}:4318
+        endpoint: "{{ ansible_host }}:4318"
 
+  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/journaldreceiver
   journald:
-    include_units: ["networking.service"]
+    units:
+      - networking
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver
   prometheus/internal:
@@ -41,7 +43,7 @@ exporters:
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/prometheusexporter
   prometheus:
-    endpoint: {{ ansible_host }}:8889
+    endpoint: "{{ ansible_host }}:8889"
 
 extensions:
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/healthcheckextension
@@ -49,11 +51,11 @@ extensions:
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/extension/pprofextension
   pprof:
-    endpoint: {{ ansible_host }}:1777
+    endpoint: "{{ ansible_host }}:1777"
 
   # https://github.com/open-telemetry/opentelemetry-collector/tree/main/extension/zpagesextension
   zpages:
-    endpoint: {{ ansible_host }}:55679
+    endpoint: "{{ ansible_host }}:55679"
 
 service:
   extensions: [health_check, pprof, zpages]

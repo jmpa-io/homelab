@@ -21,11 +21,11 @@
   ansible.builtin.apt:
     deb: "/tmp/{{ otel_deb }}"
 
-- name: Update /etc/otelcol/config.yaml
+- name: Copy over config.yaml
   become: true
   ansible.builtin.template:
-    src: etc/otelcol/config.yaml.j2
-    dest: /etc/otelcol/config.yaml
+    src: etc/{{ otel_type }}/config.yaml.j2
+    dest: /etc/{{ otel_type }}/config.yaml
     owner: root
     group: root
     mode: '0644'

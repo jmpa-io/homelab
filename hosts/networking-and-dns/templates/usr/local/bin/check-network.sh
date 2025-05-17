@@ -10,5 +10,6 @@
 
 if ! ping -c 5 1.1.1.1 > /dev/null 2>&1; then
   echo "Network unreachable! Reloading networking (using ifreload)..."
-  ifreload -a
+  # ifreload -a
+  systemctl restart networking.service
 fi
