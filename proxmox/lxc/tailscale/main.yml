@@ -14,7 +14,7 @@
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
     tailscale_oauth_private_key: "{{ tailscale_oauth_private_key }}"
-    tailscale_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }}"
+    tailscale_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }},{{ ansible_host }}/32"
     tailscale_dns: 127.0.0.1
     tailscale_tags: [ jmpa-server ]
     # ---
