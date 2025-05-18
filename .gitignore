@@ -2,7 +2,7 @@
 .DS_Store
 .vscode/
 
-# ignore generated files.
+# ignore generated files & directories.
 /out
 package.yml
 coverage.*
@@ -10,6 +10,7 @@ dist/
 *.zip
 *.pem
 traces.txt
+__pycache__
 
 # ignore test files.
 /test.sh

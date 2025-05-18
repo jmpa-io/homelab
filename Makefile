@@ -15,7 +15,7 @@ DOMAIN ?= jmpa.lab
 #
 
 ping-inventory: ## Pings the Ansible inventory.
-ping-inventory: inventory.*
+ping-inventory: inventory/main.py
 	ansible all -i $< -m ping
 
 check-playbook: ## Check the Ansible playbook.
