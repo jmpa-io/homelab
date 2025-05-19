@@ -2,8 +2,35 @@
 # This script installs & configures Grafana.
 #
 # {{ ansible_managed }}
+#
+# NOTES:
+# * https://grafana.com/docs/grafana/latest/setup-grafana/installation/debian/
 
 set -e
 
-apt update
-apt install grafana
+# Install dependencies.
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive \
+  apt-get install -y \
+    apt-transport-https \
+    software-properties-common \
+    wget \
+    gnupg
+
+# Import GPG key.
+mkdir -p /etc/apt/keyrings/
+wget -q -O - https://apt.grafana.com/gpg.key \
+  | gpg --dearmor \
+  | tee /etc/apt/keyrings/grafana.gpg > /dev/null
+
+# Install Grafana.
+echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
+  | tee -a /etc/apt/sources.list.d/grafana.list
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive \
+  apt-get install -y grafana 1>/dev/null
+
+# Start Grafana.
+systemctl daemon-reload
+systemctl enable --now grafana-server.service
+

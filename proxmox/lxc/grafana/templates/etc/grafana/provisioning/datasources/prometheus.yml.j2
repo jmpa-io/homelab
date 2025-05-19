@@ -1,0 +1,10 @@
+---
+apiVersion: 1
+
+datasources:
+{% for server in groups['all'] %}
+  - name: "Prometheus ({{ hostvars[server]['host']['name'] }})"
+    type: prometheus
+    access: proxy
+    url: http://{{ hostvars[server]['services']['prometheus']['ipv4'] }}:{{ hostvars[server]['services']['prometheus']['default_port'] }}
+{% endfor %}

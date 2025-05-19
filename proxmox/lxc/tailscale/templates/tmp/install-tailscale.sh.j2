@@ -10,9 +10,10 @@ ID=$(grep '^ID=' /etc/os-release | cut -d'=' -f2)
 VER=$(grep '^VERSION_CODENAME=' /etc/os-release | cut -d'=' -f2)
 wget -qO- https://pkgs.tailscale.com/stable/$ID/$VER.noarmor.gpg > /usr/share/keyrings/tailscale-archive-keyring.gpg
 echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/$ID $VER main" > /etc/apt/sources.list.d/tailscale.list
-apt-get update -q 1>/dev/null
-apt-get -y install tailscale --fix-missing 1>/dev/null
-systemctl enable --now tailscaled
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive \
+  apt-get -y install tailscale --fix-missing 1>/dev/null
+systemctl enable --now tailscaled.service
 
 # Configure IP forwarding for Tailscale.
 # https://tailscale.com/kb/1019/subnets?tab=linux#enable-ip-forwarding.
@@ -22,7 +23,8 @@ sysctl -p /etc/sysctl.conf
 
 # Configure Tailscale UDP/GRO optimizations.
 # https://tailscale.com/kb/1320/performance-best-practices#linux-optimizations-for-subnet-routers-and-exit-nodes.
-apt-get -y install ethtool 1>/dev/null
+DEBIAN_FRONTEND=noninteractive \
+  apt-get -y install ethtool 1>/dev/null
 cat << EOF > /etc/systemd/system/tailscale-optimizer.service
 [Unit]
 Description=UDP/GRO optimizations for Tailscale.

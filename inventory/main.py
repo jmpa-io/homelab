@@ -9,7 +9,6 @@ from host import Collector, Host
 from service import Service
 from inventory import Inventory
 
-
 def main():
 
   # Setup client for AWS SSM Parameter Store.

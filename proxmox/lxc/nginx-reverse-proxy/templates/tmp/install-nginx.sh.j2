@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
-# This script installs and configures nginx as a reverse-proxy.
+# This script installs & configures nginx as a reverse-proxy.
 
 # {{ ansible_managed }}
 
-# add private key.
+# Add private key.
 cat <<EOF > /etc/ssl/private/self-signed.key
 {{ ssl.private_key }}
 EOF
 
-# add self-signed cert.
+# Add cert.
 cat <<EOF > /etc/ssl/certs/self-signed.crt
 {{ ssl.cert }}
 EOF
 
-# ensure the cert is trusted.
+# Ensure the cert is trusted.
 ln -s /etc/ssl/certs/self-signed.crt /usr/local/share/ca-certificates/self-signed.crt
 update-ca-certificates
 
-# Install nginx & certbot.
-apt-get -y install nginx 1>/dev/null
+# Install nginx.
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive \
+  apt-get -y install nginx 1>/dev/null
 
-# reload nginx.
+# Reload nginx.
 nginx -s reload
 
