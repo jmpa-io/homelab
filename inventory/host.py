@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import List
 
 from bridge import Bridge
@@ -23,13 +23,6 @@ class Host:
   def __post_init__(self):
     self.ansible_host = self.ipv4
     self.ipv4_with_cidr = f"{self.ipv4}/{self.ipv4_cidr}"
-
-  # def to_dict(self) -> dict:
-  #     # first dump all the host’s own fields except services
-  #     data = asdict(self, dict_factory=dict)
-  #     # now replace the services list with our custom serialization
-  #     data["services"] = [ svc.to_dict() for svc in self.services ]
-  #     return data
 
   def to_dict(self) -> dict:
     """

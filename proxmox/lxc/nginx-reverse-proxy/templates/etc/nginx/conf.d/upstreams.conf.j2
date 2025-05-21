@@ -1,48 +1,22 @@
+
 # {{ ansible_managed }}
 
-# Logs.
-# log_format custom_log '"Request: $request\n Status: $status\n Request_URI: $request_uri\n Host: $host\n Client_IP: $remote_addr\n Proxy_IP(s): $proxy_add_x_forwarded_for\n Proxy_Hostname: $proxy_host\n Real_IP: $http_x_real_ip\n User_Client: $http_user_agent"';
+{%- set proxmox_servers = [] -%}
+{%- for host in groups['all'] -%}
+  {%- set _ = proxmox_servers.append(hostvars[host].ansible_host ~ ':' ~ hostvars[host]['proxmox']['default_ui_port']) -%}
+{%- endfor -%}
 
-# # HTTP -> HTTPS redirect.
-# server {
-#     listen 80;
-#     listen [::]:80;
-#     server_name _;
-#     return 301 https://$host$request_uri;
-# }
+{%- set upstreams =
+    {'proxmox': proxmox_servers}
+    | combine(common.global_service_map) %}
 
-{# Group services across servers. #}
-{% set service_map = {} %}
-{% for host, vars in hostvars.items() %}
-  {% if vars.get('services') %}
-    {% set nginx_service = vars.services.get('nginx_reverse_proxy', {}) %}
-    {% for service in nginx_service.get('static_records', []) %}
-      {% set name = service.get('subdomain') %}
-      {% set target = service.get('forward_to_ipv4_with_port') %}
-      {% if name and target %}
-        {% set _ = service_map.setdefault(name, []).append(target) %}
-      {% endif %}
-    {% endfor %}
-  {% endif %}
-{% endfor %}
-
-# Proxmox.
-upstream proxmox {
-    least_conn;
-{% for ip in service_map.get('proxmox', []) %}
-    server {{ ip }};
-{% endfor %}
-}
-
-{# Create entries. #}
-{% for subdomain, targets in service_map.items() if subdomain != 'proxmox' %}
-
-# {{ subdomain | title }}.
-upstream {{ subdomain }} {
-    least_conn;
-{% for ip in targets %}
-    server {{ ip }};
-{% endfor %}
+{% for name, backends in upstreams.items() %}
+# {{ name | title }}.
+upstream {{ name }} {
+  least_conn;
+  {% for backend in backends %}
+  server {{ backend }};
+  {% endfor %}
 }
 
 {% endfor %}

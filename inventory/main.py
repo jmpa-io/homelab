@@ -37,6 +37,7 @@ def main():
 
     "proxmox": {
       "api_token": ssm_client.get_parameter("/homelab/proxmox/api-token"),
+      "default_ui_port": read_env_var("PROXMOX_DEFAULT_UI_PORT", "8006"),
     },
 
     "tailscale": {
@@ -54,12 +55,12 @@ def main():
   #
 
   nginx_reverse_proxy = Service(
-    name="nginx-reverse-proxy",
+    name="nginx_reverse_proxy",
     container_id=read_env_var("NGINX_REVERSE_PROXY_CONTAINER_ID", "5"),
   )
 
   tailscale_gateway = Service(
-    name="tailscale-gateway",
+    name="tailscale_gateway",
     container_id=read_env_var("TAILSCALE_GATEWAY_CONTAINER_ID", "15"),
   )
 
@@ -67,6 +68,7 @@ def main():
     name="prometheus",
     container_id=read_env_var("PROMETHEUS_CONTAINER_ID", "40"),
     default_port=read_env_var("PROMETHEUS_PORT", "9090"),
+    add_to_proxy_static_records=False,
   )
 
   grafana = Service(

@@ -5,34 +5,35 @@
 # ▌▌▙▌▄▌▐▖▄▌
 #
 
-- name: Setup hosts.
-  hosts: all
-  roles:
+# - name: Setup hosts.
+#   hosts: jmpa_server_3
+#   roles:
+#
+#     # packages.
+#     - hosts/apt
+#
+#     # networking & dns.
+#     - hosts/networking-and-dns
+#
+#     # cronjobs.
+#     - hosts/crons
+#
+#     # observability.
+#     - hosts/opentelemetry-collector
 
-    # packages.
-    - hosts/apt
-
-    # networking & dns.
-    - hosts/networking-and-dns
-
-    # cronjobs.
-    - hosts/crons
-
-    # observability.
-    - hosts/opentelemetry-collector
 #
 # ▖ ▖▄▖▄▖
 # ▛▖▌▙▖▚
 # ▌▝▌▌ ▄▌
 #
 
-- name: Setup NFS (servers).
-  hosts: jmpa_server_1
-  roles: [hosts/nfs-server]
-
-- name: Setup NFS (clients).
-  hosts: jmpa_server_2, jmpa_server_3
-  roles: [hosts/nfs-client]
+# - name: Setup NFS (servers).
+#   hosts: jmpa_server_1
+#   roles: [hosts/nfs-server]
+#
+# - name: Setup NFS (clients).
+#   hosts: jmpa_server_2, jmpa_server_3
+#   roles: [hosts/nfs-client]
 
 # ▖ ▖▖▄▖ ▄▖    ▗   ▘
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
@@ -41,7 +42,7 @@
 
 # PLEASE NOTE:
 # - The order of these containers matter here.
-- import_playbook: proxmox/lxc/tailscale/main.yml
+# - import_playbook: proxmox/lxc/tailscale/main.yml
 - import_playbook: proxmox/lxc/nginx-reverse-proxy/main.yml
 - import_playbook: proxmox/lxc/prometheus/main.yml
 - import_playbook: proxmox/lxc/grafana/main.yml

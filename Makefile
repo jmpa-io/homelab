@@ -18,6 +18,9 @@ ping-inventory: ## Pings the Ansible inventory.
 ping-inventory: inventory/main.py
 	ansible all -i $< -m ping
 
+print-inventory: inventory/main.py  ## Outputs the contents of the dynamic Ansible inventory.
+	@python $< | jq '.'
+
 check-playbook: ## Check the Ansible playbook.
 check-playbook: playbook.yml
 	ansible-playbook -vvv $< --check \

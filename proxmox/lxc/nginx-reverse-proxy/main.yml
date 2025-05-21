@@ -46,7 +46,7 @@
         copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
         copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
         copy_file_to_lxc_file_source: etc/nginx/conf.d/upstreams.conf.j2
-        copy_file_to_lxc_file_destination: /etc/nginx/conf.d/{{ root_domain }}.conf
+        copy_file_to_lxc_file_destination: /etc/nginx/conf.d/upstreams.conf
         copy_file_to_lxc_show_difference: true
         copy_file_to_lxc_copy_to_node_no_log: false
         copy_file_to_lxc_copy_to_lxc_no_log: false
@@ -58,7 +58,7 @@
         copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
         copy_file_to_lxc_container_id: "{{ lxc_container_vmid }}"
         copy_file_to_lxc_file_source: etc/nginx/sites-enabled/servers.conf.j2
-        copy_file_to_lxc_file_destination: /etc/nginx/sites-enabled/{{ root_domain }}.conf
+        copy_file_to_lxc_file_destination: /etc/nginx/sites-enabled/servers.conf
         copy_file_to_lxc_show_difference: true
         copy_file_to_lxc_copy_to_node_no_log: false
         copy_file_to_lxc_copy_to_lxc_no_log: false
