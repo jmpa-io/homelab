@@ -1,0 +1,4 @@
+---
+
+create_vm_proxmox_api_user: root@pam
+create_vm_proxmox_api_token_id: proxmox-api-token

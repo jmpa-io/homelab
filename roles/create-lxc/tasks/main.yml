@@ -13,22 +13,22 @@
     - create_lxc_proxmox_api_ip
     - create_lxc_proxmox_api_token_secret
     # ---
-    - create_lxc_container_id
-    - create_lxc_container_hostname
-    - create_lxc_container_root_password
-    - create_lxc_container_subnet
-    - create_lxc_container_tags
+    - create_lxc_vmid
+    - create_lxc_hostname
+    - create_lxc_root_password
+    - create_lxc_subnet
+    - create_lxc_tags
 
-- name: Create LXC Container, refreshed if needed.
+- name: Create LXC, refreshed if needed.
   block:
-    - name: Stop and / or remove existing LXC container.
+    - name: Stop and / or remove existing LXC.
       community.general.proxmox:
         api_host: "{{ create_lxc_proxmox_api_ip }}"
         api_user: "{{ create_lxc_proxmox_api_user }}"
         api_token_id: "{{ create_lxc_proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc_proxmox_api_token_secret }}"
         node: "{{ create_lxc_node_name }}"
-        vmid: "{{ create_lxc_container_id }}"
+        vmid: "{{ create_lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true
       loop:
@@ -36,68 +36,68 @@
         - absent
       ignore_errors: true
 
-    - name: Create LXC container.
+    - name: Create LXC.
       community.general.proxmox:
         api_host: "{{ create_lxc_proxmox_api_ip }}"
         api_user: "{{ create_lxc_proxmox_api_user }}"
         api_token_id: "{{ create_lxc_proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc_proxmox_api_token_secret }}"
         node: "{{ create_lxc_node_name }}"
-        vmid: "{{ create_lxc_container_id }}"
-        hostname: "{{ create_lxc_container_hostname }}"
-        ostemplate: "{{ create_lxc_container_ostemplate }}"
-        cores: "{{ create_lxc_container_cores }}"
-        memory: "{{ create_lxc_container_memory }}"
-        # disk: "{{ create_lxc_container_disk }}"
-        tags: "{{ create_lxc_container_tags }}"
-        password: "{{ create_lxc_container_root_password }}"
+        vmid: "{{ create_lxc_vmid }}"
+        hostname: "{{ create_lxc_hostname }}"
+        ostemplate: "{{ create_lxc_ostemplate }}"
+        cores: "{{ create_lxc_cores }}"
+        memory: "{{ create_lxc_memory }}"
+        # disk: "{{ create_lxc_disk }}"
+        tags: "{{ create_lxc_tags }}"
+        password: "{{ create_lxc_root_password }}"
         netif:
-          net0: "name=eth0,gw={{ create_lxc_node_bridge_ip }},ip={{ create_lxc_container_subnet }},bridge={{ create_lxc_node_bridge_name }}"
+          net0: "name=eth0,gw={{ create_lxc_node_bridge_ip }},ip={{ create_lxc_subnet }},bridge={{ create_lxc_node_bridge_name }}"
         nameserver: "{{ create_lxc_node_ip }}"
         unprivileged: true
         features:
           - nesting=1
-        pubkey: "{{ lookup('file', create_lxc_container_ssh_pubkey) }}"
+        pubkey: "{{ lookup('file', create_lxc_ssh_pubkey) }}"
         onboot: 1
         state: present
         timeout: 300
 
-    - name: Start LXC container.
+    - name: Start LXC.
       community.general.proxmox:
         api_host: "{{ create_lxc_proxmox_api_ip }}"
         api_user: "{{ create_lxc_proxmox_api_user }}"
         api_token_id: "{{ create_lxc_proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc_proxmox_api_token_secret }}"
         node: "{{ create_lxc_node_name }}"
-        vmid: "{{ create_lxc_container_id }}"
-        hostname: "{{ create_lxc_container_hostname }}"
+        vmid: "{{ create_lxc_vmid }}"
+        hostname: "{{ create_lxc_hostname }}"
         state: started
 
     - name: Wait for SSH to become available.
       wait_for:
-        host: "{{ create_lxc_container_subnet | split('/') | first }}"
+        host: "{{ create_lxc_subnet | split('/') | first }}"
         port: 22
         delay: 10
         timeout: 30
 
-    - name: Install dependencies inside LXC container.
+    - name: Install dependencies inside LXC.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
         execute_script_in_lxc_node_ip: "{{ create_lxc_node_ip }}"
-        execute_script_in_lxc_container_id: "{{ create_lxc_container_id }}"
+        execute_script_in_lxc_vmid: "{{ create_lxc_vmid }}"
         execute_script_in_lxc_script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
         execute_script_in_lxc_script_destination: /tmp/install_deps.sh
 
   rescue:
-    - name: Error encountered, clean up LXC container if able.
+    - name: Error encountered, clean up LXC if able.
       community.general.proxmox:
         api_host: "{{ create_lxc_proxmox_api_ip }}"
         api_user: "{{ create_lxc_proxmox_api_user }}"
         api_token_id: "{{ create_lxc_proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc_proxmox_api_token_secret }}"
         node: "{{ create_lxc_node_name }}"
-        vmid: "{{ create_lxc_container_id }}"
+        vmid: "{{ create_lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true
       loop:

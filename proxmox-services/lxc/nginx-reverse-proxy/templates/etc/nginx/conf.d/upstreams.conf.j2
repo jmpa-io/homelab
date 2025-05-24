@@ -1,0 +1,23 @@
+
+# {{ ansible_managed }}
+
+{% set proxmox_servers = [] %}
+{% for host in groups['all'] %}
+    {% set _ = proxmox_servers.append(hostvars[host].ansible_host ~ ':' ~ hostvars[host]['proxmox']['default_ui_port']) %}
+{% endfor %}
+
+{% set upstreams =
+    {'proxmox': proxmox_servers}
+    | combine(common.global_service_map) %}
+
+{% for name, backends in upstreams.items() %}
+# {{ name | title }}.
+upstream {{ name }} {
+  least_conn;
+{% for backend in backends %}
+  server {{ backend }};
+{% endfor %}
+}
+
+{% endfor %}
+

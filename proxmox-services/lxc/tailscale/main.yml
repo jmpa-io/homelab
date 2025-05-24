@@ -1,0 +1,87 @@
+---
+
+- name: Setup Tailscale.
+  hosts: all
+  become: true
+  vars:
+    proxmox_node_name: "{{ host.name }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    tailscale_oauth_private_key: "{{ tailscale_oauth_private_key }}"
+    tailscale_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }},{{ ansible_host }}/32"
+    tailscale_dns: 127.0.0.1
+    tailscale_tags: [ jmpa-server ]
+    # ---
+    lxc_id: "{{ services.tailscale_gateway.container_id }}"
+    lxc_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_id) }}"
+    lxc_hostname: tailscale
+    lxc_root_password: "{{ ansible_become_pass }}"
+    lxc_ip_with_cidr: "{{ services.tailscale_gateway.ipv4_with_cidr }}"
+    lxc_tags: [ tailscale, vpn ]
+
+  tasks:
+    - name: Create LXC container.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-lxc"
+      vars:
+        create_lxc_node_ip: "{{ proxmox_node_ip }}"
+        create_lxc_node_name: "{{ proxmox_node_name }}"
+        create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
+        create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_lxc_vmid: "{{ lxc_vmid }}"
+        create_lxc_hostname: "{{ lxc_hostname }}"
+        create_lxc_root_password: "{{ lxc_root_password }}"
+        create_lxc_subnet: "{{ lxc_ip_with_cidr }}"
+        create_lxc_tags: "{{ lxc_tags }}"
+
+    # PLEASE NOTE:
+    # This task must be done after the creation of the container because the
+    # container is refreshed during the LXC container creation role.
+    - name: Add TUN device configuration for LXC Container.
+      ansible.builtin.blockinfile:
+        path: "/etc/pve/lxc/{{ lxc_vmid }}.conf"
+        block: |
+          lxc.cgroup2.devices.allow = c 10:200 rwm
+          lxc.mount.entry = /dev/net/tun dev/net/tun none bind,create=file
+      delegate_to: "{{ proxmox_node_ip }}"
+
+    - name: Restart LXC Container to apply TUN configuration.
+      ansible.builtin.shell: pct reboot "{{ lxc_vmid }}"
+      delegate_to: "{{ proxmox_node_ip }}"
+
+    - name: Install Tailscale.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
+      vars:
+        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc_vmid: "{{ lxc_vmid }}"
+        execute_script_in_lxc_script_source: tmp/install-tailscale.sh.j2
+        execute_script_in_lxc_script_destination: /tmp/install_tailscale.sh
+        execute_script_in_lxc_copy_to_node_show_difference: false
+
+    - name: Check Tailscale is running.
+      ansible.builtin.command: pct exec {{ lxc_vmid }} -- systemctl is-active --quiet tailscaled.service
+      register: service_check
+      failed_when: service_check.rc != 0
+
+- name: Update Tailscale DNS.
+  hosts: all # NOTE: this must NOT be localhost or else we can't access inventory variables in this section.
+  tasks:
+    - name: Collect DNS nameservers.
+      run_once: true
+      set_fact:
+        dns_nameservers: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | select('defined') | list }}"
+
+    - name: Update Tailscale with DNS nameservers.
+      run_once: true
+      delegate_to: localhost
+      command: bin/00-update-dns-nameservers.sh "{{ dns_nameservers | join(',') }}"
+

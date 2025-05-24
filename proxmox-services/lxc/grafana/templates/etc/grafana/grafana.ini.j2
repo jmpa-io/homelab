@@ -1,0 +1,10 @@
+
+; {{ ansible_managed }}
+
+[server]
+protocol = http
+http_port = {{ services.grafana.default_port }}
+domain = grafana.{{ common.dns.domain }}
+root_url = https://grafana.{{ common.dns.domain }}
+serve_from_sub_path = false
+

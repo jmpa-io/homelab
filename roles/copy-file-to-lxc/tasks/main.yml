@@ -7,14 +7,14 @@
   loop:
     - copy_file_to_lxc_node_ip
     # ---
-    - copy_file_to_lxc_container_id
+    - copy_file_to_lxc_vmid
     # ---
     - copy_file_to_lxc_file_source
     - copy_file_to_lxc_file_destination
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc_node_ip }}/{{ copy_file_to_lxc_container_id }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc_node_ip }}/{{ copy_file_to_lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -36,10 +36,10 @@
   diff: "{{ copy_file_to_lxc_copy_to_node_show_difference }}"
   no_log: "{{ copy_file_to_lxc_copy_to_node_no_log }}"
 
-- name: Copy file to LXC container via pct
+- name: Copy file to LXC, via pct.
   ansible.builtin.shell: |
-    pct exec "{{ copy_file_to_lxc_container_id }}" -- mkdir -p "{{ copy_file_to_lxc_file_destination | dirname }}"
-    pct push "{{ copy_file_to_lxc_container_id }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc_file_destination }}"
+    pct exec "{{ copy_file_to_lxc_vmid }}" -- mkdir -p "{{ copy_file_to_lxc_file_destination | dirname }}"
+    pct push "{{ copy_file_to_lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc_file_destination }}"
   delegate_to: "{{ copy_file_to_lxc_node_ip }}"
   no_log: "{{ copy_file_to_lxc_copy_to_lxc_no_log }}"
 

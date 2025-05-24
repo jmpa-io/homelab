@@ -1,0 +1,78 @@
+---
+
+- name: Setup nginx-reverse-proxy.
+  hosts: all
+  become: true
+  vars:
+    proxmox_node_name: "{{ host.name }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    root_domain: "{{ common.dns.domain }}"
+    # ---
+    lxc_id: "{{ services.nginx_reverse_proxy.container_id }}"
+    lxc_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_id) }}"
+    lxc_hostname: nginx-reverse-proxy
+    lxc_root_password: "{{ ansible_become_pass }}"
+    lxc_ip_with_cidr: "{{ services.nginx_reverse_proxy.ipv4_with_cidr }}"
+    lxc_tags: [ nginx, reverse-proxy ]
+
+  tasks:
+    - name: Create LXC container.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-lxc"
+      vars:
+        create_lxc_node_ip: "{{ proxmox_node_ip }}"
+        create_lxc_node_name: "{{ proxmox_node_name }}"
+        create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
+        create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_lxc_vmid: "{{ lxc_vmid }}"
+        create_lxc_hostname: "{{ lxc_hostname }}"
+        create_lxc_root_password: "{{ lxc_root_password }}"
+        create_lxc_subnet: "{{ lxc_ip_with_cidr }}"
+        create_lxc_tags: "{{ lxc_tags }}"
+
+    - name: Copy /etc/nginx/conf.d/upstreams.conf.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+      vars:
+        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc_vmid: "{{ lxc_vmid }}"
+        copy_file_to_lxc_file_source: etc/nginx/conf.d/upstreams.conf.j2
+        copy_file_to_lxc_file_destination: /etc/nginx/conf.d/upstreams.conf
+        copy_file_to_lxc_show_difference: true
+        copy_file_to_lxc_copy_to_node_no_log: false
+        copy_file_to_lxc_copy_to_lxc_no_log: false
+
+    - name: Copy /etc/nginx/sites-enabled/servers.conf.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+      vars:
+        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc_vmid: "{{ lxc_vmid }}"
+        copy_file_to_lxc_file_source: etc/nginx/sites-enabled/servers.conf.j2
+        copy_file_to_lxc_file_destination: /etc/nginx/sites-enabled/servers.conf
+        copy_file_to_lxc_show_difference: true
+        copy_file_to_lxc_copy_to_node_no_log: false
+        copy_file_to_lxc_copy_to_lxc_no_log: false
+
+    - name: Install nginx.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
+      vars:
+        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc_vmid: "{{ lxc_vmid }}"
+        execute_script_in_lxc_script_source: tmp/install-nginx.sh.j2
+        execute_script_in_lxc_script_destination: /tmp/install_nginx.sh
+
+    - name: Check nginx is running.
+      ansible.builtin.command: pct exec {{ lxc_vmid }} -- systemctl is-active --quiet nginx.service
+      register: service_check
+      failed_when: service_check.rc != 0

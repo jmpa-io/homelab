@@ -6,13 +6,13 @@
   when: vars[item] is not defined
   loop:
     - execute_script_in_lxc_node_ip
-    - execute_script_in_lxc_container_id
+    - execute_script_in_lxc_vmid
     - execute_script_in_lxc_script_source
     - execute_script_in_lxc_script_destination
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc_node_ip }}/{{ execute_script_in_lxc_container_id }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc_node_ip }}/{{ execute_script_in_lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -34,16 +34,16 @@
   diff: "{{ execute_script_in_lxc_copy_to_node_show_difference }}"
   no_log: "{{ execute_script_in_lxc_copy_to_node_no_log }}"
 
-- name: Copy file into LXC container via pct.
+- name: Copy file into LXC, via pct.
   ansible.builtin.shell: |
-    pct push "{{ execute_script_in_lxc_container_id }}" "{{ temporary_directory_filepath }}" "{{ execute_script_in_lxc_script_destination }}"
+    pct push "{{ execute_script_in_lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ execute_script_in_lxc_script_destination }}"
   delegate_to: "{{ execute_script_in_lxc_node_ip }}"
   no_log: "{{ execute_script_in_lxc_copy_to_lxc_no_log }}"
 
-- name: Execute script inside LXC Container.
+- name: Execute script inside LXC.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc_container_id }}" -- chmod +x "{{ execute_script_in_lxc_script_destination }}"
-    lxc-attach -n "{{ execute_script_in_lxc_container_id }}" -- "{{ execute_script_in_lxc_script_destination }}"
+    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- chmod +x "{{ execute_script_in_lxc_script_destination }}"
+    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- "{{ execute_script_in_lxc_script_destination }}"
   delegate_to: "{{ execute_script_in_lxc_node_ip }}"
   no_log: "{{ execute_script_in_lxc_execute_script_no_log }}"
 
@@ -53,8 +53,8 @@
     state: absent
   delegate_to: "{{ execute_script_in_lxc_node_ip }}"
 
-- name: Clean up script inside LXC container.
+- name: Clean up script inside LXC.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc_container_id }}" -- rm -f "{{ execute_script_in_lxc_script_destination }}"
+    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- rm -f "{{ execute_script_in_lxc_script_destination }}"
   delegate_to: "{{ execute_script_in_lxc_node_ip }}"
 

@@ -1,0 +1,18 @@
+---
+k3s_cluster:
+  children:
+    server:
+      hosts:
+        # 10.0.2.60:
+        10.0.3.60:
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    agents:
+      hosts:
+        # 10.0.2.71:
+        10.0.3.71:
+          ansible_user: root
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa
+# https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2
+  vars:
+    k3s_version: v1.30.2+k3s1

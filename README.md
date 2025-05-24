@@ -51,13 +51,13 @@ This is my first time setting up a homelab, so any feedback would be greatly app
 
 ## 🏗️ `Getting started`
 
-To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./proxmox/README.md).
+To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./docs/proxmox/README.md).
 
-This setup uses `3` Proxmox hosts, as of writing, which is dynamically configured in the [`inventory.py`](./inventory.py). You would need to configure this file to match the number of servers you're running.
+This setup uses `3` Proxmox hosts, as of writing, which is dynamically configured in the [`inventory/main.py`](./inventory/main.py). You would need to configure this file to match the number of servers you're running. See the [`inventory/README.md`](./inventory/README.md) for more information.
 
-This repository also uses Ansible - you can see a collection of custom roles under [./roles/](./roles/) that are used under the [./hosts/](./hosts/) & [./proxmox/](./proxmox/) directories.
+This repository also uses Ansible - you can see a collection of custom roles under [./roles/](./roles/) that are used in both the [./proxmox-hosts/](./proxmox-hosts/) & [./proxmox-services/](./proxmox-services/) directories.
 
-Once this all makes sense, and you've configured the [`inventory.py`](./inventory.py) for your needs, using a terminal, you can run:
+Once this all makes sense, and you've configured the [`inventory/main.py`](./inventory/main.py) for your needs, using a terminal, you can run:
 
 ```bash
 make run-playbook

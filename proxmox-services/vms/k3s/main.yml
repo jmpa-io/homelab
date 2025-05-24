@@ -1,0 +1,36 @@
+---
+- name: Setup k3s.
+  hosts: jmpa_server_1
+  become: true
+  vars:
+    proxmox_node_name: "{{ host.name }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    vm_id: 60
+    vm_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(vm_id) }}"
+    vm_hostname: "k3s-master-{{ proxmox_node_id }}-1"
+    vm_root_password: "{{ ansible_become_pass }}"
+    vm_ip_with_cidr: "10.0.1.60"
+    vm_tags: [ k3s, master ]
+
+  tasks:
+    - name: Create masters.
+      community.general.proxmox_kvm:
+        vmid: "{{ vm_vmid }}"
+        node: "{{ proxmox_node_name }}"
+        api_host: "{{ proxmox_node_ip }}"
+        api_user: "root@pam"
+        api_token_id: "proxmox-api-token"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        password: "{{ vm_root_password }}"
+        hostname: "{{ vm_hostname }}"
+        ostemplate: 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2'
+        netif:
+          net0: "name=eth0,gw=192.168.1.1,ip=10.0.1.60/24,bridge=vmbr0"
+

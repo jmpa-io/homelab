@@ -1,0 +1,17 @@
+
+# {{ ansible_managed }}
+
+[Unit]
+Description=Auto restarts network if it goes down.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/check-network.sh
+Restart=always
+RestartSec=90s
+
+[Install]
+WantedBy=multi-user.target
+
