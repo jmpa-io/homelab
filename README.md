@@ -55,7 +55,7 @@ To get started with this repository, you need a Proxmox host. If you're unsure h
 
 This setup uses `3` Proxmox hosts, as of writing, which is dynamically configured in the [`inventory/main.py`](./inventory/main.py). You would need to configure this file to match the number of servers you're running. See the [`inventory/README.md`](./inventory/README.md) for more information.
 
-This repository also uses Ansible - you can see a collection of custom roles under [./roles/](./roles/) that are used in both the [./proxmox-hosts/](./proxmox-hosts/) & [./proxmox-services/](./proxmox-services/) directories.
+This repository also uses Ansible - you can see a collection of custom roles under [`./roles/`](./roles/) that are used in both the [`./proxmox-hosts/`](./proxmox-hosts/) & [`./proxmox-services/`](./proxmox-services/) directories.
 
 Once this all makes sense, and you've configured the [`inventory/main.py`](./inventory/main.py) for your needs, using a terminal, you can run:
 
