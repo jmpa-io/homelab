@@ -1,6 +1,6 @@
 ---
 - name: Setup k3s.
-  hosts: jmpa_server_1
+  hosts: all[0]
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
@@ -20,17 +20,23 @@
     vm_tags: [ k3s, master ]
 
   tasks:
-    - name: Create masters.
-      community.general.proxmox_kvm:
-        vmid: "{{ vm_vmid }}"
-        node: "{{ proxmox_node_name }}"
-        api_host: "{{ proxmox_node_ip }}"
-        api_user: "root@pam"
-        api_token_id: "proxmox-api-token"
-        api_token_secret: "{{ proxmox_api_token_secret }}"
-        password: "{{ vm_root_password }}"
-        hostname: "{{ vm_hostname }}"
-        ostemplate: 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2'
-        netif:
-          net0: "name=eth0,gw=192.168.1.1,ip=10.0.1.60/24,bridge=vmbr0"
+    - name: Create k3s masters.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-vm"
+      vars:
+        create_vm_vmid: "{{ vm_vmid }}"
+        create_vm_node_name: "{{ proxmox_node_name }}"
+        create_vm_api_host: "{{ proxmox_node_ip }}"
+        create_vm_api_user: "root@pam"
+        create_vm_proxmox_api_ip: = "{{ proxmox_api_ip }}"
+        create_vm_proxmox_api_token_id: "proxmox-api-token"
+        create_vm_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_vm_password: "{{ vm_root_password }}"
+        create_vm_hostname: "{{ vm_hostname }}"
+        create_vm_gateway: "{{ proxmox_node_bridge_ip }}"
+        create_vm_ip_with_cidr: "{{ vm_ip_with_cidr }}"
+        create_vm_tags: "{{ vm_tags }}"
+        # create_vm_ostemplate: 'https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2'
+        # netif:
+        #   net0: "name=eth0,gw=192.168.1.1,ip=10.0.1.60/24,bridge=vmbr0"
 

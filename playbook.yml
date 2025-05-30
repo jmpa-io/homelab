@@ -40,15 +40,15 @@
 #
 
 # PLEASE NOTE: order matters here.
-- import_playbook: proxmox-services/lxc/tailscale/main.yml
-- import_playbook: proxmox-services/lxc/nginx-reverse-proxy/main.yml
-- import_playbook: proxmox-services/lxc/prometheus/main.yml
-- import_playbook: proxmox-services/lxc/grafana/main.yml
+# - import_playbook: proxmox-services/lxc/tailscale/main.yml
+# - import_playbook: proxmox-services/lxc/nginx-reverse-proxy/main.yml
+# - import_playbook: proxmox-services/lxc/prometheus/main.yml
+# - import_playbook: proxmox-services/lxc/grafana/main.yml
 # ▖▖▄▖
 # ▙▘▙▌▛▘
 # ▌▌▙▌▄▌
 
-# - import_playbook: proxmox/vms/k3s/main.yml
+- import_playbook: proxmox-services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘

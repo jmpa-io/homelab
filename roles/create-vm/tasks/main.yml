@@ -10,8 +10,7 @@
     - create_vm_proxmox_api_ip
     - create_vm_proxmox_api_token_secret
     # ---
-    - create_vm_id
-    - create_vm_template_id
+    - create_vm_vmid
     - create_vm_hostname
     - create_vm_ip_with_cidr
     - create_vm_gateway
@@ -30,9 +29,8 @@
         api_token_id: "{{ create_vm_proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
         node: "{{ create_vm_node_name }}"
-        vmid: "{{ create_vm_id }}"
+        vmid: "{{ create_vm_vmid }}"
         state: "{{ item }}"
-        unprivileged: true
       loop:
         - stopped
         - absent
@@ -45,8 +43,8 @@
         api_token_id: "{{ create_vm_proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
         node: "{{ create_vm_node_name }}"
-        clone: "{{ create_vm_template_id }}"
-        vmid: "{{ create_vm_id }}"
+        clone: "9000"
+        vmid: "{{ create_vm_vmid }}"
         name: "{{ create_vm_hostname }}"
         ciuser: root
         cipassword: "{{ create_vm_root_password }}"
@@ -66,7 +64,7 @@
         api_token_id: "{{ create_vm_proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
         node: "{{ create_vm_node_name }}"
-        vmid: "{{ create_vm_id }}"
+        vmid: "{{ create_vm_vmid }}"
         state: started
 
     - name: Wait for SSH to become available.
@@ -84,7 +82,7 @@
         api_token_id: "{{ create_vm_proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
         node: "{{ create_vm_node_name }}"
-        vmid: "{{ create_vm_id }}"
+        vmid: "{{ create_vm_vmid }}"
         state: "{{ item }}"
       loop:
         - stopped
