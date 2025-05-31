@@ -12,13 +12,10 @@
     # ---
     - create_vm_vmid
     - create_vm_hostname
+    - create_vm_user_password
     - create_vm_ip_with_cidr
     - create_vm_gateway
     - create_vm_tags
-
-    # add to inventory.
-    - create_vm_proxmox_api_user
-    - create_vm_proxmox_api_token_id
 
 - name: Create VM, refreshed if needed.
   block:
@@ -36,55 +33,57 @@
         - absent
       ignore_errors: true
 
-    - name: Create VM.
+    - name: Clone VM template.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm_proxmox_api_ip }}"
         api_user: "{{ create_vm_proxmox_api_user }}"
         api_token_id: "{{ create_vm_proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
         node: "{{ create_vm_node_name }}"
-        clone: "9000"
-        vmid: "{{ create_vm_vmid }}"
+        # storage: iso
+        clone: "{{ create_vm_clone_from_name }}"
+        vmid: "{{ create_vm_clone_from_vmid }}"
+        newid: "{{ create_vm_vmid }}"
         name: "{{ create_vm_hostname }}"
-        ciuser: root
-        cipassword: "{{ create_vm_root_password }}"
+        ciuser: "{{ create_vm_user_name }}"
+        cipassword: "{{ create_vm_user_password }}"
         ipconfig:
           ipconfig0: "ip={{ create_vm_ip_with_cidr }},gw={{ create_vm_gateway }}"
-        netif:
-          net0: "virtio=bridge={{ create_vm_bridge_name }}"
-        tags: "{{ create_vm_tags | join(';') }}"
+        # netif:
+        #   net0: "virtio=bridge={{ create_vm_bridge_name }}"
+        tags: "{{ create_vm_tags }}"
         full: true
         state: present
-        timeout: 300
+        timeout: 600
 
-    - name: Start VM.
-      community.general.proxmox_kvm:
-        api_host: "{{ create_vm_proxmox_api_ip }}"
-        api_user: "{{ create_vm_proxmox_api_user }}"
-        api_token_id: "{{ create_vm_proxmox_api_token_id }}"
-        api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
-        node: "{{ create_vm_node_name }}"
-        vmid: "{{ create_vm_vmid }}"
-        state: started
-
-    - name: Wait for SSH to become available.
-      wait_for:
-        host: "{{ create_vm_ip_with_cidr.split('/')[0] }}"
-        port: 22
-        delay: 10
-        timeout: 60
-
-  rescue:
-    - name: Error encountered, clean up VM if able.
-      community.general.proxmox_kvm:
-        api_host: "{{ create_vm_proxmox_api_ip }}"
-        api_user: "{{ create_vm_proxmox_api_user }}"
-        api_token_id: "{{ create_vm_proxmox_api_token_id }}"
-        api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
-        node: "{{ create_vm_node_name }}"
-        vmid: "{{ create_vm_vmid }}"
-        state: "{{ item }}"
-      loop:
-        - stopped
-        - absent
-      ignore_errors: true
+  #   - name: Start VM.
+  #     community.general.proxmox_kvm:
+  #       api_host: "{{ create_vm_proxmox_api_ip }}"
+  #       api_user: "{{ create_vm_proxmox_api_user }}"
+  #       api_token_id: "{{ create_vm_proxmox_api_token_id }}"
+  #       api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
+  #       node: "{{ create_vm_node_name }}"
+  #       vmid: "{{ create_vm_vmid }}"
+  #       state: started
+  #
+  #   - name: Wait for SSH to become available.
+  #     wait_for:
+  #       host: "{{ create_vm_ip_with_cidr.split('/')[0] }}"
+  #       port: 22
+  #       delay: 10
+  #       timeout: 60
+  #
+  # rescue:
+  #   - name: Error encountered, clean up VM if able.
+  #     community.general.proxmox_kvm:
+  #       api_host: "{{ create_vm_proxmox_api_ip }}"
+  #       api_user: "{{ create_vm_proxmox_api_user }}"
+  #       api_token_id: "{{ create_vm_proxmox_api_token_id }}"
+  #       api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
+  #       node: "{{ create_vm_node_name }}"
+  #       vmid: "{{ create_vm_vmid }}"
+  #       state: "{{ item }}"
+  #     loop:
+  #       - stopped
+  #       - absent
+  #     ignore_errors: true
