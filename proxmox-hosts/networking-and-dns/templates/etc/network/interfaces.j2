@@ -14,7 +14,9 @@ auto {{ host.wifi_device_name }}
 iface {{ host.wifi_device_name }} inet static
   address {{ host.ipv4_with_cidr }}
   gateway 192.168.1.1
-  wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+  # wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
+  pre-up wpa_supplicant -B -i {{ host.wifi_device_name }} -c /etc/wpa_supplicant/wpa_supplicant.conf
+  post-down killall -q wpa_supplicant
 
 # Bridge.
 auto {{ host.bridge.name }}

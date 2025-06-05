@@ -18,8 +18,9 @@ log() { echo "{ \"ts\":\"$(date --iso-8601=seconds)\", \"msg\":\"$1\" }"; }
 retries=2
 for (( i=1; i<=retries; i++)); do
   if ! ping -c 5 -W 5 1.1.1.1 > /dev/null 2>&1; then
-    log "(${i} of ${retries}) Network is unreachable! Restarting networking.service..."
-    systemctl restart networking.service # ifreload -a?
+    log "(${i} of ${retries}) Network is unreachable! Restarting WIFI..."
+    # systemctl restart networking.service
+    ifreload -a
     sleep 5
   else
     log "Network is reachable! Exiting early..."
