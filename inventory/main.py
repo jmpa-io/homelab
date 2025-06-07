@@ -9,6 +9,8 @@ from host import Collector, Host
 from service import Service
 from inventory import Inventory
 
+from k8s import KubeConfig
+
 def main():
 
   # Setup client for AWS SSM Parameter Store.
@@ -18,7 +20,6 @@ def main():
   common_subnet_ipv4= ssm_client.get_parameter("/homelab/subnet")
   default_cidr = read_env_var("DEFAULT_CIDR", 24, False, int)
   inventory_vars = {
-
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
     "ansible_become_pass": ssm_client.get_parameter("/homelab/root-password"),
     "ansible_python_interpreter": read_env_var("ANSIBLE_PYTHON_INTERPRETER", "/usr/bin/python3.11"),
@@ -47,7 +48,7 @@ def main():
     "ssl": {
       "private_key": ssm_client.get_parameter("/homelab/ssl/private-key"),
       "cert": ssm_client.get_parameter("/homelab/ssl/cert"),
-    }
+    },
   }
 
   #
@@ -96,11 +97,28 @@ def main():
     metrics_port=read_env_var("HOST_OTELCOL_METRICS_PORT", "8889"),
   )
 
+
+  #
+  # Setup k3s config.
+  #
+
+  inventory_kubeconfig = KubeConfig(
+    version=read_env_var("K3S_VERSION", "v1.30.2+k3s1"),
+
+    masters_per_host=read_env_var("K3S_MASTERS_PER_HOST", 1, value_type=int),
+    masters_ips_start_range=read_env_var("K3S_MASTERS_START_RANGE", 60, value_type=int),
+    masters_ips_end_range=read_env_var("K3S_MASTERS_END_RANGE", 69, value_type=int),
+
+    nodes_per_host=read_env_var("K3S_NODES_PER_HOST", 2, value_type=int),
+    nodes_ips_start_range=read_env_var("K3S_NODES_START_RANGE", 70, value_type=int),
+    nodes_ips_end_range=read_env_var("K3S_NODES_END_RANGE", 79, value_type=int),
+  )
+
   #
   # Setup inventory.
   #
 
-  inventory = Inventory(vars=inventory_vars)
+  inventory = Inventory(vars=inventory_vars, kubeconfig=inventory_kubeconfig)
   inventory.add_hosts(
     Host(
       ipv4=ssm_client.get_parameter("/homelab/jmpa-server-1/ipv4-address"),

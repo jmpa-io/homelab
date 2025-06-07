@@ -2,14 +2,13 @@ from dataclasses import dataclass, field
 from typing import List
 
 from bridge import Bridge
+from collector import Collector
 from service import Service
 
 @dataclass
-class Collector:
-  metrics_port: str
-
-@dataclass
 class Host:
+
+  # Proxmox.
   ansible_host: str = field(init=False)
   ipv4: str
   ipv4_cidr: str
@@ -19,6 +18,10 @@ class Host:
   collector: Collector
   name: str = "jmpa-server-{id}"
   services: List[Service] = field(default_factory=list)
+
+  # These values are populated when this host is added to an Inventory.
+  k8s_masters: List[str] = field(default_factory=list)
+  k8s_nodes: List[str] = field(default_factory=list)
 
   def __post_init__(self):
     self.ansible_host = self.ipv4
@@ -60,8 +63,18 @@ class Host:
       for s in self.services
     }
 
-    return {
+    out = {
       "ansible_host": self.ansible_host,
       "host": host,
       "services": services,
     }
+
+    if self.k8s_masters or self.k8s_nodes:
+      out["k3s"] = {}
+      if self.k8s_masters:
+        out["k3s"]["masters"] = self.k8s_masters
+      if self.k8s_nodes:
+        out["k3s"]["nodes"] = self.k8s_nodes
+
+    return out
+

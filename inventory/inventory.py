@@ -1,13 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from copy import deepcopy
 
 from host import Host
+from k8s import KubeConfig
 
 @dataclass
 class Inventory:
+
+  # Proxmox host config.
   hosts: Dict[str, Host] = field(default_factory=dict)
   vars: Dict[str, Any] = field(default_factory=dict)
+
+  # Kubernetes config.
+  kubeconfig: Optional[KubeConfig] = None
 
   # Internal host counter.
   _next_id: int = field(default=1, init=False, repr=False)
@@ -54,6 +60,10 @@ class Inventory:
     # NOTE: This must be run AFTER adding the host to the 'hosts' dictionary.
     self.build_global_service_map()
 
+    # Build or update the global k8s configuration.
+    # NOTE: This must be run AFTER adding the host to the 'hosts' dictionary.
+    self.build_global_kube_configuration()
+
     # Increment internal host counter.
     self._next_id += 1
 
@@ -72,8 +82,30 @@ class Inventory:
           service_map.setdefault(record['subdomain'], []).append(record['forward_to_ipv4_with_port'])
     self.vars['common']['global_service_map'] = service_map
 
+  def build_global_kube_configuration(self):
+    if not self.kubeconfig:
+        return
+
+    for i, (name, host) in enumerate(self.hosts.items(), start=1):
+      masters = []; nodes = []
+      prefix = f"{host.bridge.ipv4_prefix}.{i}"
+      for j in range(self.kubeconfig.masters_per_host):
+        id = self.kubeconfig.masters_ips_start_range + j
+        if id > self.kubeconfig.masters_ips_end_range:
+          break
+        masters.append(f"{prefix}.{id}")
+
+      for j in range(self.kubeconfig.nodes_per_host):
+        id = self.kubeconfig.nodes_ips_start_range + j
+        if id > self.kubeconfig.nodes_ips_end_range:
+          break
+        nodes.append(f"{prefix}.{id}")
+
+      host.k8s_masters = masters
+      host.k8s_nodes = nodes
+
   def to_dict(self):
-    return {
+    out = {
       "_meta": {
         "hostvars": {name: h.to_dict() for name, h in self.hosts.items()},
       },
@@ -82,3 +114,29 @@ class Inventory:
         "hosts": list(self.hosts.keys()),
       },
     }
+
+    # Add k8s config, only if more than one master or node is given.
+    if self.kubeconfig:
+      out["k3s_cluster"] = {
+        "vars": {
+          "k3s_version": self.kubeconfig.version,
+        },
+        "children": {},
+      }
+
+      all_masters = [ip for h in self.hosts.values() for ip in h.k8s_masters]
+      if all_masters:
+        out["k3s_cluster"]["children"]["server"] = {
+          "hosts": all_masters,
+        }
+
+      all_nodes = [ip for h in self.hosts.values() for ip in h.k8s_nodes]
+      if all_nodes:
+        out["k3s_cluster"]["children"]["agent"] = {
+          "hosts": all_nodes,
+        }
+
+    return out
+
+
+
