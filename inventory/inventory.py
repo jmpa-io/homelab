@@ -117,6 +117,11 @@ class Inventory:
 
     # Add k8s config, only if more than one master or node is given.
     if self.kubeconfig:
+      out["all"]["vars"]["common"]["k3s"] = {
+        "masters_ips_start_range": self.kubeconfig.masters_ips_start_range,
+        "nodes_ips_start_range": self.kubeconfig.nodes_ips_start_range,
+      }
+
       out["k3s_cluster"] = {
         "vars": {
           "k3s_version": self.kubeconfig.version,

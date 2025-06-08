@@ -1,0 +1,48 @@
+---
+
+- name: Create 'debian-12-genericcloud-amd64' template.
+  hosts: all[2]
+  vars:
+    proxmox_node_name: "{{ host.name }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_ip: "{{ host.ipv4 }}"
+    proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+    proxmox_node_bridge_name: "{{ host.bridge.name }}"
+    # ---
+    proxmox_api_ip: "{{ proxmox_node_ip }}"
+    proxmox_api_token_secret: "{{ proxmox.api_token }}"
+    # ---
+    template_vmid: 10000
+    template_name: "debian-12-genericcloud-amd64"
+    template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+    template_root_password: "{{ ansible_become_pass }}"
+    template_ssh_public_key: "{{ ssl.public_key }} "
+
+  tasks:
+    - name: Create template.
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-vm-template"
+      vars:
+        create_vm_template__proxmox_node_name: "{{ proxmox_node_name }}"
+        create_vm_template__proxmox_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_vm_template__proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_vm_template__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_vm_template__template_vmid: "{{ template_vmid }}"
+        create_vm_template__template_image_url: "{{ template_image_url }}"
+        create_vm_template__template_name: "{{ template_name }}"
+        create_vm_template__template_root_password: "{{ template_root_password }}"
+        create_vm_template__ssh_public_key: "{{ template_ssh_public_key }}"
+
+    #
+    # netplan_cfg: |
+    #   network:
+    #     version: 2
+    #     renderer: networkd
+    #     ethernets:
+    #       ens18:
+    #         dhcp4: no
+    #         dhcp6: no
+    #         addresses: []
+    #         gateway4: ""
+    #         nameservers:
+    #           addresses: []

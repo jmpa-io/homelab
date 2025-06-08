@@ -1,0 +1,182 @@
+---
+
+- name: Ensure required variables are set.
+  fail:
+    msg: "Required variable {{ item }} is missing!"
+  when: vars[item] is not defined
+  loop:
+    - create_vm_template__proxmox_node_name
+    - create_vm_template__proxmox_node_bridge_name
+    # ---
+    - create_vm_template__proxmox_api_ip
+    - create_vm_template__proxmox_api_token_secret
+    # ---
+    - create_vm_template__template_name
+    - create_vm_template__template_image_url
+    - create_vm_template__template_vmid
+    - create_vm_template__template_root_password
+
+- name: Create template, refreshed if needed.
+  block:
+    - name: Stop and / or remove existing VM.
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_template__proxmox_api_ip }}"
+        api_user: "{{ create_vm_template__proxmox_api_user }}"
+        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+        node: "{{ create_vm_template__proxmox_node_name }}"
+        vmid: "{{ create_vm_template__template_vmid }}"
+        state: "{{ item }}"
+        timeout: 300
+      loop:
+        - stopped
+        - absent
+      ignore_errors: true
+
+    - name: Download image.
+      ansible.builtin.get_url:
+        url: "{{ create_vm_template__template_image_url }}"
+        dest: "{{ create_vm_template__image_path }}"
+        mode: "0644"
+        force: false
+      register: downloaded_image
+
+    - name: Create empty VM (no disk).
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_template__proxmox_api_ip }}"
+        api_user: "{{ create_vm_template__proxmox_api_user }}"
+        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+        node: "{{ create_vm_template__proxmox_node_name }}"
+        vmid: "{{ create_vm_template__template_vmid }}"
+        name: "{{ create_vm_template__template_name }}"
+        cores: "{{ create_vm_template__vm_cores }}"
+        memory: "{{ create_vm_template__vm_memory }}"
+        ostype: l26
+        scsihw: virtio-scsi-pci
+        state: present
+
+    - name: Import image into Proxmox storage.
+      when: downloaded_image.changed
+      become: true
+      shell: >
+        qm importdisk {{ create_vm_template__template_vmid }} \
+                      {{ create_vm_template__image_path }} \
+                      {{ create_vm_template__vm_storage }} \
+                      --format qcow2
+      args:
+        chdir: "{{ create_vm_template__image_path | dirname }}"
+        # creates: "/dev/{{ create_vm_template__vm_storage }}/vm-{{ create_vm_template__template_vmid }}-disk-0"
+
+    - name: Create VM - Attach OS disk, Cloud-Init drive, network & guest settings
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_template__proxmox_api_ip }}"
+        api_user: "{{ create_vm_template__proxmox_api_user }}"
+        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+        node: "{{ create_vm_template__proxmox_node_name }}"
+        vmid: "{{ create_vm_template__template_vmid }}"
+        # ---
+        bootdisk: scsi0
+        scsi: # Primary disk.
+          "0": "{{ create_vm_template__vm_storage }}:vm-{{ create_vm_template__template_vmid }}-disk-0,format=qcow2"
+        citype: nocloud
+        onboot: true
+        ciuser: root
+        cipassword: "{{ create_vm_template__template_root_password }}"
+        sshkeys: [ "{{ create_vm_template__ssh_public_key }}" ]
+        tags: [ "building-template" ]
+        state: present
+        timeout: 600
+
+        agent: 1
+        ide: # Cloudinit.
+          "2": "{{ create_vm_template__vm_storage }}:cloudinit"
+
+        net: # Bridged NIC.
+          "0": "virtio,bridge={{ create_vm_template__proxmox_node_bridge_name }}"
+
+    - name: Attach imported disk to VM
+      become: true
+      shell: >
+        qm set {{ create_vm_template__template_vmid }} \
+          --scsi0 {{ create_vm_template__vm_storage }}:vm-{{ create_vm_template__template_vmid }}-disk-0
+
+      #
+      # citype: nocloud
+      # bootdisk: scsi0
+      # scsi:
+      #   "0": "{{ create_vm_template__vm_storage }}:vm-{{ create_vm_template__template_vmid }}-disk-0"
+      # ide:
+      #   "2": "{{ create_vm_template__vm_storage }}:cloudinit"
+      # net:
+      #   "0": "virtio,bridge={{ create_vm_template__proxmox_node_bridge_name }}"
+      # ciuser: "root"
+      # cipassword: "{{ create_vm_template__template_root_password }}"
+      # sshkeys: "{{ create_vm_template__ssh_public_key }}"
+      # # ipconfig:
+      # #   "ipconfig0": "ip=none"
+      # tags: [ "building-template" ]
+      # state: present
+      # full: false
+      # agent: 1
+      # timeout: 600
+    #
+    # - name: Import disk into Proxmox storage, if missing.
+    #   shell: |
+    #     qm importdisk {{ template_vmid }} {{ cloudimg_local }} {{ storage }} --format qcow2
+    #   args:
+    #     creates: "/dev/{{ storage }}/vm-{{ template_vmid }}-disk-0"
+    #   become: true
+    #
+    # - name: Start the template VM
+    #   community.general.proxmox_kvm:
+    #     api_host: "{{ inventory_hostname }}"
+    #     api_user: "{{ lookup('env','PVE_USER') }}"
+    #     api_token_id: "{{ lookup('env','PVE_TOKEN_ID') }}"
+    #     api_token_secret: "{{ lookup('env','PVE_TOKEN_SECRET') }}"
+    #     node: "{{ inventory_hostname }}"
+    #     vmid: "{{ template_vmid }}"
+    #     state: started
+
+    # - name: Wait for SSH on the template VM
+    #   ansible.builtin.wait_for:
+    #     host: "{{ create_vm_template__proxmox_api_ip }}"
+    #     port: 22
+    #     delay: 10
+    #     timeout: 120
+
+    # - name: Push netplan config into the template VM
+    #   ansible.builtin.copy:
+    #     dest: /etc/netplan/50-cloud-init.yaml
+    #     content: "{{ netplan_cfg }}"
+    #     mode: "0644"
+    #   delegate_to: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
+    #   become: true
+    #
+    # - name: Apply netplan inside template VM
+    #   ansible.builtin.shell: netplan apply
+    #   delegate_to: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
+    #   become: true
+    #
+    # - name: Shutdown the template VM
+    #   community.general.proxmox_kvm:
+    #     api_host: "{{ inventory_hostname }}"
+    #     api_user: "{{ lookup('env','PVE_USER') }}"
+    #     api_token_id: "{{ lookup('env','PVE_TOKEN_ID') }}"
+    #     api_token_secret: "{{ lookup('env','PVE_TOKEN_SECRET') }}"
+    #     node: "{{ inventory_hostname }}"
+    #     vmid: "{{ template_vmid }}"
+    #     state: stopped
+    #     timeout: 300
+    #
+    # - name: Convert VM to template
+    #   community.general.proxmox_kvm:
+    #     api_host: "{{ inventory_hostname }}"
+    #     api_user: "{{ lookup('env','PVE_USER') }}"
+    #     api_token_id: "{{ lookup('env','PVE_TOKEN_ID') }}"
+    #     api_token_secret: "{{ lookup('env','PVE_TOKEN_SECRET') }}"
+    #     node: "{{ inventory_hostname }}"
+    #     vmid: "{{ template_vmid }}"
+    #     state: template
+    #     timeout: 120

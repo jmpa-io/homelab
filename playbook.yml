@@ -4,51 +4,60 @@
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
 #
+#
+# - name: Setup hosts.
+#   hosts: all
+#   roles:
+#
+#     # packages.
+#     - proxmox-hosts/apt
+#
+#     # networking & dns.
+#     - proxmox-hosts/networking-and-dns
+#
+#     # cronjobs.
+#     - proxmox-hosts/crons
+#
+#     # observability.
+#     - proxmox-hosts/opentelemetry-collector
 
-- name: Setup hosts.
-  hosts: all
-  roles:
+# ▄▖       ▜   ▗
+# ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
+# ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌
+#        ▌
 
-    # packages.
-    - proxmox-hosts/apt
-
-    # networking & dns.
-    - proxmox-hosts/networking-and-dns
-
-    # cronjobs.
-    - proxmox-hosts/crons
-
-    # observability.
-    - proxmox-hosts/opentelemetry-collector
+- import_playbook: proxmox-services/templates/debian-12-genericcloud-amd64/main.yml
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▙▖▚
 # ▌▝▌▌ ▄▌
 #
 
-- name: Setup NFS (servers).
-  hosts: jmpa_server_1
-  roles: [proxmox-hosts/nfs-server]
-
-- name: Setup NFS (clients).
-  hosts: jmpa_server_2, jmpa_server_3
-  roles: [proxmox-hosts/nfs-client]
+# - name: Setup NFS (servers).
+#   hosts: jmpa_server_1
+#   roles: [proxmox-hosts/nfs-server]
+#
+# - name: Setup NFS (clients).
+#   hosts: jmpa_server_2, jmpa_server_3
+#   roles: [proxmox-hosts/nfs-client]
 
 # ▖ ▖▖▄▖ ▄▖    ▗   ▘
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
 # ▙▖▌▌▙▖ ▙▖▙▌▌▌▐▖█▌▌▌▌▙▖▌ ▄▌
 #
 
-# PLEASE NOTE: order matters here.
-- import_playbook: proxmox-services/lxc/tailscale/main.yml
-- import_playbook: proxmox-services/lxc/nginx-reverse-proxy/main.yml
-- import_playbook: proxmox-services/lxc/prometheus/main.yml
-- import_playbook: proxmox-services/lxc/grafana/main.yml
+# # PLEASE NOTE: order matters here.
+# - import_playbook: proxmox-services/lxc/tailscale/main.yml
+# - import_playbook: proxmox-services/lxc/nginx-reverse-proxy/main.yml
+# - import_playbook: proxmox-services/lxc/prometheus/main.yml
+# - import_playbook: proxmox-services/lxc/grafana/main.yml
+
 # ▖▖▄▖
 # ▙▘▙▌▛▘
 # ▌▌▙▌▄▌
+#
 
-- import_playbook: proxmox-services/vms/k3s/main.yml
+# - import_playbook: proxmox-services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘
@@ -62,6 +71,6 @@
 # ▌▝▌▙▌▐▖▙▖▄▌
 #
 #
-# https://patorjk.com/software/taag/#p=display&h=1&v=1&f=miniwi&t=LOGO
+#
 #
 

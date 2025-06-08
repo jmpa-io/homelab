@@ -47,6 +47,7 @@ def main():
 
     "ssl": {
       "private_key": ssm_client.get_parameter("/homelab/ssl/private-key"),
+      "public_key": ssm_client.get_parameter("/homelab/ssl/public-key"),
       "cert": ssm_client.get_parameter("/homelab/ssl/cert"),
     },
   }
@@ -105,7 +106,7 @@ def main():
   inventory_kubeconfig = KubeConfig(
     version=read_env_var("K3S_VERSION", "v1.30.2+k3s1"),
 
-    masters_per_host=read_env_var("K3S_MASTERS_PER_HOST", 1, value_type=int),
+    masters_per_host=read_env_var("K3S_MASTERS_PER_HOST", 2, value_type=int),
     masters_ips_start_range=read_env_var("K3S_MASTERS_START_RANGE", 60, value_type=int),
     masters_ips_end_range=read_env_var("K3S_MASTERS_END_RANGE", 69, value_type=int),
 

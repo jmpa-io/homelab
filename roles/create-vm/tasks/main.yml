@@ -1,11 +1,12 @@
 ---
 
-- name: Ensure required varaibles are set.
+- name: Ensure required variables are set.
   fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
     - create_vm_node_name
+    - create_vm_node_bridge_name
     # ---
     - create_vm_proxmox_api_ip
     - create_vm_proxmox_api_token_secret
@@ -28,12 +29,13 @@
         node: "{{ create_vm_node_name }}"
         vmid: "{{ create_vm_vmid }}"
         state: "{{ item }}"
+        timeout: 300
       loop:
         - stopped
         - absent
       ignore_errors: true
 
-    - name: Clone VM template.
+    - name: Clone template to create new VM.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm_proxmox_api_ip }}"
         api_user: "{{ create_vm_proxmox_api_user }}"
@@ -48,23 +50,23 @@
         ciuser: "{{ create_vm_user_name }}"
         cipassword: "{{ create_vm_user_password }}"
         ipconfig:
-          ipconfig0: "ip={{ create_vm_ip_with_cidr }},gw={{ create_vm_gateway }}"
-        # netif:
-        #   net0: "virtio=bridge={{ create_vm_bridge_name }}"
+          ipconfig0: "ip={{ create_vm_ip_with_cidr }},gw={{ create_vm_gateway }},dns=1.1.1.1"
+        net:
+          net0: "virtio,bridge={{ create_vm_node_bridge_name }}"
         tags: "{{ create_vm_tags }}"
-        full: true
+        full: false
         state: present
         timeout: 600
 
-  #   - name: Start VM.
-  #     community.general.proxmox_kvm:
-  #       api_host: "{{ create_vm_proxmox_api_ip }}"
-  #       api_user: "{{ create_vm_proxmox_api_user }}"
-  #       api_token_id: "{{ create_vm_proxmox_api_token_id }}"
-  #       api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
-  #       node: "{{ create_vm_node_name }}"
-  #       vmid: "{{ create_vm_vmid }}"
-  #       state: started
+    - name: Start VM.
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_proxmox_api_ip }}"
+        api_user: "{{ create_vm_proxmox_api_user }}"
+        api_token_id: "{{ create_vm_proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_proxmox_api_token_secret }}"
+        node: "{{ create_vm_node_name }}"
+        vmid: "{{ create_vm_vmid }}"
+        state: started
   #
   #   - name: Wait for SSH to become available.
   #     wait_for:
