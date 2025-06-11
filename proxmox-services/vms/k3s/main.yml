@@ -1,6 +1,6 @@
 ---
 - name: Setup k3s.
-  hosts: all[2]
+  hosts: all[1], all[2]
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
@@ -35,6 +35,26 @@
         create_vm__gateway: "{{ proxmox_node_bridge_ip }}"
         create_vm__ip_with_cidr: "{{ master_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
         create_vm__tags: "{{ vm_common_tags + ['master'] }}"
+        create_vm__clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
 
+    - name: Create K3s node(s).
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/create-vm"
+      loop: "{{ k3s.nodes }}"
+      loop_control:
+        index_var: i
+        loop_var: node_ipv4
+      vars:
+        create_vm__proxmox_node_name: "{{ proxmox_node_name }}"
+        create_vm__proxmox_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_vm__proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_vm__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        # ---
+        create_vm__vmid: "{{ proxmox_node_id }}{{ common.k3s.nodes_ips_start_range + i }}"
+        create_vm__hostname: "k3s-node-{{ proxmox_node_id }}-{{ i + 1 }}"
+        create_vm__password: "{{ vm_root_password }}"
+        create_vm__gateway: "{{ proxmox_node_bridge_ip }}"
+        create_vm__ip_with_cidr: "{{ node_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
+        create_vm__tags: "{{ vm_common_tags + ['node'] }}"
+        create_vm__clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
 
-    # - name: Create K3s node(s).

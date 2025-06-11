@@ -1,7 +1,7 @@
 ---
 
 - name: Create 'debian-12-nocloud-amd64' template.
-  hosts: all[2]
+  hosts: all[1]
   vars:
     proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
@@ -12,7 +12,7 @@
     proxmox_api_ip: "{{ proxmox_node_ip }}"
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
-    template_vmid: 10000
+    template_vmid: "{{ 10000 + proxmox_node_id }}"
     template_name: "debian-12-nocloud-amd64"
     template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2"
     template_root_password: "{{ ansible_become_pass }}"

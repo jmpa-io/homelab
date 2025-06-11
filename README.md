@@ -138,3 +138,11 @@ Below are a few references I've used to help me on this homelab journey:
 This work is published under the MIT license.
 
 Please see the [`LICENSE`](./LICENSE) file for details.
+
+
+# `TODO`
+
+### Setting up k3s:
+
+* Add IP addresses to known_hosts.
+

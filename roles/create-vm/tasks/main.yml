@@ -35,7 +35,7 @@
         - absent
       ignore_errors: true
 
-    - name: Create VM (from template).
+    - name: Create VM (cloned from template).
       community.general.proxmox_kvm:
         api_host: "{{ create_vm__proxmox_api_ip }}"
         api_user: "{{ create_vm__proxmox_api_user }}"
@@ -45,15 +45,27 @@
         name: "{{ create_vm__hostname }}"
         # ---
         clone: "{{ create_vm__clone_from_name }}"
+        vmid: "{{ create_vm__clone_from_vmid }}"
         newid: "{{ create_vm__vmid }}"
         ciuser: "{{ create_vm__username }}"
         cipassword: "{{ create_vm__password }}"
         # ipconfig:
         #   ipconfig0: "ip={{ create_vm__ip_with_cidr }},gw={{ create_vm__gateway }}"
-        tags: "{{ create_vm__tags }}"
         full: false
         state: present
         timeout: 600
+
+    - name: Update VM with any changes.
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm__proxmox_api_ip }}"
+        api_user: "{{ create_vm__proxmox_api_user }}"
+        api_token_id: "{{ create_vm__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
+        node: "{{ create_vm__proxmox_node_name }}"
+        vmid: "{{ create_vm__vmid }}"
+        tags: "{{ create_vm__tags }}"
+        state: present
+        update: true
 
     - name: Set ipconfig for instance (not working above, for some reason).
       become: true
