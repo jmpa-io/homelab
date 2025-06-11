@@ -1,6 +1,6 @@
 FROM python:3.13.2-slim
 
-# install deps.
+# Install deps.
 RUN apt-get update && apt-get install -y \
     ansible \
     awscli \
@@ -9,10 +9,10 @@ RUN apt-get update && apt-get install -y \
     make \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# set workdir.
+# Set workdir.
 WORKDIR /app
 
-# install project-specific deps.
+# Install project-specific deps.
 COPY inventory/requirements.txt ./
-RUN pip install --no-cache-dir -r inventory/requirements.txt
+RUN pip install --no-cache-dir -r ./requirements.txt
 

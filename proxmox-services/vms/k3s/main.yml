@@ -1,6 +1,6 @@
 ---
 - name: Setup k3s.
-  hosts: all[1]
+  hosts: all[2]
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
@@ -24,17 +24,17 @@
         index_var: i
         loop_var: master_ipv4
       vars:
-        create_vm_node_name: "{{ proxmox_node_name }}"
-        create_vm_node_bridge_name: "{{ proxmox_node_bridge_name }}"
-        create_vm_proxmox_api_ip: "{{ proxmox_api_ip }}"
-        create_vm_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_vm__proxmox_node_name: "{{ proxmox_node_name }}"
+        create_vm__proxmox_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_vm__proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_vm__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
         # ---
-        create_vm_vmid: "{{ proxmox_node_id }}{{ common.k3s.masters_ips_start_range + i }}"
-        create_vm_hostname: "k3s-master-{{ proxmox_node_id }}-{{ i + 1 }}"
-        create_vm_user_password: "{{ vm_root_password }}"
-        create_vm_gateway: "{{ proxmox_node_bridge_ip }}"
-        create_vm_ip_with_cidr: "{{ master_ipv4 }}"
-        create_vm_tags: "{{ vm_common_tags + ['master'] }}"
+        create_vm__vmid: "{{ proxmox_node_id }}{{ common.k3s.masters_ips_start_range + i }}"
+        create_vm__hostname: "k3s-master-{{ proxmox_node_id }}-{{ i + 1 }}"
+        create_vm__password: "{{ vm_root_password }}"
+        create_vm__gateway: "{{ proxmox_node_bridge_ip }}"
+        create_vm__ip_with_cidr: "{{ master_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
+        create_vm__tags: "{{ vm_common_tags + ['master'] }}"
 
 
     # - name: Create K3s node(s).

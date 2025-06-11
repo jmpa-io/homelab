@@ -3,10 +3,11 @@
 create_vm_template__proxmox_api_user: root@pam
 create_vm_template__proxmox_api_token_id: proxmox-api-token
 # ---
-create_vm_template__image_path: "/mnt/share/iso/template/iso/{{ create_vm_template__template_image_url.split('/')[-1] }}"
+create_vm_template__temporary_image_path: "/tmp/{{ create_vm_template__template_image_url.split('/')[-1] }}"
+create_vm_template__temporary_compressed_image_path: "{{ create_vm_template__temporary_image_path }}.compressed"
+# ---
+create_vm_template__vm_storage: "local"
 create_vm_template__vm_cores: 4
 create_vm_template__vm_memory: 2048
-# create_vm_template__vm_disk: 2G
-
-create_vm_template__vm_storage: "iso"
+create_vm_template__vm_disk: 32G
 

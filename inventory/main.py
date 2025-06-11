@@ -17,7 +17,7 @@ def main():
   ssm_client = SSMClient(read_env_var("AWS_REGION", None, True))
 
   # Setup inventory variables & config.
-  common_subnet_ipv4= ssm_client.get_parameter("/homelab/subnet")
+  common_subnet_ipv4 = ssm_client.get_parameter("/homelab/subnet")
   default_cidr = read_env_var("DEFAULT_CIDR", 24, False, int)
   inventory_vars = {
     "ansible_ssh_pass": ssm_client.get_parameter("/homelab/ssh-password"),
