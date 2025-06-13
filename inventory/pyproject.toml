@@ -1,0 +1,12 @@
+[tool.ruff]
+line-length = 160
+indent-width = 2
+
+[tool.ruff.format]
+quote-style = 'single'
+indent-style = 'space'
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+lines-after-imports = 4
+force-sort-within-sections = true

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional
 
+
 @dataclass
 class Service:
   name: str
@@ -9,14 +10,14 @@ class Service:
   add_to_proxy_static_records: bool = True
 
   # These values are populated when this Service is added to an Inventory.
-  ipv4: str = field(init=False, default="")             # eg. '10.0.1.1'
-  ipv4_cidr: str = field(init=False, default="")        # eg. '24'
-  ipv4_with_cidr: str = field(init=False, default="")   # eg. '10.0.1.1/24'
+  ipv4: str = field(init=False, default='')  # eg. '10.0.1.1'
+  ipv4_cidr: str = field(init=False, default='')  # eg. '24'
+  ipv4_with_cidr: str = field(init=False, default='')  # eg. '10.0.1.1/24'
 
   # NOTE: this section below is specific to the 'nginx_reverse_proxy' service.
   @property
   def is_proxy(self) -> bool:
-    return self.name == "nginx_reverse_proxy"
+    return self.name == 'nginx_reverse_proxy'
 
   # - The 'static_records' variable is populated when this Service is added to an Inventory.
   static_records: List[Dict[str, str]] = field(default_factory=list)
@@ -25,4 +26,3 @@ class Service:
 
   def to_dict(self) -> dict:
     return asdict(self)
-

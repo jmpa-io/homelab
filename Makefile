@@ -16,7 +16,7 @@ DOMAIN ?= jmpa.lab
 
 ping-inventory: ## Pings the Ansible inventory.
 ping-inventory: inventory/main.py
-	ansible all -i $< -m ping
+	@ansible all -i $< -m ping
 
 print-inventory-no-jq: inventory/main.py # Outputs the contents of the dynamic Ansible inventory, without formatting.
 	@python $<
@@ -33,6 +33,28 @@ run-playbook: ## Executes the Ansible playbook.
 run-playbook: playbook.yml
 	ansible-playbook -vv $< \
 		--extra-vars root_playbook_directory="$$PWD"
+
+print-k3s-inventory-no-jq: inventory/main.py
+	@python $<
+
+print-k3s-inventory: inventory/main.py
+	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))'
+
+create-k3s-inventory: ## Creates the 'dist/k3s-inventory.json'.
+create-k3s-inventory: dist/k3s-inventory.json
+dist/k3s-inventory.json: dist
+dist/k3s-inventory.json: inventory/main.py
+	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))' > $@
+
+k3s: ## Does everything related to k3s.
+k3s: deploy-k3s
+
+deploy-k3s: ## TODO
+deploy-k3s: dist/k3s-inventory.json
+	ansible-playbook k3s.orchestration.site -i $<
+
+
+PHONY += create-k3s-inventory dist/k3s-inventory.json
 
 cert: ## Generates & uploads both a private-key and self-signed cert to AWS SSM Parameter Store.
 cert: upload-private-key upload-cert

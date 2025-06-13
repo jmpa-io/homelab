@@ -1,6 +1,7 @@
 import boto3
 from typing import Optional
 
+
 # SSMClient is a class to encapsulate the boto3 SSM client functionality.
 class SSMClient:
   def __init__(self, region: str):
@@ -16,4 +17,3 @@ class SSMClient:
     except Exception as e:
       print(f"Failed to retrieve Parameter '{name}': {e}")
       return None
-
