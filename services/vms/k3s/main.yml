@@ -1,7 +1,8 @@
 ---
 - name: Setup k3s.
-  hosts: all[1], all[2]
-  become: true
+  hosts: all
+  collections:
+    - community.crypto
   vars:
     proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
@@ -57,4 +58,24 @@
         create_vm__ip_with_cidr: "{{ node_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
         create_vm__tags: "{{ vm_common_tags + ['node'] }}"
         create_vm__clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
+
+    - name: Ensure old known_hosts are cleared.
+      delegate_to: localhost
+      loop: "{{ k3s.masters + k3s.nodes }}"
+      loop_control:
+        loop_var: ip
+      ansible.builtin.known_hosts:
+        name: "{{ ip }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Add known_hosts.
+      delegate_to: localhost
+      loop: "{{ k3s.masters + k3s.nodes }}"
+      loop_control:
+        loop_var: ip
+      ansible.builtin.known_hosts:
+        name: "{{ ip }}"
+        key: "{{ lookup('pipe', 'ssh-keyscan -T 10 ' + ip) }}"
+        state: present
 

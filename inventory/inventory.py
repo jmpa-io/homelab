@@ -123,11 +123,9 @@ class Inventory:
 
     # Setup masters & nodes.
     master_ips = []; node_ips = []
-    potential_api_endpoints = []
     for host in self.hosts.values():
       master_ips.extend(host.k8s_masters)
       node_ips.extend(host.k8s_nodes)
-      potential_api_endpoints.append(host.ansible_host)
 
     # Add k3s values to the default inventory.
     out['all']['vars']['common']['k3s'] = {
@@ -140,7 +138,7 @@ class Inventory:
       'vars': {
         'k3s_version': self.kube_inventory.version,
         'ansible_user': self.kube_inventory.ansible_user,
-        'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key_file,
+        'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
         'token': self.kube_inventory.token,
       },
@@ -148,7 +146,7 @@ class Inventory:
     }
 
     # Decide api_endpoint.
-    out['k3s_cluster']['vars']['api_endpoint'] = random.choice(potential_api_endpoints)
+    out['k3s_cluster']['vars']['api_endpoint'] = random.choice(master_ips)
 
     # Add masters.
     if master_ips:

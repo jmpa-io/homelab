@@ -100,7 +100,7 @@ def main():
   kube_inventory = K8sInventory(
     version=read_env_var('K3S_VERSION', 'v1.30.2+k3s1'),
     ansible_user=read_env_var('K3S_ANSIBLE_USER', 'debian'),
-    ansible_ssh_private_key_file=read_env_var('K3S_ANSIBLE_SSH_PRIVATE_FILE', '$HOME/.ssh/id_ed25519'),
+    ansible_ssh_private_key=inventory_vars['ssl']['private_key'],
     ansible_python_interpreter=inventory_vars['ansible_python_interpreter'],
     token=inventory_vars['proxmox']['api_token'],
     # Masters.

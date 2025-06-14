@@ -18,20 +18,20 @@
 
 - name: Create template, refreshed if needed.
   block:
-    - name: Stop and / or remove existing VM.
-      community.general.proxmox_kvm:
-        api_host: "{{ create_vm_template__proxmox_api_ip }}"
-        api_user: "{{ create_vm_template__proxmox_api_user }}"
-        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
-        node: "{{ create_vm_template__proxmox_node_name }}"
-        vmid: "{{ create_vm_template__template_vmid }}"
-        state: "{{ item }}"
-        timeout: 300
-      loop:
-        - stopped
-        - absent
-      ignore_errors: true
+    # - name: Stop and / or remove existing VM.
+    #   community.general.proxmox_kvm:
+    #     api_host: "{{ create_vm_template__proxmox_api_ip }}"
+    #     api_user: "{{ create_vm_template__proxmox_api_user }}"
+    #     api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+    #     api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+    #     node: "{{ create_vm_template__proxmox_node_name }}"
+    #     vmid: "{{ create_vm_template__template_vmid }}"
+    #     state: "{{ item }}"
+    #     timeout: 300
+    #   loop:
+    #     - stopped
+    #     - absent
+    #   ignore_errors: true
 
     - name: Download image.
       become: true

@@ -1,7 +1,7 @@
 ---
 
 - name: Create 'debian-12-nocloud-amd64' template.
-  hosts: all[1]
+  hosts: all
   vars:
     proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class K8sInventory:
   version: str
   ansible_user: str
-  ansible_ssh_private_key_file: str
+  ansible_ssh_private_key: str
   ansible_python_interpreter: str
   token: str
 
