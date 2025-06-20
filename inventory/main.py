@@ -104,7 +104,7 @@ def main():
     ansible_python_interpreter=inventory_vars['ansible_python_interpreter'],
     token=inventory_vars['proxmox']['api_token'],
     # Masters.
-    masters_per_host=read_env_var('K3S_MASTERS_PER_HOST', 2, value_type=int),
+    masters_per_host=read_env_var('K3S_MASTERS_PER_HOST', 1, value_type=int),
     masters_ips_start_range=read_env_var('K3S_MASTERS_START_RANGE', 60, value_type=int),
     masters_ips_end_range=read_env_var('K3S_MASTERS_END_RANGE', 69, value_type=int),
     # Nodes.

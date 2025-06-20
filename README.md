@@ -8,7 +8,7 @@
 ```diff
 + 🏠 A collection of "things" that manage my homelab.
 
-! Please note:
+! PLEASE NOTE:
 ! This repository is a work-in-progress. Use at your own risk!
 ```
 
@@ -145,4 +145,18 @@ Please see the [`LICENSE`](./LICENSE) file for details.
 ### Setting up k3s:
 
 * Add IP addresses to known_hosts.
+
+
+* https://github.com/k3s-io/k3s-ansible
+* https://github.com/adelinofaria/homelab-iac-ansible/tree/main/roles/proxmox_kvm
+
+
+### Setting up `Debian` template:
+
+* https://gist.github.com/si458/98aa940837784e9ef9bff9e24a7a8bfd
+* https://github.com/maxfield-allison/scripts/blob/main/proxmox-template-create.sh
+* https://static.xtremeownage.com/blog/2024/proxmox---debian-cloud-init-templates/#options-tab
+* https://gist.github.com/casperghst42/9f03f331d357f6bcda5285afdec87007
+* https://docs.ansible.com/ansible/latest/collections/community/general/proxmox_kvm_module.html
+* https://github.com/DavidPesticcio/selfhosted/blob/c58f626ecf40276ce71023ee3b553181acfc50b7/roles/proxmox_hypervisor/tasks/pve_kvm_template.yml
 
