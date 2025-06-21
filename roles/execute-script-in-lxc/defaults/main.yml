@@ -1,14 +1,10 @@
 ---
+execute_script_in_lxc__script_mode: "0755"
+# ---
+execute_script_in_lxc__copy_to_node_no_log: false
+execute_script_in_lxc__copy_to_node_show_difference: false
+# ---
+execute_script_in_lxc__copy_to_lxc_no_log: false
+# ---
+execute_script_in_lxc__execute_script_no_log: false
 
-# script.
-execute_script_in_lxc_script_mode: "0755"
-
-# copy to node, from host.
-execute_script_in_lxc_copy_to_node_no_log: false
-execute_script_in_lxc_copy_to_node_show_difference: false
-
-# copy to lxc, from node.
-execute_script_in_lxc_copy_to_lxc_no_log: false
-
-# execute script, from lxc.
-execute_script_in_lxc_execute_script_no_log: false

@@ -5,11 +5,11 @@
 
 set -e
 
-# install deps.
+# Install deps.
 apt-get update 1>/dev/null
 apt-get install -y locales 1>/dev/null
 
-# setup locale.
+# Setup locale.
 echo "en_AU.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen en_AU.UTF-8
 update-locale LANG=en_AU.UTF-8 LC_ALL=en_AU.UTF-8

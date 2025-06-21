@@ -5,47 +5,47 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-    - copy_file_to_lxc_node_ip
+    - copy_file_to_lxc__node_ip
     # ---
-    - copy_file_to_lxc_vmid
+    - copy_file_to_lxc__vmid
     # ---
-    - copy_file_to_lxc_file_source
-    - copy_file_to_lxc_file_destination
+    - copy_file_to_lxc__file_source
+    - copy_file_to_lxc__file_destination
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc_node_ip }}/{{ copy_file_to_lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc__node_ip }}/{{ copy_file_to_lxc__vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
-    temporary_directory_filepath: "{{ temporary_directory }}/{{ copy_file_to_lxc_file_destination | basename }}"
+    temporary_directory_filepath: "{{ temporary_directory }}/{{ copy_file_to_lxc__file_destination | basename }}"
 
 - name: Ensure temporary directory exists on Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: directory
     mode: "0755"
-  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
+  delegate_to: "{{ copy_file_to_lxc__node_ip }}"
 
 - name: Copy file to Proxmox node.
   ansible.builtin.template:
-    src: "{{ copy_file_to_lxc_file_source }}"
+    src: "{{ copy_file_to_lxc__file_source }}"
     dest: "{{ temporary_directory_filepath }}"
-    mode: "{{ copy_file_to_lxc_file_mode }}"
-  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
-  diff: "{{ copy_file_to_lxc_copy_to_node_show_difference }}"
-  no_log: "{{ copy_file_to_lxc_copy_to_node_no_log }}"
+    mode: "{{ copy_file_to_lxc__file_mode }}"
+  delegate_to: "{{ copy_file_to_lxc__node_ip }}"
+  diff: "{{ copy_file_to_lxc__copy_to_node_show_difference }}"
+  no_log: "{{ copy_file_to_lxc__copy_to_node_no_log }}"
 
 - name: Copy file to LXC, via pct.
   ansible.builtin.shell: |
-    pct exec "{{ copy_file_to_lxc_vmid }}" -- mkdir -p "{{ copy_file_to_lxc_file_destination | dirname }}"
-    pct push "{{ copy_file_to_lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc_file_destination }}"
-  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
-  no_log: "{{ copy_file_to_lxc_copy_to_lxc_no_log }}"
+    pct exec "{{ copy_file_to_lxc__vmid }}" -- mkdir -p "{{ copy_file_to_lxc__file_destination | dirname }}"
+    pct push "{{ copy_file_to_lxc__vmid }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc__file_destination }}"
+  delegate_to: "{{ copy_file_to_lxc__node_ip }}"
+  no_log: "{{ copy_file_to_lxc__copy_to_lxc_no_log }}"
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: absent
-  delegate_to: "{{ copy_file_to_lxc_node_ip }}"
+  delegate_to: "{{ copy_file_to_lxc__node_ip }}"
 

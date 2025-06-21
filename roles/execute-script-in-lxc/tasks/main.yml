@@ -5,56 +5,57 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-    - execute_script_in_lxc_node_ip
-    - execute_script_in_lxc_vmid
-    - execute_script_in_lxc_script_source
-    - execute_script_in_lxc_script_destination
+    - execute_script_in_lxc__node_ip
+    # ---
+    - execute_script_in_lxc__lxc_vmid
+    - execute_script_in_lxc__script_source
+    - execute_script_in_lxc__script_destination
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc_node_ip }}/{{ execute_script_in_lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc__node_ip }}/{{ execute_script_in_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
-    temporary_directory_filepath: "{{ temporary_directory }}/{{ execute_script_in_lxc_script_destination | basename }}"
+    temporary_directory_filepath: "{{ temporary_directory }}/{{ execute_script_in_lxc__script_destination | basename }}"
 
 - name: Ensure temporary directory exists on Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: directory
     mode: "0755"
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
 
 - name: Copy file to Proxmox node.
   ansible.builtin.template:
-    src:  "{{ execute_script_in_lxc_script_source }}"
+    src:  "{{ execute_script_in_lxc__script_source }}"
     dest: "{{ temporary_directory_filepath }}"
-    mode: "{{ execute_script_in_lxc_script_mode }}"
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
-  diff: "{{ execute_script_in_lxc_copy_to_node_show_difference }}"
-  no_log: "{{ execute_script_in_lxc_copy_to_node_no_log }}"
+    mode: "{{ execute_script_in_lxc__script_mode }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
+  diff: "{{ execute_script_in_lxc__copy_to_node_show_difference }}"
+  no_log: "{{ execute_script_in_lxc__copy_to_node_no_log }}"
 
 - name: Copy file into LXC, via pct.
   ansible.builtin.shell: |
-    pct push "{{ execute_script_in_lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ execute_script_in_lxc_script_destination }}"
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
-  no_log: "{{ execute_script_in_lxc_copy_to_lxc_no_log }}"
+    pct push "{{ execute_script_in_lxc__lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ execute_script_in_lxc__script_destination }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
+  no_log: "{{ execute_script_in_lxc__copy_to_lxc_no_log }}"
 
 - name: Execute script inside LXC.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- chmod +x "{{ execute_script_in_lxc_script_destination }}"
-    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- "{{ execute_script_in_lxc_script_destination }}"
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
-  no_log: "{{ execute_script_in_lxc_execute_script_no_log }}"
+    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- chmod +x "{{ execute_script_in_lxc__script_destination }}"
+    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- "{{ execute_script_in_lxc__script_destination }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
+  no_log: "{{ execute_script_in_lxc__execute_script_no_log }}"
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: absent
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
 
 - name: Clean up script inside LXC.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc_vmid }}" -- rm -f "{{ execute_script_in_lxc_script_destination }}"
-  delegate_to: "{{ execute_script_in_lxc_node_ip }}"
+    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- rm -f "{{ execute_script_in_lxc__script_destination }}"
+  delegate_to: "{{ execute_script_in_lxc__node_ip }}"
 

@@ -56,8 +56,18 @@ deploy-k3s: dist/k3s-inventory.json
 
 PHONY += create-k3s-inventory dist/k3s-inventory.json
 
-cert: ## Generates & uploads both a private-key and self-signed cert to AWS SSM Parameter Store.
-cert: upload-private-key upload-cert
+#
+# SSH.
+#
+
+# PLEASE NOTE: This MUST be added to PHONY.
+SSH_PUBLIC_KEY ?= $$HOME/.ssh/id_ed25519.pub
+
+PHONY += $(SSH_PUBLIC_KEY)
+
+upload-ssh-public-key: ## Uploads your local SSH public key to AWS SSM Parameter Store.
+upload-ssh-public-key: $$HOME/.ssh/id_ed25519.pub
+	aws ssm put-parameter --name "/homelab/ssh/public-key" --value "file://$<" --type String --overwrite
 
 #
 # Cert.
@@ -103,6 +113,9 @@ $(HOME)/.ssl/certs/self-signed.crt: $(HOME)/.ssl/private/self-signed.key $(HOME)
 upload-cert: ## Uploads the self-signed cert to AWS SSM Parameter Store.
 upload-cert: $(HOME)/.ssl/certs/self-signed.crt
 	aws ssm put-parameter --name "/homelab/ssl/cert" --value "file://$<" --type SecureString --overwrite
+
+cert: ## Generates & uploads both a private-key and self-signed cert to AWS SSM Parameter Store.
+cert: upload-private-key upload-cert
 
 PHONY += $(HOME)/.ssl/private/self-signed.key \
 		 $(HOME)/.ssl/certs/self-signed.crt

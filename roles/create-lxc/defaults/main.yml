@@ -1,11 +1,10 @@
 ---
-
-create_lxc_proxmox_api_user: root@pam
-create_lxc_proxmox_api_token_id: proxmox-api-token
+create_lxc__proxmox_api_user: root@pam
+create_lxc__proxmox_api_token_id: proxmox-api-token
 # ---
-create_lxc_ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
-create_lxc_cores: 4
-create_lxc_memory: 2048
-# create_lxc_disk: 2G
-create_lxc_ssh_pubkey: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
+create_lxc__lxc_ostemplate: lxc:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst
+create_lxc__lxc_cores: 4
+create_lxc__lxc_memory: 2048
+# create_lxc__lxc_disk: 2G
+create_lxc__lxc_ssh_pubkey: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
 

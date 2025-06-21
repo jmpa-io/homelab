@@ -1,23 +1,23 @@
 ---
 
-- name: Setup 'auto-update apt packages' cronjob
+- name: Setup 'auto-update apt packages' cronjob.
   become: true
   ansible.builtin.cron:
     name: auto-update apt packages
-    hour:   "3"
-    minute: "0"
+    hour: 3
+    minute: 0
     job: apt-get update -y && apt-get full-upgrade -y
-    state: present
     user: root
+    state: present
 
-- name: Setup 'auto-clean apt packages' cronjob
+- name: Setup 'auto-clean apt packages' cronjob.
   become: true
   ansible.builtin.cron:
-    name: auto-clean apt packages
-    hour:    "3"
-    minute:  "15"
-    weekday: "6"
+    name: auto-clean apt packages.
+    hour: 3
+    minute: 15
+    weekday: 6
     job: apt-get autoclean -y && apt-get autoremove -y
-    state: present
     user: root
+    state: present
 

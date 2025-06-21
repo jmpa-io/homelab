@@ -1,13 +1,13 @@
 ---
 
-- name: Install required apt packages
+- name: Install required apt packages.
   become: true
   ansible.builtin.apt:
     name: "{{ packages }}"
     state: latest
   when: packages is defined and packages | length > 0
-#
-- name: Copy over check-network.sh script
+
+- name: Install 'check-network.sh' script.
   become: true
   ansible.builtin.template:
     src: usr/local/bin/check-network.sh
@@ -16,7 +16,9 @@
     group: root
     mode: '0755'
 
-- name: Add network-autorestart service
+# PLEASE NOTE: This step has no notify as networking is restarted / systemd is
+# reloaded below. If this isn't the case anymore, add a notify here.
+- name: Add 'network-autorestart' service (from template).
   become: true
   ansible.builtin.template:
     src: etc/systemd/system/network-autorestart.service
@@ -25,16 +27,15 @@
     group: root
     mode: '0644'
     backup: true
-    # NOTE: no notify here as networking is restarted & systemd is reloaded below.
 
-- name: Ensure network-autorestart is enabled + started
+- name: Ensure 'network-autorestart' service is enabled + started.
   become: true
   ansible.builtin.systemd:
     name: network-autorestart
     enabled: yes
     state: started
 
-- name: Update /etc/network/interfaces
+- name: Update '/etc/network/interfaces' (from template).
   become: true
   ansible.builtin.template:
     src: etc/network/interfaces.j2
@@ -45,7 +46,7 @@
     backup: true
   notify: Restart networking
 
-- name: Update /etc/hosts
+- name: Update '/etc/hosts' (from template).
   become: true
   ansible.builtin.template:
     src: etc/hosts.j2
@@ -55,7 +56,7 @@
     mode: '0644'
     backup: true
 
-- name: Update /etc/resolv.conf
+- name: Update '/etc/resolv.conf' (from template).
   become: true
   ansible.builtin.template:
     src: etc/resolv.conf.j2
@@ -65,7 +66,7 @@
     mode: '0644'
     backup: true
 
-- name: Update /etc/dnsmasq.conf
+- name: Update '/etc/dnsmasq.conf' (from template).
   become: true
   ansible.builtin.template:
     src: etc/dnsmasq.conf.j2

@@ -42,8 +42,10 @@ def main():
     },
     'ssl': {
       'private_key': ssm_client.get_parameter('/homelab/ssl/private-key'),
-      'public_key': ssm_client.get_parameter('/homelab/ssl/public-key'),
       'cert': ssm_client.get_parameter('/homelab/ssl/cert'),
+    },
+    'ssh': {
+      'public_key': ssm_client.get_parameter('/homelab/ssh/public-key'),
     },
   }
 

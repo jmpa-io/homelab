@@ -25,39 +25,39 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/create-lxc"
       vars:
-        create_lxc_node_ip: "{{ proxmox_node_ip }}"
-        create_lxc_node_name: "{{ proxmox_node_name }}"
-        create_lxc_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
-        create_lxc_node_bridge_name: "{{ proxmox_node_bridge_name }}"
-        create_lxc_proxmox_api_ip: "{{ proxmox_api_ip }}"
-        create_lxc_proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
-        create_lxc_vmid: "{{ lxc_vmid }}"
-        create_lxc_hostname: "{{ lxc_hostname }}"
-        create_lxc_root_password: "{{ lxc_root_password }}"
-        create_lxc_subnet: "{{ lxc_ip_with_cidr }}"
-        create_lxc_tags: "{{ lxc_tags }}"
+        create_lxc__proxmox_node_ip: "{{ proxmox_node_ip }}"
+        create_lxc__proxmox_node_name: "{{ proxmox_node_name }}"
+        create_lxc__proxmox_node_bridge_ip: "{{ proxmox_node_bridge_ip }}"
+        create_lxc__proxmox_node_bridge_name: "{{ proxmox_node_bridge_name }}"
+        create_lxc__proxmox_api_ip: "{{ proxmox_api_ip }}"
+        create_lxc__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
+        create_lxc__lxc_vmid: "{{ lxc_vmid }}"
+        create_lxc__lxc_hostname: "{{ lxc_hostname }}"
+        create_lxc__lxc_root_password: "{{ lxc_root_password }}"
+        create_lxc__lxc_subnet: "{{ lxc_ip_with_cidr }}"
+        create_lxc__lxc_tags: "{{ lxc_tags }}"
 
     - name: Copy /etc/grafana/provisioning/datasources/prometheus.yml
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
       vars:
-        copy_file_to_lxc_node_ip: "{{ proxmox_node_ip }}"
-        copy_file_to_lxc_vmid: "{{ lxc_vmid }}"
-        copy_file_to_lxc_file_source: etc/grafana/provisioning/datasources/prometheus.yml.j2
-        copy_file_to_lxc_file_destination: /etc/grafana/provisioning/datasources/prometheus.yml
-        copy_file_to_lxc_show_difference: true
-        copy_file_to_lxc_copy_to_node_no_log: false
-        copy_file_to_lxc_copy_to_lxc_no_log: false
+        copy_file_to_lxc__proxmox_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc__lxc_vmid: "{{ lxc_vmid }}"
+        copy_file_to_lxc__file_source: etc/grafana/provisioning/datasources/prometheus.yml.j2
+        copy_file_to_lxc__file_destination: /etc/grafana/provisioning/datasources/prometheus.yml
+        copy_file_to_lxc__show_difference: true
+        copy_file_to_lxc__copy_to_node_no_log: false
+        copy_file_to_lxc__copy_to_lxc_no_log: false
 
     - name: Install Grafana.
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        execute_script_in_lxc_node_ip: "{{ proxmox_node_ip }}"
-        execute_script_in_lxc_vmid: "{{ lxc_vmid }}"
-        execute_script_in_lxc_script_source: tmp/install-grafana.sh.j2
-        execute_script_in_lxc_script_destination: /tmp/install_grafana.sh
-        execute_script_in_lxc_copy_to_node_show_difference: false
+        execute_script_in_lxc__proxmox_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc__lxc_vmid: "{{ lxc_vmid }}"
+        execute_script_in_lxc__script_source: tmp/install-grafana.sh.j2
+        execute_script_in_lxc__script_destination: /tmp/install_grafana.sh
+        execute_script_in_lxc__copy_to_node_show_difference: false
 
     - name: Check Grafana is running.
       ansible.builtin.command: pct exec {{ lxc_vmid }} -- systemctl is-active --quiet grafana-server.service

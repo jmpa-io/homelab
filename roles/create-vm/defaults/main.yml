@@ -1,11 +1,8 @@
 ---
-
-# Proxmox.
 create_vm__proxmox_api_user: root@pam
 create_vm__proxmox_api_token_id: proxmox-api-token
-
-# VM Template.
+# ---
 create_vm__clone_from_name: "debian-12-nocloud-amd64"
 create_vm__clone_from_vmid: 10000
-
-create_vm__username: root
+# ---
+create_vm__user_name: root

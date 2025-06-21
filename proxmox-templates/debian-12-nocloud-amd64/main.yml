@@ -16,7 +16,7 @@
     template_name: "debian-12-nocloud-amd64"
     template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2"
     template_root_password: "{{ ansible_become_pass }}"
-    template_ssh_public_key: "{{ ssl.public_key }} "
+    template_ssh_public_key: "{{ ssh.public_key }} "
 
   tasks:
     - name: Create template.

@@ -1,13 +1,13 @@
 ---
 
-- name: Install required apt packages
+- name: Install required apt packages.
   become: true
   ansible.builtin.apt:
     name: "{{ packages }}"
     state: latest
   when: packages is defined and packages | length > 0
 
-- name: Mount network directory
+- name: Mount network directory.
   become: true
   ansible.posix.mount:
     name: "{{ nfs.dest }}"

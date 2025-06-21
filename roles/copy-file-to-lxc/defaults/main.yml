@@ -1,11 +1,7 @@
 ---
-
-# file.
-copy_file_to_lxc_file_mode: "0755"
-
-# copy to node, from host.
-copy_file_to_lxc_copy_to_node_no_log: true
-copy_file_to_lxc_copy_to_node_show_difference: false
-
-# copy to lxc, from node.
-copy_file_to_lxc_copy_to_lxc_no_log: true
+copy_file_to_lxc__file_mode: "0755"
+# ---
+copy_file_to_lxc__copy_to_node_no_log: true
+copy_file_to_lxc__copy_to_node_show_difference: false
+# ---
+copy_file_to_lxc__copy_to_lxc_no_log: true
