@@ -3,7 +3,7 @@
     <img src="docs/logo.png" width="80%">
 </p>
 
-## `homelab`
+# `homelab`
 
 ```diff
 + 🏠 A collection of "things" that manage my homelab.
