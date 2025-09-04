@@ -5,15 +5,15 @@
 # ▌▌▙▌▄▌▐▖▄▌
 #
 #
-# - name: Setup hosts.
-#   hosts: all
-#   roles:
+- name: Setup hosts.
+  hosts: all
+  roles:
+
+    # packages.
+    - proxmox-hosts/apt
 #
-#     # packages.
-#     - proxmox-hosts/apt
-#
-#     # networking & dns.
-#     - proxmox-hosts/networking-and-dns
+    # networking & dns.
+    - proxmox-hosts/networking-and-dns
 #
 #     # cronjobs.
 #     - proxmox-hosts/crons
@@ -57,7 +57,7 @@
 # ▌▌▙▌▄▌
 #
 
-- import_playbook: services/vms/k3s/main.yml
+# - import_playbook: services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘

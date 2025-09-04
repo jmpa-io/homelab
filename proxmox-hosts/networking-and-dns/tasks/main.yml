@@ -44,7 +44,7 @@
     group: root
     mode: '0644'
     backup: true
-  notify: Restart networking
+  notify: Restart 'networking' service.
 
 - name: Update '/etc/hosts' (from template).
   become: true
@@ -75,4 +75,4 @@
     group: root
     mode: '0644'
     backup: true
-  notify: Restart dnsmasq
+  notify: Restart 'dnsmasq' service.
