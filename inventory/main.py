@@ -24,6 +24,9 @@ def main():
     'ansible_become_pass': ssm_client.get_parameter('/homelab/root-password'),
     'ansible_python_interpreter': read_env_var('ANSIBLE_PYTHON_INTERPRETER', '/usr/bin/python3.11'),
     'common': {
+      'internet_gateway': {
+        "ipv4": ssm_client.get_parameter('/homelab/internet-gateway')
+      },
       'subnet': {
         'ipv4': common_subnet_ipv4,
         'ipv4_cidr': default_cidr,

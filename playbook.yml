@@ -4,29 +4,32 @@
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
 #
-#
-- name: Setup hosts.
-  hosts: all
-  roles:
 
-    # packages.
-    - proxmox-hosts/apt
+# - name: Setup proxmox-hosts.
+#   hosts: all
+#   roles:
 #
-    # networking & dns.
-    - proxmox-hosts/networking-and-dns
+#     # packages.
+#     - instances/proxmox-hosts/apt
+#
+#     # networking & dns.
+#     - instances/proxmox-hosts/networking-and-dns
 #
 #     # cronjobs.
-#     - proxmox-hosts/crons
+#     - instances/proxmox-hosts/crons
+#
+#     # systemd.
+#     - instances/proxmox-hosts/systemd
 #
 #     # observability.
-#     - proxmox-hosts/opentelemetry-collector
+#     - instances/proxmox-hosts/opentelemetry-collector
 
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
 # ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌
 #        ▌
 
-# - import_playbook: proxmox-templates/debian-12-nocloud-amd64/main.yml
+# - import_playbook: playbooks/proxmox-templates/debian-12-nocloud-amd64/main.yml
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▙▖▚
@@ -34,12 +37,12 @@
 #
 
 # - name: Setup NFS (servers).
-#   hosts: jmpa_server_1
-#   roles: [proxmox-hosts/nfs-server]
+#   hosts: all[0]
+#   roles: [instances/proxmox-hosts/nfs-server]
 #
 # - name: Setup NFS (clients).
-#   hosts: jmpa_server_2, jmpa_server_3
-#   roles: [proxmox-hosts/nfs-client]
+#   hosts: all[1:]
+#   roles: [instances/proxmox-hosts/nfs-client]
 
 # ▖ ▖▖▄▖ ▄▖    ▗   ▘
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
@@ -47,7 +50,7 @@
 #
 
 # # PLEASE NOTE: order matters here.
-# - import_playbook: services/lxc/tailscale/main.yml
+- import_playbook: services/lxc/tailscale/main.yml
 # - import_playbook: services/lxc/nginx-reverse-proxy/main.yml
 # - import_playbook: services/lxc/prometheus/main.yml
 # - import_playbook: services/lxc/grafana/main.yml

@@ -5,10 +5,10 @@
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
-    - create_lxc__node_ip
-    - create_lxc__node_name
-    - create_lxc__node_bridge_ip
-    - create_lxc__node_bridge_name
+    - create_lxc__proxmox_node_ip
+    - create_lxc__proxmox_node_name
+    - create_lxc__proxmox_node_bridge_ip
+    - create_lxc__proxmox_node_bridge_name
     # ---
     - create_lxc__proxmox_api_ip
     - create_lxc__proxmox_api_token_secret
@@ -27,7 +27,7 @@
         api_user: "{{ create_lxc__proxmox_api_user }}"
         api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__node_name }}"
+        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true
@@ -42,22 +42,22 @@
         api_user: "{{ create_lxc__proxmox_api_user }}"
         api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__node_name }}"
+        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         hostname: "{{ create_lxc__lxc_hostname }}"
-        ostemplate: "{{ create_lxc__ostemplate }}"
-        cores: "{{ create_lxc__cores }}"
-        memory: "{{ create_lxc__memory }}"
-        # disk: "{{ create_lxc__disk }}"
+        ostemplate: "{{ create_lxc__lxc_ostemplate }}"
+        cores: "{{ create_lxc__lxc_cores }}"
+        memory: "{{ create_lxc__lxc_memory }}"
+        # disk: "{{ create_lxc__lxc_disk }}"
         tags: "{{ create_lxc__lxc_tags }}"
         password: "{{ create_lxc__lxc_root_password }}"
         netif:
-          net0: "name=eth0,gw={{ create_lxc__node_bridge_ip }},ip={{ create_lxc__lxc_subnet }},bridge={{ create_lxc__node_bridge_name }}"
-        nameserver: "{{ create_lxc__node_ip }}"
+          net0: "name=eth0,gw={{ create_lxc__proxmox_node_bridge_ip }},ip={{ create_lxc__lxc_subnet }},bridge={{ create_lxc__proxmox_node_bridge_name }}"
+        nameserver: "{{ create_lxc__proxmox_node_ip }}"
         unprivileged: true
         features:
           - nesting=1
-        pubkey: "{{ lookup('file', create_lxc__ssh_pubkey) }}"
+        pubkey: "{{ lookup('file', create_lxc__lxc_ssh_pubkey) }}"
         onboot: 1
         state: present
         timeout: 300
@@ -68,7 +68,7 @@
         api_user: "{{ create_lxc__proxmox_api_user }}"
         api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__node_name }}"
+        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         hostname: "{{ create_lxc__lxc_hostname }}"
         state: started
@@ -84,10 +84,10 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        execute_script_in_lxc_node_ip: "{{ create_lxc__node_ip }}"
-        execute_script_in_lxc_vmid: "{{ create_lxc__lxc_vmid }}"
-        execute_script_in_lxc_script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
-        execute_script_in_lxc_script_destination: /tmp/install_deps.sh
+        execute_script_in_lxc__proxmox_node_ip: "{{ create_lxc__proxmox_node_ip }}"
+        execute_script_in_lxc__lxc_vmid: "{{ create_lxc__lxc_vmid }}"
+        execute_script_in_lxc__script_source: "{{ root_playbook_directory }}/roles/create-lxc/templates/install-deps.sh.j2"
+        execute_script_in_lxc__script_destination: /tmp/install_deps.sh
 
   rescue:
     - name: Error encountered, clean up LXC if able.
@@ -96,7 +96,7 @@
         api_user: "{{ create_lxc__proxmox_api_user }}"
         api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
         api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__node_name }}"
+        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true

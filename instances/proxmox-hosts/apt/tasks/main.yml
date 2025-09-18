@@ -1,0 +1,15 @@
+---
+
+- name: Configure apt sources (from template).
+  become: true
+  ansible.builtin.template:
+    src: etc/apt/sources.list.j2
+    dest: /etc/apt/sources.list
+    owner: root
+    group: root
+    mode: '0644'
+    backup: false
+
+- name: Setup apt + install packages.
+  include_tasks: tasks/apt/main.yml
+

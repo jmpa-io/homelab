@@ -1,0 +1,17 @@
+---
+
+- name: Update and upgrade apt packages.
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: dist
+    cache_valid_time: 3600
+    force_apt_get: true
+
+- name: Install required apt packages.
+  become: true
+  ansible.builtin.apt:
+    name: "{{ packages }}"
+    state: latest
+  when: packages is defined and packages | length > 0
+

@@ -18,20 +18,20 @@
 
 - name: Create template, refreshed if needed.
   block:
-    # - name: Stop and / or remove existing VM.
-    #   community.general.proxmox_kvm:
-    #     api_host: "{{ create_vm_template__proxmox_api_ip }}"
-    #     api_user: "{{ create_vm_template__proxmox_api_user }}"
-    #     api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
-    #     api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
-    #     node: "{{ create_vm_template__proxmox_node_name }}"
-    #     vmid: "{{ create_vm_template__template_vmid }}"
-    #     state: "{{ item }}"
-    #     timeout: 300
-    #   loop:
-    #     - stopped
-    #     - absent
-    #   ignore_errors: true
+    - name: Stop and / or remove existing VM.
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_template__proxmox_api_ip }}"
+        api_user: "{{ create_vm_template__proxmox_api_user }}"
+        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+        node: "{{ create_vm_template__proxmox_node_name }}"
+        vmid: "{{ create_vm_template__template_vmid }}"
+        state: "{{ item }}"
+        timeout: 300
+      loop:
+        - stopped
+        - absent
+      ignore_errors: true
 
     - name: Download image.
       become: true
@@ -98,7 +98,7 @@
       become: true
       shell: |
         set -e
-        qm set {{ create_vm_template__template_vmid }} --scsi0 {{ create_vm_template__vm_storage }}:{{ create_vm_template__template_vmid}}/vm-{{ create_vm_template__template_vmid }}-disk-0.qcow2
+        qm set {{ create_vm_template__template_vmid }} --scsi0 {{ create_vm_template__vm_storage }}:0
         qm set {{ create_vm_template__template_vmid }} --boot order=scsi0
         qm resize {{ create_vm_template__template_vmid }} scsi0 {{ create_vm_template__vm_disk }}
 
@@ -128,6 +128,14 @@
         update: true
         state: present
         timeout: 600
+
+    - name: Remove existing cloud-init disk (if any)
+      become: true
+      shell: |
+        set -e
+        if qm config {{ create_vm_template__template_vmid }} | grep -q '^scsi2:'; then
+          qm set {{ create_vm_template__template_vmid }} --delete scsi2
+        fi
 
     - name: Regenerate cloud-init config.
       become: true

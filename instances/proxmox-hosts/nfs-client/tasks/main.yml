@@ -1,0 +1,16 @@
+---
+
+- name: Setup apt + install packages.
+  include_tasks: tasks/apt/main.yml
+
+- name: Mount network directory.
+  become: true
+  ansible.posix.mount:
+    name: "{{ nfs.dest }}"
+    src: "{{ nfs.src }}:{{ nfs.dest }}"
+    fstype: nfs
+    state: mounted
+    opts: defaults
+    dump: 0
+    passno: 0
+
