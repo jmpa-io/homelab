@@ -6,7 +6,7 @@ from env import read_env_var
 
 from bridge import Bridge
 from host import Collector, Host
-from service import Service
+from service import Service, Protocol
 from inventory import Inventory
 
 from k8s_inventory import K8sInventory
@@ -70,6 +70,7 @@ def main():
     name='prometheus',
     container_id=read_env_var('PROMETHEUS_CONTAINER_ID', '40'),
     default_port=read_env_var('PROMETHEUS_PORT', '9090'),
+    protocol=Protocol.HTTP,
     add_to_proxy_static_records=False,
   )
 
@@ -77,6 +78,7 @@ def main():
     name='grafana',
     container_id=read_env_var('GRAFANA_CONTAINER_ID', '45'),
     default_port=read_env_var('GRAFANA_PORT', '3000'),
+    protocol=Protocol.HTTPS,
   )
 
   #

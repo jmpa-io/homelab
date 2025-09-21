@@ -1,12 +1,18 @@
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional
+from enum import Enum
 
+@dataclass
+class Protocol(Enum):
+  HTTP = "http"
+  HTTPS = "https"
 
 @dataclass
 class Service:
   name: str
   container_id: int
   default_port: Optional[str] = None
+  protocol: Optional[Protocol] = None
   add_to_proxy_static_records: bool = True
 
   # These values are populated when this Service is added to an Inventory.

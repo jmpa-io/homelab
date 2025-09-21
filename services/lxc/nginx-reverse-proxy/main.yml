@@ -5,7 +5,7 @@
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
-    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | string }}"
     proxmox_node_ip: "{{ host.ipv4 }}"
     proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
     proxmox_node_bridge_name: "{{ host.bridge.name }}"
@@ -16,7 +16,7 @@
     root_domain: "{{ common.dns.domain }}"
     # ---
     lxc_id: "{{ services.nginx_reverse_proxy.container_id }}"
-    lxc_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_id) }}"
+    lxc_vmid: "{{ '%d%02d' | format(proxmox_node_id | int, lxc_id | int) }}"
     lxc_hostname: nginx-reverse-proxy
     lxc_root_password: "{{ ansible_become_pass }}"
     lxc_ip_with_cidr: "{{ services.nginx_reverse_proxy.ipv4_with_cidr }}"

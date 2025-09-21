@@ -51,7 +51,6 @@
 
 # # PLEASE NOTE: order matters here.
 - import_playbook: services/lxc/tailscale/main.yml
-# - import_playbook: services/lxc/nginx-reverse-proxy/main.yml
 # - import_playbook: services/lxc/prometheus/main.yml
 # - import_playbook: services/lxc/grafana/main.yml
 

@@ -45,9 +45,10 @@ class Inventory:
         {
           'subdomain': s.name,
           'forward_to_ipv4_with_port': f'{s.ipv4}:{s.default_port}',
+          'protocol': s.protocol.value,
         }
         for s in host.services
-        if (not s.is_proxy and s.default_port and s.add_to_proxy_static_records)
+        if (not s.is_proxy and s.default_port and s.add_to_proxy_static_records and s.protocol)
       ]
 
     # Add host, using an ansible-appropriate name.
@@ -70,14 +71,30 @@ class Inventory:
       self.add_host(host)
 
   def build_global_service_map(self):
+    """Builds a global service map from all proxy services' static records."""
     service_map = {}
+    
     for host in self.hosts.values():
-      for service in host.services:
-        if not service.is_proxy:
-          continue
-        for record in service.static_records:
-          service_map.setdefault(record['subdomain'], []).append(record['forward_to_ipv4_with_port'])
+      proxy_services = [s for s in host.services if s.is_proxy]
+      for proxy in proxy_services:
+        self._add_proxy_records_to_service_map(proxy, service_map)
+    
     self.vars['common']['global_service_map'] = service_map
+
+  def _add_proxy_records_to_service_map(self, proxy_service, service_map):
+    """Adds static records from a proxy service to the service map."""
+    for record in proxy_service.static_records:
+      service_name = record['subdomain']
+      backend = record['forward_to_ipv4_with_port']
+      protocol = record['protocol']
+      
+      # Use setdefault to avoid the if/not in pattern
+      service_entry = service_map.setdefault(service_name, {
+        'backends': [],
+        'protocol': protocol
+      })
+      
+      service_entry['backends'].append(backend)
 
   def build_global_kube_configuration(self):
     if not self.kube_inventory:

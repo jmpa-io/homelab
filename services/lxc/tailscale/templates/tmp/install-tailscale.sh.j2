@@ -71,3 +71,41 @@ EOF
 systemctl daemon-reload
 systemctl enable --now tailscale-booter.service
 
+# Setup nginx reverse proxy routing
+cat << EOF > /etc/systemd/system/tailscale-nginx-reverse-proxy-routing.service
+[Unit]
+Description=Setup iptables routing for nginx reverse proxy through Tailscale
+After=tailscaled.service tailscale-booter.service
+Requires=tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash -c '\
+  for i in {1..10}; do \
+    /usr/bin/tailscale status &>/dev/null && break; \
+    sleep 1; \
+  done; \
+  GATEWAY_LAN="{{ host.bridge.ipv4 }}"; \
+  NGINX_LXC="{{ services.nginx_reverse_proxy.ipv4 }}"; \
+  TS_IF=tailscale0; \
+  while iptables -t nat -S PREROUTING | grep -q -- "--dport 443"; do \
+    rule=$$(iptables -t nat -S PREROUTING | grep -- "--dport 443" | head -n1); \
+    args="$${rule#-A PREROUTING }"; \
+    iptables -t nat -D PREROUTING $$args || break; \
+  done; \
+  iptables -t nat -D POSTROUTING -d $${NGINX_LXC}/32 -p tcp --dport 443 -j MASQUERADE 2>/dev/null || true; \
+  iptables -t nat -A PREROUTING -i $$TS_IF -d $${GATEWAY_LAN} -p tcp --dport 443 -j DNAT --to-destination $${NGINX_LXC}:443; \
+  iptables -t nat -A POSTROUTING -d $${NGINX_LXC}/32 -p tcp --dport 443 -j MASQUERADE; \
+  iptables -C FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT; \
+  iptables -C FORWARD -d $${NGINX_LXC}/32 -p tcp --dport 443 -j ACCEPT 2>/dev/null || iptables -I FORWARD -d $${NGINX_LXC}/32 -p tcp --dport 443 -j ACCEPT \
+'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now tailscale-nginx-reverse-proxy-routing.service
+
+
