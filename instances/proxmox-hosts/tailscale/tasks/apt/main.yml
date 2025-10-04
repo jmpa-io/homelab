@@ -1,0 +1,33 @@
+---
+
+- name: Add Tailscale repository key.
+  become: true
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Add Tailscale repository.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/tailscale.list
+    line: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main"
+    create: true
+    mode: '0644'
+    owner: root
+    group: root
+
+- name: Update apt cache.
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Tailscale and required packages.
+  become: true
+  ansible.builtin.apt:
+    name:
+      - tailscale
+      - ethtool
+    state: present

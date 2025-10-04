@@ -78,7 +78,7 @@ def main():
     name='grafana',
     container_id=read_env_var('GRAFANA_CONTAINER_ID', '45'),
     default_port=read_env_var('GRAFANA_PORT', '3000'),
-    protocol=Protocol.HTTPS,
+    protocol=Protocol.HTTP,
   )
 
   #

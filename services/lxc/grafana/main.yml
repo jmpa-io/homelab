@@ -1,11 +1,11 @@
 ---
 
 - name: Setup Grafana.
-  hosts: jmpa_server_2, jmpa_server_3
+  hosts: all
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
-    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | string }}"
     proxmox_node_ip: "{{ host.ipv4 }}"
     proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
     proxmox_node_bridge_name: "{{ host.bridge.name }}"
@@ -14,7 +14,7 @@
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
     lxc_id: "{{ services.grafana.container_id }}"
-    lxc_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_id) }}"
+    lxc_vmid: "{{ '%d%02d' | format(proxmox_node_id | int, lxc_id | int) }}"
     lxc_hostname: grafana
     lxc_root_password: "{{ ansible_become_pass }}"
     lxc_ip_with_cidr: "{{ services.grafana.ipv4_with_cidr }}"
@@ -36,6 +36,18 @@
         create_lxc__lxc_root_password: "{{ lxc_root_password }}"
         create_lxc__lxc_subnet: "{{ lxc_ip_with_cidr }}"
         create_lxc__lxc_tags: "{{ lxc_tags }}"
+
+    - name: Copy /etc/grafana/grafana.ini
+      ansible.builtin.include_role:
+        name: "{{ root_playbook_directory }}/roles/copy-file-to-lxc"
+      vars:
+        copy_file_to_lxc__proxmox_node_ip: "{{ proxmox_node_ip }}"
+        copy_file_to_lxc__lxc_vmid: "{{ lxc_vmid }}"
+        copy_file_to_lxc__file_source: etc/grafana/grafana.ini.j2
+        copy_file_to_lxc__file_destination: /etc/grafana/grafana.ini
+        copy_file_to_lxc__show_difference: true
+        copy_file_to_lxc__copy_to_node_no_log: false
+        copy_file_to_lxc__copy_to_lxc_no_log: false
 
     - name: Copy /etc/grafana/provisioning/datasources/prometheus.yml
       ansible.builtin.include_role:

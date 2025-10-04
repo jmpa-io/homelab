@@ -1,0 +1,74 @@
+---
+
+- name: Setup apt + install packages.
+  include_tasks: apt/main.yml
+
+- name: Enable and start Tailscale daemon.
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Configure IP forwarding for Tailscale.
+  become: true
+  ansible.builtin.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+    - { name: 'net.ipv6.conf.all.forwarding', value: '1' }
+
+- name: Add Tailscale optimizer service.
+  become: true
+  ansible.builtin.template:
+    src: etc/systemd/system/tailscale-optimizer.service
+    dest: /etc/systemd/system/tailscale-optimizer.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Add Tailscale booter service.
+  become: true
+  ansible.builtin.template:
+    src: etc/systemd/system/tailscale-booter.service
+    dest: /etc/systemd/system/tailscale-booter.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Add Tailscale nginx reverse proxy routing service.
+  become: true
+  ansible.builtin.template:
+    src: etc/systemd/system/tailscale-nginx-reverse-proxy-routing.service
+    dest: /etc/systemd/system/tailscale-nginx-reverse-proxy-routing.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Reload systemd daemon.
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart Tailscale daemon.
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: restarted
+
+- name: Enable and start Tailscale services.
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - tailscale-optimizer
+    - tailscale-booter
+    - tailscale-nginx-reverse-proxy-routing

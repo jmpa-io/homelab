@@ -10,6 +10,6 @@
     mode: '0644'
     backup: false
 
-- name: Setup apt + install packages.
+- name: Install / update apt packages.
   include_tasks: tasks/apt/main.yml
 

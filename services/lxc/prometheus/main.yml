@@ -5,7 +5,7 @@
   become: true
   vars:
     proxmox_node_name: "{{ host.name }}"
-    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | string }}"
     proxmox_node_ip: "{{ host.ipv4 }}"
     proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
     proxmox_node_bridge_name: "{{ host.bridge.name }}"
@@ -14,7 +14,7 @@
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
     lxc_id: "{{ services.prometheus.container_id }}"
-    lxc_vmid: "{{ proxmox_node_id }}{{ '%02d' | format(lxc_id) }}"
+    lxc_vmid: "{{ '%d%02d' | format(proxmox_node_id | int, lxc_id | int) }}"
     lxc_hostname: prometheus
     lxc_root_password: "{{ ansible_become_pass }}"
     lxc_ip_with_cidr: "{{ services.prometheus.ipv4_with_cidr }}"
@@ -54,11 +54,11 @@
       ansible.builtin.include_role:
         name: "{{ root_playbook_directory }}/roles/execute-script-in-lxc"
       vars:
-        execute_script_in_lxc___proxmox_node_ip: "{{ proxmox_node_ip }}"
-        execute_script_in_lxc___lxc_vmid: "{{ lxc_vmid }}"
-        execute_script_in_lxc___script_source: tmp/install-prometheus.sh.j2
-        execute_script_in_lxc___script_destination: /tmp/install_prometheus.sh
-        execute_script_in_lxc___copy_to_node_show_difference: false
+        execute_script_in_lxc__proxmox_node_ip: "{{ proxmox_node_ip }}"
+        execute_script_in_lxc__lxc_vmid: "{{ lxc_vmid }}"
+        execute_script_in_lxc__script_source: tmp/install-prometheus.sh.j2
+        execute_script_in_lxc__script_destination: /tmp/install_prometheus.sh
+        execute_script_in_lxc__copy_to_node_show_difference: false
 
     - name: Check Prometheus is running.
       ansible.builtin.command: pct exec {{ lxc_vmid }} -- systemctl is-active --quiet prometheus.service

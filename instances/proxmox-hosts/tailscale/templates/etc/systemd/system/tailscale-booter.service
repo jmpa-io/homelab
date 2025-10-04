@@ -1,0 +1,20 @@
+[Unit]
+Description=Runs Tailscale on boot.
+After=network-online.target tailscaled.service tailscale-optimizer.service
+Requires=tailscaled.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash -c '\
+  /usr/bin/tailscale status &>/dev/null || \
+  /usr/bin/tailscale up \
+    --auth-key="{{ tailscale.oauth_private_key }}?ephemeral=true" \
+    --hostname "{{ host.name }}" \
+    --advertise-routes="{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }},{{ ansible_host }}/32" \
+    --accept-routes \
+    --advertise-tags="{{ tailscale_tags | map('string') | map('regex_replace','^','tag:') | join(',') }}" \
+'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

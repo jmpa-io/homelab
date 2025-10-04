@@ -23,6 +23,7 @@ repositories:
       - non-free-firmware
 
 packages:
+  - curl
   - python3-pip
   - python3-proxmoxer
   - libguestfs-tools

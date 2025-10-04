@@ -4,19 +4,20 @@
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
 #
+#
 
 # - name: Setup proxmox-hosts.
-#   hosts: all
+#   hosts: all[0]
 #   roles:
 #
 #     # packages.
-#     - instances/proxmox-hosts/apt
+#     - instances/proxmox-hosts/base
 #
 #     # networking & dns.
 #     - instances/proxmox-hosts/networking-and-dns
 #
-#     # cronjobs.
-#     - instances/proxmox-hosts/crons
+#     # tailscale.
+#     - instances/proxmox-hosts/tailscale
 #
 #     # systemd.
 #     - instances/proxmox-hosts/systemd
@@ -50,8 +51,8 @@
 #
 
 # # PLEASE NOTE: order matters here.
-- import_playbook: services/lxc/tailscale/main.yml
-# - import_playbook: services/lxc/prometheus/main.yml
+# - import_playbook: services/lxc/nginx-reverse-proxy/main.yml
+- import_playbook: services/lxc/prometheus/main.yml
 # - import_playbook: services/lxc/grafana/main.yml
 
 # ▖▖▄▖
@@ -67,12 +68,8 @@
 
 # TODO:
 
-# --- --- ---
-# ▖ ▖  ▗
-# ▛▖▌▛▌▜▘█▌▛▘
-# ▌▝▌▙▌▐▖▙▖▄▌
-#
-#
-#
+# ▖▖▄▖
+# ▙▘▙▌▛▘
+# ▌▌▙▌▄▌
 #
 

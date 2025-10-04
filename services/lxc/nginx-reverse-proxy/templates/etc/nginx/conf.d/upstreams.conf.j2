@@ -1,23 +1,26 @@
 
 # {{ ansible_managed }}
 
-{% set proxmox_servers = [] %}
-{% for host in groups['all'] %}
-    {% set _ = proxmox_servers.append(hostvars[host].ansible_host ~ ':' ~ hostvars[host]['proxmox']['default_ui_port']) %}
-{% endfor %}
-
 {% set upstreams =
-    {'proxmox': proxmox_servers}
-    | combine(common.global_service_map) %}
+  {'proxmox': {
+      'backends': [hostvars[h].ansible_host ~ ':' ~ hostvars[h]['proxmox']['default_ui_port'] for h in groups['all']],
+      'protocol': 'https'
+  }}
+  | combine(common.global_service_map)
+%}
 
-{% for name, backends in upstreams.items() %}
+{% for name, data in upstreams.items() %}
 # {{ name | title }}.
 upstream {{ name }} {
   least_conn;
+
+  {% if name == 'grafana' %}
+  # Keep sessions sticky for Grafana (important for login)
+  sticky cookie srv_id expires=1h domain={{ common['dns']['domain'] }} path=/;
+  {% endif %}
+
 {% for backend in backends %}
   server {{ backend }};
 {% endfor %}
 }
-
-{% endfor %}
 

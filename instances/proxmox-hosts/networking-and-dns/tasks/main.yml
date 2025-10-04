@@ -1,11 +1,7 @@
 ---
 
-- name: Install required apt packages.
-  become: true
-  ansible.builtin.apt:
-    name: "{{ packages }}"
-    state: latest
-  when: packages is defined and packages | length > 0
+- name: Setup apt + install packages.
+  include_tasks: tasks/apt/main.yml
 
 - name: Install 'check-network.sh' script.
   become: true
