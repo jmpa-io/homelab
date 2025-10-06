@@ -1,0 +1,18 @@
+
+# {{ ansible_managed }}
+
+[Unit]
+Description=dnsmasq_exporter
+Documentation=https://github.com/google/dnsmasq_exporter
+After=network-online.target dnsmasq.service
+Wants=network-online.target dnsmasq.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/dnsmasq_exporter
+Restart=always
+RestartSec=90s
+
+[Install]
+WantedBy=multi-user.target
+

@@ -34,3 +34,7 @@ scrape_configs:
     static_configs:
       - targets: ["{{ ansible_host }}:{{ host.collector.metrics_port }}"]
 
+  # dnsmasq_exporter.
+  - job_name: "{{ host.name }} | dnsmasq_exporter"
+    static_configs:
+      - targets: ["{{ ansible_host }}:{{ host.dnsmasq_exporter.metrics_port }}/metrics"]

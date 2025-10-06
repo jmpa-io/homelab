@@ -3,6 +3,7 @@ from typing import List
 
 from bridge import Bridge
 from collector import Collector
+from dnsmasq_exporter import DnsmasqExporter
 from service import Service
 
 
@@ -16,6 +17,7 @@ class Host:
   wifi_device_name: str
   bridge: Bridge
   collector: Collector
+  dnsmasq_exporter: DnsmasqExporter
   name: str = 'jmpa-server-{id}'
   services: List[Service] = field(default_factory=list)
 
@@ -49,6 +51,9 @@ class Host:
       },
       'collector': {
         'metrics_port': self.collector.metrics_port,
+      },
+      'dnsmasq_exporter': {
+        'metrics_port': self.dnsmasq_exporter.metrics_port,
       },
     }
 

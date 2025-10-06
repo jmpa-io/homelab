@@ -17,7 +17,7 @@
 - name: Add 'network-autorestart' service (from template).
   become: true
   ansible.builtin.template:
-    src: etc/systemd/system/network-autorestart.service
+    src: etc/systemd/system/network-autorestart.service.j2
     dest: /etc/systemd/system/network-autorestart.service
     owner: root
     group: root
@@ -72,3 +72,28 @@
     mode: '0644'
     backup: true
   notify: Restart 'dnsmasq' service.
+
+# dnsmasq_exporter.
+- name: Download dnsmasq_exporter binary.
+  become: true
+  ansible.builtin.get_url:
+    url: "https://github.com/toksvaeth/dnsmasq_exporter/releases/download/v0.3.0/dnsmasq_exporter-linux-amd64"
+    dest: /usr/local/bin/dnsmasq_exporter
+    mode: '0755'
+
+- name: Add 'dnsmasq_exporter' service (from template).
+  become: true
+  ansible.builtin.template:
+    src: etc/systemd/system/dnsmasq_exporter.service.j2
+    dest: /etc/systemd/system/dnsmasq_exporter.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Ensure 'dnsmasq_exporter' service is enabled + started.
+  become: true
+  ansible.builtin.systemd:
+    name: dnsmasq_exporter
+    enabled: yes
+    state: started

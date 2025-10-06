@@ -5,7 +5,7 @@ from ssm import SSMClient
 from env import read_env_var
 
 from bridge import Bridge
-from host import Collector, Host
+from host import Host, Collector, DnsmasqExporter
 from service import Service, Protocol
 from inventory import Inventory
 
@@ -101,6 +101,14 @@ def main():
   )
 
   #
+  # Setup dnsmasq_exporter.
+  #
+
+  dnsmasq_exporter = DnsmasqExporter(
+    metrics_port=read_env_var("HOST_DNSMASQ_EXPORTER_METRICS_PORT", '9153'),
+  )
+
+  #
   # Setup k3s config.
   #
 
@@ -132,6 +140,7 @@ def main():
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-1/wifi-device-name'),
       bridge=bridge,
       collector=collector,
+      dnsmasq_exporter=dnsmasq_exporter,
       services=[
         nginx_reverse_proxy,
         tailscale_gateway,
@@ -145,6 +154,7 @@ def main():
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-2/wifi-device-name'),
       bridge=bridge,
       collector=collector,
+      dnsmasq_exporter=dnsmasq_exporter,
       services=[
         nginx_reverse_proxy,
         tailscale_gateway,
@@ -158,6 +168,7 @@ def main():
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-3/wifi-device-name'),
       bridge=bridge,
       collector=collector,
+      dnsmasq_exporter=dnsmasq_exporter,
       services=[
         nginx_reverse_proxy,
         tailscale_gateway,
