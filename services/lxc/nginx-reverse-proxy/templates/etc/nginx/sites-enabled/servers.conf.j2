@@ -1,26 +1,23 @@
 
 # {{ ansible_managed }}
 
-{% macro proxy_headers(name, domain) -%}
-    proxy_set_header Host {{ name }}.{{ domain }};
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection "Upgrade";
-{%- endmacro %}
+{% set proxmox_servers = [] %}
+{% for host in groups['all'] %}
+    {% set _ = proxmox_servers.append(hostvars[host].ansible_host ~ ':' ~ hostvars[host]['proxmox']['default_ui_port']) %}
+{% endfor %}
 
 {% set upstreams =
-  {'proxmox': {
-      'backends': [hostvars[h].ansible_host ~ ':' ~ hostvars[h]['proxmox']['default_ui_port'] for h in groups['all']],
-      'protocol': 'https'
-  }}
-  | combine(common.global_service_map)
-%}
+    {'proxmox': {'backends': proxmox_servers, 'protocol': 'https'}}
+    | combine(common.global_service_map) %}
+
+{% for name, service_data in upstreams.items() %}
+    {% set protocol = service_data.protocol %}
+    {% set backends = service_data.backends %}
 
 server {
     listen 443 ssl{% if loop.first %} default_server{% endif %};
     listen [::]:443 ssl{% if loop.first %} default_server{% endif %};
+
     server_name {{ name }}.{{ common['dns']['domain'] }} ~^{{ name }}\..+\.{{ common['dns']['domain'] }}$;
 
     ssl_certificate     /etc/ssl/certs/self-signed.crt;
@@ -38,15 +35,7 @@ server {
         proxy_set_header X-Forwarded-Proto https;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "Upgrade";
-
-        # --- Grafana-specific headers ---
-        {% if name == 'grafana' %}
-        proxy_set_header X-WEBAUTH-USER "";
-        proxy_redirect off;
-        proxy_http_version -1.1;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        {% endif %}
     }
 }
 {% endfor %}
+
