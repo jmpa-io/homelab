@@ -11,12 +11,12 @@
     - create_vm__proxmox_api_ip
     - create_vm__proxmox_api_token_secret
     # ---
-    - create_vm__vmid
-    - create_vm__hostname
-    - create_vm__password
-    - create_vm__ip_with_cidr
-    - create_vm__gateway
-    - create_vm__tags
+    - create_vm__vm_vmid
+    - create_vm__vm_hostname
+    - create_vm__vm_password
+    - create_vm__vm_ip_with_cidr
+    - create_vm__vm_gateway
+    - create_vm__vm_tags
 
 - name: Create VM, refreshed if needed.
   block:
@@ -27,7 +27,7 @@
         api_token_id: "{{ create_vm__proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
-        vmid: "{{ create_vm__vmid }}"
+        vmid: "{{ create_vm__vm_vmid }}"
         state: "{{ item }}"
         timeout: 300
       loop:
@@ -42,16 +42,16 @@
         api_token_id: "{{ create_vm__proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
-        name: "{{ create_vm__hostname }}"
+        name: "{{ create_vm__vm_hostname }}"
         # ---
-        clone: "{{ create_vm__clone_from_name }}"
-        vmid: "{{ create_vm__clone_from_vmid }}"
-        newid: "{{ create_vm__vmid }}"
-        ciuser: "{{ create_vm__username }}"
-        cipassword: "{{ create_vm__password }}"
+        clone: "{{ create_vm__vm_clone_from_name }}"
+        vmid: "{{ create_vm__vm_clone_from_vmid }}"
+        newid: "{{ create_vm__vm_vmid }}"
+        ciuser: "{{ create_vm__vm_username }}"
+        cipassword: "{{ create_vm__vm_password }}"
         # ipconfig:
-        #   ipconfig0: "ip={{ create_vm__ip_with_cidr }},gw={{ create_vm__gateway }}"
-        full: false
+        #   ipconfig0: "ip={{ create_vm__vm_ip_with_cidr }},gw={{ create_vm__vm_gateway }}"
+        full: true
         state: present
         timeout: 600
 
@@ -62,8 +62,8 @@
         api_token_id: "{{ create_vm__proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
-        vmid: "{{ create_vm__vmid }}"
-        tags: "{{ create_vm__tags }}"
+        vmid: "{{ create_vm__vm_vmid }}"
+        tags: "{{ create_vm__vm_tags }}"
         state: present
         update: true
 
@@ -71,7 +71,7 @@
       become: true
       shell: |
         set -e
-        qm set {{ create_vm__vmid }} --ipconfig0 'ip={{ create_vm__ip_with_cidr }},gw={{ create_vm__gateway}}'
+        qm set {{ create_vm__vm_vmid }} --ipconfig0 'ip={{ create_vm__vm_ip_with_cidr }},gw={{ create_vm__vm_gateway}}'
 
     - name: Start VM.
       community.general.proxmox_kvm:
@@ -80,12 +80,12 @@
         api_token_id: "{{ create_vm__proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
-        vmid: "{{ create_vm__vmid }}"
+        vmid: "{{ create_vm__vm_vmid }}"
         state: started
 
     - name: Wait for SSH to become available.
       wait_for:
-        host: "{{ create_vm__ip_with_cidr.split('/')[0] }}"
+        host: "{{ create_vm__vm_ip_with_cidr.split('/')[0] }}"
         port: 22
         delay: 10
         timeout: 120
@@ -98,7 +98,7 @@
         api_token_id: "{{ create_vm__proxmox_api_token_id }}"
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
-        vmid: "{{ create_vm__vmid }}"
+        vmid: "{{ create_vm__vm_vmid }}"
         state: "{{ item }}"
       loop:
         - stopped

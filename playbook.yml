@@ -13,7 +13,7 @@
 #     # packages.
 #     - instances/proxmox-hosts/base
 #
-#     # networking & dns.
+    # networking & dns.
     # - instances/proxmox-hosts/networking-and-dns
 #
 #     # tailscale.
@@ -22,8 +22,8 @@
 #     # systemd.
 #     - instances/proxmox-hosts/systemd
 #
-#     # observability.
-#     - instances/proxmox-hosts/opentelemetry-collector
+    # observability.
+    # - instances/proxmox-hosts/opentelemetry-collector
 
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
@@ -52,7 +52,7 @@
 
 # # PLEASE NOTE: order matters here.
 # - import_playbook: services/lxc/nginx-reverse-proxy/main.yml
-- import_playbook: services/lxc/prometheus/main.yml
+# - import_playbook: services/lxc/prometheus/main.yml
 # - import_playbook: services/lxc/grafana/main.yml
 
 # ▖▖▄▖
@@ -60,7 +60,7 @@
 # ▌▌▙▌▄▌
 #
 
-# - import_playbook: services/vms/k3s/main.yml
+- import_playbook: services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘

@@ -13,7 +13,7 @@
     proxmox_api_ip: "{{ proxmox_node_ip }}"
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
-    vm_root_password: "{{ ansible_become_pass }}"
+    vm_password: "{{ ansible_become_pass }}"
     vm_common_tags: [ k3s ]
 
   tasks:
@@ -31,7 +31,7 @@
         create_vm__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
         create_vm__vm_vmid: "{{ proxmox_node_id }}{{ common.k3s.masters_ips_start_range + i }}"
         create_vm__vm_hostname: "k3s-master-{{ proxmox_node_id }}-{{ i + 1 }}"
-        create_vm__vm_password: "{{ vm_root_password }}"
+        create_vm__vm_password: "{{ vm_password }}"
         create_vm__vm_gateway: "{{ proxmox_node_bridge_ip }}"
         create_vm__vm_ip_with_cidr: "{{ master_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
         create_vm__vm_tags: "{{ vm_common_tags + ['master'] }}"
@@ -52,7 +52,7 @@
         create_vm__clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
         create_vm__vm_vmid: "{{ proxmox_node_id }}{{ common.k3s.nodes_ips_start_range + i }}"
         create_vm__vm_hostname: "k3s-node-{{ proxmox_node_id }}-{{ i + 1 }}"
-        create_vm__vm_root_password: "{{ vm_root_password }}"
+        create_vm__vm_password: "{{ vm_password }}"
         create_vm__vm_gateway: "{{ proxmox_node_bridge_ip }}"
         create_vm__vm_ip_with_cidr: "{{ node_ipv4 }}/{{ common.subnet.ipv4_cidr }}"
         create_vm__vm_tags: "{{ vm_common_tags + ['node'] }}"
