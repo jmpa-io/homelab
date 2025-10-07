@@ -9,7 +9,7 @@ Wants=network-online.target dnsmasq.service
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/dnsmasq_exporter
+ExecStart=/usr/local/bin/dnsmasq_exporter --listen {{ ansible_host }}:{{ host.dnsmasq_exporter.metrics_port }}
 Restart=always
 RestartSec=90s
 
