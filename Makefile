@@ -9,14 +9,25 @@ endif
 #
 
 DOMAIN ?= jmpa.lab
+INVENTORY ?= inventory/main.py
 
 #
 # Targets.
 #
 
-ping-inventory: ## Pings the Ansible inventory.
-ping-inventory: inventory/main.py
+ping-inventory: ## Pings ALL instances in the Ansible inventory.
+ping-inventory: $(INVENTORY)
 	@ansible all -i $< -m ping
+
+ping-hosts: ## Ping ONLY proxmox_hosts in the Ansible inventory (VPS + Proxmox Hosts)
+ping-hosts: $(INVENTORY)
+	@ansible proxmox_hosts -i $< -m ping
+
+ping-nas: ## Ping only NAS instances in the Ansible inventory.
+ping-nas: $(INVENTORY)
+	@ansible nas -i $< -m ping
+
+.PHONY += ping-inventory ping-hosts ping-nas
 
 print-inventory-no-jq: inventory/main.py # Outputs the contents of the dynamic Ansible inventory, without formatting.
 	@python $<

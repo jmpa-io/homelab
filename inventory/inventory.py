@@ -1,84 +1,105 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from copy import deepcopy
 import random
 
-from host import Host
+from instances.host import Host
+from instances.nas import NAS
+from instances.vps import VPS
 from k8s_inventory import K8sInventory
 
 
 @dataclass
 class Inventory:
-  # Proxmox host config.
-  hosts: Dict[str, Host] = field(default_factory=dict)
+  # Instance config - can be Host, NAS, VPS, etc.
+  instances: Dict[str, Union[Host, NAS, VPS]] = field(default_factory=dict)
   vars: Dict[str, Any] = field(default_factory=dict)
 
   # Kubernetes config.
   kube_inventory: Optional[K8sInventory] = None
 
-  # Internal host counter.
-  _next_id: int = field(default=1, init=False, repr=False)
+  # Internal instance counter.
+  _next_id_per_type: Dict[str, int] = field(default_factory=lambda: {'Host': 1, 'VPS': 1, 'NAS': 1}, init=False, repr=False)
 
-  def add_host(self, host: Host):
-    """Adds a single host to the inventory."""
-    host_id = self._next_id
+  def add_instance(self, instance: Union[Host, NAS, VPS]):
+    """Adds a single instance to the inventory."""
+    instance_type = type(instance).__name__
+    instance_id = self._next_id_per_type[instance_type]
 
-    # Setup name of host.
-    host.name = host.name.format(id=host_id)
+    # Setup name of instance.
+    instance.name = instance.name.format(id=instance_id)
 
-    # Setup bridge.
-    host.bridge = deepcopy(host.bridge)  # Ensure a unique bridge for a host.
-    for attr in ('ipv4', 'ipv4_with_cidr', 'subnet', 'subnet_with_cidr'):
-      setattr(host.bridge, attr, getattr(host.bridge, attr).format(id=host_id))
+    # Bridge setup (Host only).
+    if isinstance(instance, Host):
+        instance.bridge = deepcopy(instance.bridge)  # Ensure a unique bridge for a host.
+        for attr in ('ipv4', 'ipv4_with_cidr', 'subnet', 'subnet_with_cidr'):
+            setattr(instance.bridge, attr, getattr(instance.bridge, attr).format(id=instance_id))
 
-    # Assign IPs to services, using bridge.
-    host.services = deepcopy(host.services)  # Ensure a unique list of services for a host.
-    for s in host.services:
-      s.ipv4 = f'{host.bridge.ipv4_prefix}.{host_id}.{s.container_id}'
-      s.ipv4_cidr = host.bridge.ipv4_cidr
-      s.ipv4_with_cidr = f'{s.ipv4}/{host.bridge.ipv4_cidr}'
+    # Container services setup (Host & VPS only).
+    if hasattr(instance, 'lxc_services') and instance.lxc_services:
+        instance.lxc_services = deepcopy(instance.lxc_services)
+        for s in instance.lxc_services:
+            if isinstance(instance, Host):
+                # Use host bridge to assign IP
+                s.ipv4 = f'{instance.bridge.ipv4_prefix}.{instance_id}.{s.container_id}'
+                s.ipv4_cidr = instance.bridge.ipv4_cidr
+                s.ipv4_with_cidr = f'{s.ipv4}/{instance.bridge.ipv4_cidr}'
 
-    # Setup static_records for the 'nginx_reverse_proxy' service.
-    proxy = next((s for s in host.services if s.is_proxy), None)
-    if proxy:
+    # Proxy static records (Host only).
+    if isinstance(instance, Host) and hasattr(instance, 'lxc_services'):
+        self._setup_proxy_static_records(instance)
+
+    # Add instance, using an ansible-appropriate name.
+    self.instances[instance.name.replace('-', '_')] = instance
+
+    # Build or update the global service map.
+    self.build_global_service_map()
+
+    # Build or update the global k8s configuration.
+    self.build_global_kube_configuration()
+
+    # Increment internal instance counter.
+    self._next_id_per_type[instance_type] += 1
+
+
+  def add_instances(self, *instances: Union[Host, NAS, VPS]):
+    """Adds multiple instances to the inventory."""
+    for instance in instances:
+      self.add_instance(instance)
+
+  def _setup_proxy_static_records(self, instance):
+    """Setup static records for proxy services on a host instance."""
+    # Find proxy services (services that should act as reverse proxies)
+    proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
+    
+    for proxy in proxy_services:
+      # Create static records for this proxy
       proxy.static_records = [
         {
           'subdomain': s.name,
           'forward_to_ipv4_with_port': f'{s.ipv4}:{s.default_port}',
           'protocol': s.protocol.value,
         }
-        for s in host.services
-        if (not s.is_proxy and s.default_port and s.add_to_proxy_static_records and s.protocol)
+        for s in instance.lxc_services
+        if (not self._is_proxy_service(s) and s.default_port and s.add_to_proxy_static_records and s.protocol)
       ]
 
-    # Add host, using an ansible-appropriate name.
-    self.hosts[host.name.replace('-', '_')] = host
-
-    # Build or update the global service map.
-    # NOTE: This must be run AFTER adding the host to the 'hosts' dictionary.
-    self.build_global_service_map()
-
-    # Build or update the global k8s configuration.
-    # NOTE: This must be run AFTER adding the host to the 'hosts' dictionary.
-    self.build_global_kube_configuration()
-
-    # Increment internal host counter.
-    self._next_id += 1
-
-  def add_hosts(self, *hosts: Host):
-    """Adds multiple hosts to the inventory."""
-    for host in hosts:
-      self.add_host(host)
+  def _is_proxy_service(self, service):
+    """Determine if a service should act as a reverse proxy."""
+    # This is where you can define the logic for what makes a service a proxy
+    # For now, we'll use the name-based approach, but this could be made more flexible
+    return service.name == 'nginx_reverse_proxy'
 
   def build_global_service_map(self):
     """Builds a global service map from all proxy services' static records."""
     service_map = {}
-    
-    for host in self.hosts.values():
-      proxy_services = [s for s in host.services if s.is_proxy]
-      for proxy in proxy_services:
-        self._add_proxy_records_to_service_map(proxy, service_map)
-    
+
+    for instance in self.instances.values():
+      if isinstance(instance, Host):  # Only Host instances have proxy services
+        proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
+        for proxy in proxy_services:
+          self._add_proxy_records_to_service_map(proxy, service_map)
+
     self.vars['common']['global_service_map'] = service_map
 
   def _add_proxy_records_to_service_map(self, proxy_service, service_map):
@@ -87,51 +108,63 @@ class Inventory:
       service_name = record['subdomain']
       backend = record['forward_to_ipv4_with_port']
       protocol = record['protocol']
-      
+
       # Use setdefault to avoid the if/not in pattern
       service_entry = service_map.setdefault(service_name, {
         'backends': [],
         'protocol': protocol
       })
-      
+
       service_entry['backends'].append(backend)
 
   def build_global_kube_configuration(self):
     if not self.kube_inventory:
       return
 
-    for i, (name, host) in enumerate(self.hosts.items(), start=1):
-      masters = []
-      nodes = []
-      prefix = f'{host.bridge.ipv4_prefix}.{i}'
-      for j in range(self.kube_inventory.masters_per_host):
-        id = self.kube_inventory.masters_ips_start_range + j
-        if id > self.kube_inventory.masters_ips_end_range:
-          break
-        masters.append(f'{prefix}.{id}')
+    for i, (name, instance) in enumerate(self.instances.items(), start=1):
+      if isinstance(instance, Host):  # Only Host instances support K8s
+        masters = []
+        nodes = []
+        prefix = f'{instance.bridge.ipv4_prefix}.{i}'
+        for j in range(self.kube_inventory.masters_per_host):
+          id = self.kube_inventory.masters_ips_start_range + j
+          if id > self.kube_inventory.masters_ips_end_range:
+            break
+          masters.append(f'{prefix}.{id}')
 
-      for j in range(self.kube_inventory.nodes_per_host):
-        id = self.kube_inventory.nodes_ips_start_range + j
-        if id > self.kube_inventory.nodes_ips_end_range:
-          break
-        nodes.append(f'{prefix}.{id}')
+        for j in range(self.kube_inventory.nodes_per_host):
+          id = self.kube_inventory.nodes_ips_start_range + j
+          if id > self.kube_inventory.nodes_ips_end_range:
+            break
+          nodes.append(f'{prefix}.{id}')
 
-      host.k8s_masters = masters
-      host.k8s_nodes = nodes
+        instance.k8s_masters = masters
+        instance.k8s_nodes = nodes
 
   def to_dict(self):
     """
     Generates the Ansible dynamic inventory as a dictionary.
     """
+    # Separate instances by type
+    host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (Host, VPS))}
+    nas_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
 
+    # Build hostvars for all instances
+    hostvars = {name: inst.to_dict() for name, inst in self.instances.items()}
+
+    # 'all' includes all instances
     out = {
-      '_meta': {
-        'hostvars': {name: h.to_dict() for name, h in self.hosts.items()},
-      },
-      'all': {
-        'vars': self.vars,
-        'hosts': list(self.hosts.keys()),
-      },
+        '_meta': {'hostvars': hostvars},
+        'all': {
+            'hosts': list(self.instances.keys()),
+            'vars': self.vars
+        },
+        'proxmox_hosts': {
+            'hosts': list(host_instances.keys())
+        },
+        'nas': {
+            'hosts': list(nas_instances.keys())
+        }
     }
 
     # Return early when there is no given kube_inventory.
@@ -140,9 +173,10 @@ class Inventory:
 
     # Setup masters & nodes.
     master_ips = []; node_ips = []
-    for host in self.hosts.values():
-      master_ips.extend(host.k8s_masters)
-      node_ips.extend(host.k8s_nodes)
+    for instance in self.instances.values():
+      if isinstance(instance, Host):  # Only Host instances support K8s
+        master_ips.extend(instance.k8s_masters)
+        node_ips.extend(instance.k8s_nodes)
 
     # Add k3s values to the default inventory.
     out['all']['vars']['common']['k3s'] = {
@@ -163,7 +197,8 @@ class Inventory:
     }
 
     # Decide api_endpoint.
-    out['k3s_cluster']['vars']['api_endpoint'] = random.choice(master_ips)
+    if master_ips:
+      out['k3s_cluster']['vars']['api_endpoint'] = random.choice(master_ips)
 
     # Add masters.
     if master_ips:

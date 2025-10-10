@@ -4,15 +4,16 @@ import json
 from ssm import SSMClient
 from env import read_env_var
 
-from bridge import Bridge
-from host import Host, Collector, DnsmasqExporter
-from service import Service, Protocol
+from instances import Host, VPS, NAS
+from instances.host import HostBridge
+from service import LXCService, HostService, Protocol
 from inventory import Inventory
 
 from k8s_inventory import K8sInventory
 
 
 def main():
+
   # Setup client for AWS SSM Parameter Store.
   ssm_client = SSMClient(read_env_var('AWS_REGION', None, True))
 
@@ -22,7 +23,7 @@ def main():
   inventory_vars = {
     'ansible_ssh_pass': ssm_client.get_parameter('/homelab/ssh-password'),
     'ansible_become_pass': ssm_client.get_parameter('/homelab/root-password'),
-    'ansible_python_interpreter': read_env_var('ANSIBLE_PYTHON_INTERPRETER', '/usr/bin/python3.11'),
+    'ansible_python_interpreter': read_env_var('ANSIBLE_PYTHON_INTERPRETER', '/usr/bin/python3'),
     'common': {
       'internet_gateway': {
         "ipv4": ssm_client.get_parameter('/homelab/internet-gateway')
@@ -56,17 +57,17 @@ def main():
   # Setup services.
   #
 
-  nginx_reverse_proxy = Service(
+  nginx_reverse_proxy = LXCService(
     name='nginx_reverse_proxy',
     container_id=read_env_var('NGINX_REVERSE_PROXY_CONTAINER_ID', '5'),
   )
 
-  tailscale_gateway = Service(
+  tailscale_gateway = LXCService(
     name='tailscale_gateway',
     container_id=read_env_var('TAILSCALE_GATEWAY_CONTAINER_ID', '15'),
   )
 
-  prometheus = Service(
+  prometheus = LXCService(
     name='prometheus',
     container_id=read_env_var('PROMETHEUS_CONTAINER_ID', '40'),
     default_port=read_env_var('PROMETHEUS_PORT', '9090'),
@@ -74,7 +75,7 @@ def main():
     add_to_proxy_static_records=False,
   )
 
-  grafana = Service(
+  grafana = LXCService(
     name='grafana',
     container_id=read_env_var('GRAFANA_CONTAINER_ID', '45'),
     default_port=read_env_var('GRAFANA_PORT', '3000'),
@@ -85,7 +86,7 @@ def main():
   # Setup bridge.
   #
 
-  bridge = Bridge(
+  bridge = HostBridge(
     name=read_env_var('HOST_BRIDGE_NAME', 'vmbr0'),
     ipv4_prefix=read_env_var('HOST_BRIDGE_IPV4_PREFIX', '10.0'),
     ipv4_suffix=read_env_var('HOST_BRIDGE_IPV4_SUFFIX', '1'),
@@ -93,21 +94,17 @@ def main():
   )
 
   #
-  # Setup collector.
+  # Setup host services.
   #
-
-  collector = Collector(
+  collector = HostService(
+    name='collector', 
     metrics_port=read_env_var('HOST_OTELCOL_METRICS_PORT', '8889'),
   )
-
-  #
-  # Setup dnsmasq_exporter.
-  #
-
-  dnsmasq_exporter = DnsmasqExporter(
+  dnsmasq_exporter = HostService(
+    name='dnsmasq_exporter', 
     metrics_port=read_env_var("HOST_DNSMASQ_EXPORTER_METRICS_PORT", '9153'),
   )
-
+  
   #
   # Setup k3s config.
   #
@@ -133,15 +130,17 @@ def main():
   #
 
   inventory = Inventory(vars=inventory_vars, kube_inventory=kube_inventory)
-  inventory.add_hosts(
+  inventory.add_instances(
     Host(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-server-1/ipv4-address'),
       ipv4_cidr=default_cidr,
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-1/wifi-device-name'),
       bridge=bridge,
-      collector=collector,
-      dnsmasq_exporter=dnsmasq_exporter,
-      services=[
+      host_services=[
+        collector, 
+        dnsmasq_exporter,
+      ],
+      lxc_services=[
         nginx_reverse_proxy,
         tailscale_gateway,
         prometheus,
@@ -153,9 +152,11 @@ def main():
       ipv4_cidr=default_cidr,
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-2/wifi-device-name'),
       bridge=bridge,
-      collector=collector,
-      dnsmasq_exporter=dnsmasq_exporter,
-      services=[
+      host_services=[
+        collector, 
+        dnsmasq_exporter,
+      ],
+      lxc_services=[
         nginx_reverse_proxy,
         tailscale_gateway,
         prometheus,
@@ -167,15 +168,27 @@ def main():
       ipv4_cidr=default_cidr,
       wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-3/wifi-device-name'),
       bridge=bridge,
-      collector=collector,
-      dnsmasq_exporter=dnsmasq_exporter,
-      services=[
+      host_services=[
+        collector, 
+        dnsmasq_exporter,
+      ],
+      lxc_services=[
         nginx_reverse_proxy,
         tailscale_gateway,
         prometheus,
         grafana,
       ],
     ),
+  )
+  inventory.add_instances(
+    NAS(
+      ipv4=ssm_client.get_parameter('/homelab/nas-1/ipv4-address'),
+      ipv4_cidr=default_cidr,
+      wifi_device_name=ssm_client.get_parameter('/homelab/nas-1/wifi-device-name'),
+      host_services=[
+        collector, 
+      ],
+    )
   )
 
   # Print inventory as JSON.

@@ -1,5 +1,17 @@
 ---
 
+# ▖ ▖▄▖▄▖
+# ▛▖▌▌▌▚
+# ▌▝▌▛▌▄▌
+#
+
+- name: Setup NAS.
+  hosts: nas
+  roles:
+
+    # packages.
+    - instances/nas/base
+
 # ▖▖    ▗
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
@@ -7,7 +19,7 @@
 #
 
 # - name: Setup proxmox-hosts.
-#   hosts: all
+#   hosts: proxmox_hosts
 #   roles:
 #
 #     # packages.
@@ -60,7 +72,7 @@
 # ▌▌▙▌▄▌
 #
 
-- import_playbook: services/vms/k3s/main.yml
+# - import_playbook: services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘

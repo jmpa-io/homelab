@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional
+from typing import Optional, List, Dict
 from enum import Enum
 
 @dataclass
@@ -9,10 +9,23 @@ class Protocol(Enum):
 
 @dataclass
 class Service:
+  """Base class for all services."""
   name: str
+
+  def to_dict(self) -> dict:
+    return asdict(self)
+
+@dataclass
+class HostService(Service):
+  """Service running directly on the host (e.g., collectors/exporters)."""
+  metrics_port: str
+
+@dataclass
+class LXCService(Service):
+  """Service running in an LXC container."""
   container_id: int
-  default_port: Optional[str] = None
-  protocol: Optional[Protocol] = None
+  default_port: str = ''
+  protocol: Protocol = field(default_factory=lambda: Protocol.HTTP)
   add_to_proxy_static_records: bool = True
 
   # These values are populated when this Service is added to an Inventory.
@@ -20,15 +33,6 @@ class Service:
   ipv4_cidr: str = field(init=False, default='')  # eg. '24'
   ipv4_with_cidr: str = field(init=False, default='')  # eg. '10.0.1.1/24'
 
-  # NOTE: this section below is specific to the 'nginx_reverse_proxy' service.
-  @property
-  def is_proxy(self) -> bool:
-    return self.name == 'nginx_reverse_proxy'
+  # Static records for proxy services - populated by inventory logic
+  static_records: List[Dict[str, str]] = field(default_factory=list, init=False)
 
-  # - The 'static_records' variable is populated when this Service is added to an Inventory.
-  static_records: List[Dict[str, str]] = field(default_factory=list)
-
-  # ---
-
-  def to_dict(self) -> dict:
-    return asdict(self)
