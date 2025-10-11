@@ -1,7 +1,7 @@
 ---
 
 nfs:
-  src: "{{ all[0].ansible_host }}"
+  src: "{{ hostvars[groups['nas'][0]]['ansible_host'] }}"
   dest: /mnt/share
 
 packages:

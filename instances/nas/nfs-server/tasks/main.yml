@@ -1,0 +1,74 @@
+---
+
+- name: Setup apt + install packages.
+  include_tasks: tasks/apt/main.yml
+
+- name: Create network directory
+  become: true
+  file:
+    path: /mnt/share
+    state: directory
+    mode: '0777'
+
+- name: Update /etc/exports
+  become: true
+  ansible.builtin.template:
+    src: etc/exports.j2
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Refresh exportfs
+  become: true
+  command: exportfs -a
+
+- name: Restart nfs-kernel-service
+  become: true
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    state: restarted
+#
+# - name: Stop and disable NFS server
+#   ansible.builtin.systemd:
+#     name: nfs-kernel-server
+#     state: stopped
+#     enabled: false
+#   ignore_errors: true
+#
+# - name: Restore /etc/exports from most recent backup if present
+#   ansible.builtin.shell: |
+#     backup=$(ls -1t /etc/exports* 2>/dev/null | grep -v '^/etc/exports$' | head -n1)
+#     if [ -n "$backup" ]; then cp -f "$backup" /etc/exports; fi
+#   args:
+#     warn: false
+#   register: restore_exports
+#   changed_when: restore_exports.rc == 0 and restore_exports.stdout != ""
+#
+# - name: Ensure export for /mnt/share is absent from /etc/exports
+#   ansible.builtin.lineinfile:
+#     path: /etc/exports
+#     regexp: '^/mnt/share\b'
+#     state: absent
+#   when: ansible_facts is defined
+#
+# - name: Refresh exportfs (apply /etc/exports)
+#   ansible.builtin.command: exportfs -ra
+#   ignore_errors: true
+#
+# - name: Remove /mnt/share directory (data will be deleted) - only if empty or you want removal
+#   ansible.builtin.file:
+#     path: /mnt/share
+#     state: absent
+#
+# - name: Remove NFS packages (apt)
+#   ansible.builtin.apt:
+#     name:
+#       - nfs-kernel-server
+#       - nfs-common
+#     state: absent
+#     purge: yes
+#     autoremove: yes
+#   when: ansible_facts is defined
+

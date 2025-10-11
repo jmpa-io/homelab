@@ -5,13 +5,16 @@
 # ▌▝▌▛▌▄▌
 #
 
-- name: Setup NAS.
-  hosts: nas
-  roles:
-
-    # packages.
-    - instances/nas/base
-
+# - name: Setup NAS.
+#   hosts: nas
+#   roles:
+#
+#     # packages.
+#     - instances/nas/base
+#
+#     # nfs server.
+#     - instances/nas/nfs-server
+#
 # ▖▖    ▗
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
@@ -25,8 +28,8 @@
 #     # packages.
 #     - instances/proxmox-hosts/base
 #
-    # networking & dns.
-    # - instances/proxmox-hosts/networking-and-dns
+#     # networking & dns.
+#     - instances/proxmox-hosts/networking-and-dns
 #
 #     # tailscale.
 #     - instances/proxmox-hosts/tailscale
@@ -34,9 +37,12 @@
 #     # systemd.
 #     - instances/proxmox-hosts/systemd
 #
-    # observability.
-    # - instances/proxmox-hosts/opentelemetry-collector
-
+#     # nfs client.
+#     - instances/proxmox-hosts/nfs-client
+#
+#     # observability.
+#     - instances/proxmox-hosts/opentelemetry-collector
+#
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
 # ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌

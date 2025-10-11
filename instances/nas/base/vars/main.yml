@@ -1,0 +1,7 @@
+---
+
+packages:
+  - curl
+  - samba
+  - samba-common-bin
+  - deborphan

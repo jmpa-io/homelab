@@ -27,4 +27,5 @@ packages:
   - python3-pip
   - python3-proxmoxer
   - libguestfs-tools
+  - deborphan
 
