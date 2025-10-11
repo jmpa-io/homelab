@@ -7,10 +7,8 @@
   loop:
     - create_vm__proxmox_node_name
     - create_vm__proxmox_node_bridge_name
-    # ---
     - create_vm__proxmox_api_ip
     - create_vm__proxmox_api_token_secret
-    # ---
     - create_vm__vm_vmid
     - create_vm__vm_hostname
     - create_vm__vm_password
@@ -20,7 +18,7 @@
 
 - name: Create VM, refreshed if needed.
   block:
-    - name: Stop and / or remove existing VM.
+    - name: Stop and/or remove existing VM.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm__proxmox_api_ip }}"
         api_user: "{{ create_vm__proxmox_api_user }}"
@@ -35,6 +33,18 @@
         - absent
       ignore_errors: true
 
+    - name: Remove existing VM disk if present
+      become: true
+      ansible.builtin.file:
+        path: "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-disk-0.qcow2"
+        state: absent
+
+    - name: Remove existing cloud-init disk if present
+      become: true
+      ansible.builtin.file:
+        path: "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-cloudinit.qcow2"
+        state: absent
+
     - name: Create VM (cloned from template).
       community.general.proxmox_kvm:
         api_host: "{{ create_vm__proxmox_api_ip }}"
@@ -43,19 +53,16 @@
         api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
         node: "{{ create_vm__proxmox_node_name }}"
         name: "{{ create_vm__vm_hostname }}"
-        # ---
         clone: "{{ create_vm__vm_clone_from_name }}"
         vmid: "{{ create_vm__vm_clone_from_vmid }}"
         newid: "{{ create_vm__vm_vmid }}"
         ciuser: "{{ create_vm__vm_username }}"
         cipassword: "{{ create_vm__vm_password }}"
-        # ipconfig:
-        #   ipconfig0: "ip={{ create_vm__vm_ip_with_cidr }},gw={{ create_vm__vm_gateway }}"
         full: true
         state: present
         timeout: 600
 
-    - name: Update VM with any changes.
+    - name: Update VM configuration (tags, etc.).
       community.general.proxmox_kvm:
         api_host: "{{ create_vm__proxmox_api_ip }}"
         api_user: "{{ create_vm__proxmox_api_user }}"
@@ -67,7 +74,7 @@
         state: present
         update: true
 
-    - name: Set ipconfig for instance (not working above, for some reason).
+    - name: Set IP config.
       become: true
       shell: |
         set -e
@@ -91,7 +98,7 @@
         timeout: 120
 
   rescue:
-    - name: Error encountered, clean up VM if able.
+    - name: Cleanup VM if creation fails.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm__proxmox_api_ip }}"
         api_user: "{{ create_vm__proxmox_api_user }}"
@@ -104,3 +111,4 @@
         - stopped
         - absent
       ignore_errors: true
+

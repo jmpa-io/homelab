@@ -67,12 +67,11 @@ class Host(ContainerInstance):
       'host': host,
       'services': services,
     }
-
     if self.k8s_masters or self.k8s_nodes:
-      out['k3s'] = {}
+      k3s_dict: dict[str, list[str]] = {}
       if self.k8s_masters:
-        out['k3s']['masters'] = self.k8s_masters
+        k3s_dict['masters'] = self.k8s_masters
       if self.k8s_nodes:
-        out['k3s']['nodes'] = self.k8s_nodes
-
+        k3s_dict['nodes'] = self.k8s_nodes
+      out['k3s'] = k3s_dict
     return out

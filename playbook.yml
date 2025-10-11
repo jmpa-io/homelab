@@ -48,20 +48,7 @@
 # ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌
 #        ▌
 
-# - import_playbook: playbooks/proxmox-templates/debian-12-nocloud-amd64/main.yml
-
-# ▖ ▖▄▖▄▖
-# ▛▖▌▙▖▚
-# ▌▝▌▌ ▄▌
-#
-
-# - name: Setup NFS (servers).
-#   hosts: all[0]
-#   roles: [instances/proxmox-hosts/nfs-server]
-#
-# - name: Setup NFS (clients).
-#   hosts: all[1:]
-#   roles: [instances/proxmox-hosts/nfs-client]
+- import_playbook: playbooks/proxmox-templates/debian-12-nocloud-amd64/main.yml
 
 # ▖ ▖▖▄▖ ▄▖    ▗   ▘
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘

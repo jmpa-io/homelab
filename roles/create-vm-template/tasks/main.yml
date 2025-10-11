@@ -7,10 +7,8 @@
   loop:
     - create_vm_template__proxmox_node_name
     - create_vm_template__proxmox_node_bridge_name
-    # ---
     - create_vm_template__proxmox_api_ip
     - create_vm_template__proxmox_api_token_secret
-    # ---
     - create_vm_template__template_name
     - create_vm_template__template_image_url
     - create_vm_template__template_vmid
@@ -18,7 +16,7 @@
 
 - name: Create template, refreshed if needed.
   block:
-    - name: Stop and / or remove existing VM.
+    - name: Stop and/or remove existing VM.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm_template__proxmox_api_ip }}"
         api_user: "{{ create_vm_template__proxmox_api_user }}"
@@ -60,7 +58,7 @@
         set -e
         qemu-img convert -O qcow2 -c -o preallocation=off \
           "{{ create_vm_template__temporary_image_path }}" \
-          "{{ create_vm_template__temporary_compressed_image_path}}"
+          "{{ create_vm_template__temporary_compressed_image_path }}"
 
     - name: Create empty VM.
       community.general.proxmox_kvm:
@@ -71,14 +69,13 @@
         node: "{{ create_vm_template__proxmox_node_name }}"
         vmid: "{{ create_vm_template__template_vmid }}"
         name: "{{ create_vm_template__template_name }}"
-        # ---
         cores: "{{ create_vm_template__vm_cores }}"
         memory: "{{ create_vm_template__vm_memory }}"
         net:
           net0: "virtio,bridge={{ create_vm_template__proxmox_node_bridge_name }}"
         ostype: l26
         scsihw: virtio-scsi-pci
-        bios: ovmf
+        bios: seabios
         machine: q35
         agent: enabled=1
         onboot: false
@@ -102,12 +99,6 @@
         qm set {{ create_vm_template__template_vmid }} --boot order=scsi0
         qm resize {{ create_vm_template__template_vmid }} scsi0 {{ create_vm_template__vm_disk }}
 
-    - name: Set EFI
-      become: true
-      shell: |
-        set -e
-        qm set {{ create_vm_template__template_vmid }} --efidisk0 {{ create_vm_template__vm_storage }}:4,efitype=4m,pre-enrolled-keys=1
-
     - name: Configure VM.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm_template__proxmox_api_ip }}"
@@ -117,7 +108,6 @@
         node: "{{ create_vm_template__proxmox_node_name }}"
         vmid: "{{ create_vm_template__template_vmid }}"
         name: "{{ create_vm_template__template_name }}"
-        # ---
         serial:
           serial0: socket
         vga: serial0
@@ -136,6 +126,9 @@
         if qm config {{ create_vm_template__template_vmid }} | grep -q '^scsi2:'; then
           qm set {{ create_vm_template__template_vmid }} --delete scsi2
         fi
+        find /var/lib/vz/images/{{ create_vm_template__template_vmid }}/ -name "vm-{{ create_vm_template__template_vmid }}-cloudinit.qcow2" -delete || true
+      args:
+        warn: false
 
     - name: Regenerate cloud-init config.
       become: true
@@ -143,16 +136,16 @@
         set -e
         qm set {{ create_vm_template__template_vmid }} --scsi2 {{ create_vm_template__vm_storage }}:cloudinit
         qm cloudinit update {{ create_vm_template__template_vmid }}
-
-    - name: Convert VM to template
-      community.general.proxmox_kvm:
-        api_host: "{{ create_vm_template__proxmox_api_ip }}"
-        api_user: "{{ create_vm_template__proxmox_api_user }}"
-        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
-        node: "{{ create_vm_template__proxmox_node_name }}"
-        vmid: "{{ create_vm_template__template_vmid }}"
-        name: "{{ create_vm_template__template_name }}"
-        state: template
-        timeout: 120
+    #
+    # - name: Convert VM to template.
+    #   community.general.proxmox_kvm:
+    #     api_host: "{{ create_vm_template__proxmox_api_ip }}"
+    #     api_user: "{{ create_vm_template__proxmox_api_user }}"
+    #     api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+    #     api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+    #     node: "{{ create_vm_template__proxmox_node_name }}"
+    #     vmid: "{{ create_vm_template__template_vmid }}"
+    #     name: "{{ create_vm_template__template_name }}"
+    #     state: template
+    #     timeout: 120
 
