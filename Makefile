@@ -64,7 +64,6 @@ deploy-k3s: ## TODO
 deploy-k3s: dist/k3s-inventory.json
 	ansible-playbook k3s.orchestration.site -i $<
 
-
 PHONY += create-k3s-inventory dist/k3s-inventory.json
 
 #

@@ -49,7 +49,7 @@
         create_vm__proxmox_node_bridge_name: "{{ proxmox_node_bridge_name }}"
         create_vm__proxmox_api_ip: "{{ proxmox_api_ip }}"
         create_vm__proxmox_api_token_secret: "{{ proxmox_api_token_secret }}"
-        create_vm__clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
+        create_vm__vm_clone_from_vmid: "{{ 10000 + inventory_hostname.split('_')[-1] | int }}"
         create_vm__vm_vmid: "{{ proxmox_node_id }}{{ common.k3s.nodes_ips_start_range + i }}"
         create_vm__vm_hostname: "k3s-node-{{ proxmox_node_id }}-{{ i + 1 }}"
         create_vm__vm_password: "{{ vm_password }}"

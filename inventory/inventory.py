@@ -71,7 +71,7 @@ class Inventory:
     """Setup static records for proxy services on a host instance."""
     # Find proxy services (services that should act as reverse proxies)
     proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
-    
+
     for proxy in proxy_services:
       # Create static records for this proxy
       proxy.static_records = [
@@ -189,7 +189,7 @@ class Inventory:
       'vars': {
         'k3s_version': self.kube_inventory.version,
         'ansible_user': self.kube_inventory.ansible_user,
-        'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key,
+        # 'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
         'token': self.kube_inventory.token,
       },

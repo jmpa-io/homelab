@@ -48,7 +48,7 @@
 # ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌
 #        ▌
 
-- import_playbook: playbooks/proxmox-templates/debian-12-nocloud-amd64/main.yml
+# - import_playbook: playbooks/proxmox-templates/debian-12-nocloud-amd64/main.yml
 
 # ▖ ▖▖▄▖ ▄▖    ▗   ▘
 # ▌ ▚▘▌  ▌ ▛▌▛▌▜▘▀▌▌▛▌█▌▛▘▛▘
@@ -65,7 +65,7 @@
 # ▌▌▙▌▄▌
 #
 
-# - import_playbook: services/vms/k3s/main.yml
+- import_playbook: services/vms/k3s/main.yml
 
 # ▄     ▌
 # ▌▌▛▌▛▘▙▘█▌▛▘

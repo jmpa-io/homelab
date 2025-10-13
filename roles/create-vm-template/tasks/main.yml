@@ -58,7 +58,7 @@
         set -e
         qemu-img convert -O qcow2 -c -o preallocation=off \
           "{{ create_vm_template__temporary_image_path }}" \
-          "{{ create_vm_template__temporary_compressed_image_path }}"
+          "{{ create_vm_template__temporary_compressed_image_path}}"
 
     - name: Create empty VM.
       community.general.proxmox_kvm:
@@ -75,7 +75,7 @@
           net0: "virtio,bridge={{ create_vm_template__proxmox_node_bridge_name }}"
         ostype: l26
         scsihw: virtio-scsi-pci
-        bios: seabios
+        bios: seabios        # <-- legacy BIOS
         machine: q35
         agent: enabled=1
         onboot: false
@@ -91,15 +91,62 @@
           "{{ create_vm_template__vm_storage }}" \
           --format qcow2
 
-    - name: Set & resize disk.
+    - name: Ensure VM is stopped before disk attach
       become: true
       shell: |
-        set -e
-        qm set {{ create_vm_template__template_vmid }} --scsi0 {{ create_vm_template__vm_storage }}:0
-        qm set {{ create_vm_template__template_vmid }} --boot order=scsi0
-        qm resize {{ create_vm_template__template_vmid }} scsi0 {{ create_vm_template__vm_disk }}
+        if qm status {{ create_vm_template__template_vmid }} 2>/dev/null | grep -q running; then
+          qm stop {{ create_vm_template__template_vmid }}
+          sleep 2
+        fi
+      args:
+        executable: /bin/bash
 
-    - name: Configure VM.
+    - name: Show current VM config (debug)
+      become: true
+      shell: qm config {{ create_vm_template__template_vmid }}
+      register: qm_config_before
+      changed_when: false
+
+    - name: Attach imported disk and set boot (safe)
+      become: true
+      shell: |
+        set -euo pipefail
+        VMID={{ create_vm_template__template_vmid }}
+        TARGET_SIZE="{{ create_vm_template__vm_disk | default('') }}"
+        # find first unused storage ref (e.g. local:10001/vm-10001-disk-2.qcow2)
+        DISK_REF=$(qm config "$VMID" | awk '/^unused/ {print $2; exit}' || true)
+        if [ -z "$DISK_REF" ]; then
+          echo "NO unused disk found for VM $VMID" >&2
+          exit 2
+        fi
+        echo "Found unused disk: $DISK_REF"
+
+        # Save existing scsi0 for rollback (may be empty)
+        OLD_SCsi0=$(qm config "$VMID" | awk -F': ' '/^scsi0:/ {print $2; exit}' || true)
+        echo "Old scsi0: $OLD_SCsi0" > /tmp/qm-${VMID}-old-scsi0 || true
+
+        # attach as scsi0 and set boot
+        qm set "$VMID" --scsi0 "$DISK_REF"
+        qm set "$VMID" --boot order=scsi0
+        qm set "$VMID" --bootdisk scsi0
+
+        # best-effort resize
+        if [ -n "$TARGET_SIZE" ]; then
+          qm resize "$VMID" scsi0 "$TARGET_SIZE" || true
+        fi
+
+        echo "attached $DISK_REF -> $VMID scsi0"
+      args:
+        executable: /bin/bash
+      register: attach_result
+
+    - name: Show post-change VM config (debug)
+      become: true
+      shell: qm config {{ create_vm_template__template_vmid }}
+      register: qm_config_after
+      changed_when: false
+
+    - name: Configure VM with cloud-init.
       community.general.proxmox_kvm:
         api_host: "{{ create_vm_template__proxmox_api_ip }}"
         api_user: "{{ create_vm_template__proxmox_api_user }}"
@@ -127,8 +174,6 @@
           qm set {{ create_vm_template__template_vmid }} --delete scsi2
         fi
         find /var/lib/vz/images/{{ create_vm_template__template_vmid }}/ -name "vm-{{ create_vm_template__template_vmid }}-cloudinit.qcow2" -delete || true
-      args:
-        warn: false
 
     - name: Regenerate cloud-init config.
       become: true
