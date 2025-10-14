@@ -45,11 +45,12 @@ run-playbook: playbook.yml
 	ansible-playbook -vv $< \
 		--extra-vars root_playbook_directory="$$PWD"
 
-print-k3s-inventory-no-jq: inventory/main.py
-	@python $<
+#
+# k3s.
+#
 
-print-k3s-inventory: inventory/main.py
-	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))'
+k3s: ## Does everything related to k3s.
+k3s: deploy-k3s
 
 create-k3s-inventory: ## Creates the 'dist/k3s-inventory.json'.
 create-k3s-inventory: dist/k3s-inventory.json
@@ -57,8 +58,17 @@ dist/k3s-inventory.json: dist
 dist/k3s-inventory.json: inventory/main.py
 	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))' > $@
 
-k3s: ## Does everything related to k3s.
-k3s: deploy-k3s
+ping-k3s-inventory: ## Pings the k3s inventory.
+ping-k3s-inventory: dist/k3s-inventory.json
+	@ansible server:agent -i $< -m ping
+
+print-k3s-inventory: ## Prints the k3s inventory.
+print-k3s-inventory: inventory/main.py
+	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))'
+
+print-k3s-inventory-no-jq: # Prints the k3s inventory, without jq formatting.
+print-k3s-inventory-no-jq: inventory/main.py
+	@python $<
 
 deploy-k3s: ## TODO
 deploy-k3s: dist/k3s-inventory.json

@@ -40,10 +40,4 @@ iface {{ host.bridge.name }} inet static
   # Allow forwarding from bridge.
   post-up iptables -A FORWARD -i {{ host.bridge.name }} -o {{ host.wifi_device_name }} -j ACCEPT
 
-#   # Add static routes to all other servers.
-# {% for server in groups['all'] %}
-# {% if server != inventory_hostname %}
-#   post-up ip route add {{ hostvars[server].host.bridge.subnet }}/{{ hostvars[server].host.bridge.ipv4_cidr }} via {{ services.tailscale_gateway.ipv4 }} dev {{ host.bridge.name }}
-# {% endif %}
-# {%- endfor %}
 

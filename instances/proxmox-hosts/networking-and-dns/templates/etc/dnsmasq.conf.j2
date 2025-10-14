@@ -11,7 +11,7 @@ host-record={{ record.subdomain }}.{{ common.dns.domain }},{{ services.nginx_rev
 host-record={{ common.dns.domain }},{{ host.ipv4 }}
 
 # Assign proxmox subdomains to allow for specific access, when needed.
-{% for server in groups['all'] %}
+{% for server in groups['proxmox_hosts'] %}
 host-record=proxmox.{{ server.split('_')[-1] }}.{{ common.dns.domain }},{{ hostvars[server].host.ipv4 }}
 {% endfor %}
 

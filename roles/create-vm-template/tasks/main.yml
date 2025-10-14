@@ -75,7 +75,7 @@
           net0: "virtio,bridge={{ create_vm_template__proxmox_node_bridge_name }}"
         ostype: l26
         scsihw: virtio-scsi-pci
-        bios: seabios        # <-- legacy BIOS
+        bios: seabios
         machine: q35
         agent: enabled=1
         onboot: false
@@ -181,16 +181,16 @@
         set -e
         qm set {{ create_vm_template__template_vmid }} --scsi2 {{ create_vm_template__vm_storage }}:cloudinit
         qm cloudinit update {{ create_vm_template__template_vmid }}
-    #
-    # - name: Convert VM to template.
-    #   community.general.proxmox_kvm:
-    #     api_host: "{{ create_vm_template__proxmox_api_ip }}"
-    #     api_user: "{{ create_vm_template__proxmox_api_user }}"
-    #     api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
-    #     api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
-    #     node: "{{ create_vm_template__proxmox_node_name }}"
-    #     vmid: "{{ create_vm_template__template_vmid }}"
-    #     name: "{{ create_vm_template__template_name }}"
-    #     state: template
-    #     timeout: 120
+
+    - name: Convert VM to template.
+      community.general.proxmox_kvm:
+        api_host: "{{ create_vm_template__proxmox_api_ip }}"
+        api_user: "{{ create_vm_template__proxmox_api_user }}"
+        api_token_id: "{{ create_vm_template__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_vm_template__proxmox_api_token_secret }}"
+        node: "{{ create_vm_template__proxmox_node_name }}"
+        vmid: "{{ create_vm_template__template_vmid }}"
+        name: "{{ create_vm_template__template_name }}"
+        state: template
+        timeout: 120
 

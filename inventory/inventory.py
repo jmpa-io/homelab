@@ -182,6 +182,7 @@ class Inventory:
     out['all']['vars']['common']['k3s'] = {
       'masters_ips_start_range': self.kube_inventory.masters_ips_start_range,
       'nodes_ips_start_range': self.kube_inventory.nodes_ips_start_range,
+
     }
 
     # Setup k3s inventory.
