@@ -71,8 +71,9 @@ print-k3s-inventory-no-jq: inventory/main.py
 	@python $<
 
 deploy-k3s: ## TODO
-deploy-k3s: dist/k3s-inventory.json
-	ansible-playbook k3s.orchestration.site -i $<
+	ansible-playbook k3s.orchestration.site -i dist/k3s-inventory.json
+#deploy-k3s: dist/k3s-inventory.json
+#	ansible-playbook k3s.orchestration.site -i $<
 
 PHONY += create-k3s-inventory dist/k3s-inventory.json
 

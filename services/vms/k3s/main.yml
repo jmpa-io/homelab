@@ -1,6 +1,6 @@
 ---
 - name: Setup k3s.
-  hosts: proxmox_hosts
+  hosts: proxmox_hosts[0]
   strategy: free
   collections:
     - community.crypto
