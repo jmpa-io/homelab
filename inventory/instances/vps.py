@@ -7,7 +7,12 @@ from .container_instance import ContainerInstance
 @dataclass
 class VPS(ContainerInstance):
   """Virtual Private Server instance."""
-  name: str = field(default='jmpa-vps-{id}', init=True)
+  # Required fields from NetworkedInstance must come first
+  ipv4: str
+  ipv4_cidr: str
+  device_name: str
+  # Optional fields with defaults
+  name: str = field(default='vps-{id}')  # Changed from jmpa-vps-{id}
 
   def to_dict(self) -> dict:
     """Convert VPS instance to dictionary for Ansible consumption."""

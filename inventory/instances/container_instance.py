@@ -26,6 +26,12 @@ class ContainerInstance(NetworkedInstance):
         device_name: Network interface name
         lxc_services: List of LXC container services
     """
+    # Required fields from NetworkedInstance must come first
+    ipv4: str
+    ipv4_cidr: str
+    device_name: str
+    # Optional fields with defaults
+    name: str = field(default='server-{id}')
     lxc_services: List[Service] = field(default_factory=list)
 
     def __post_init__(self):

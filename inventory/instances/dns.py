@@ -53,6 +53,11 @@ class DNS(NetworkedInstance):
         allow_recursion: Networks allowed recursion
         )
     """
+    # Required fields from NetworkedInstance must come first
+    ipv4: str
+    ipv4_cidr: str
+    device_name: str
+    # Optional fields with defaults
     name: str = field(default='dns-{id}')  # Changed from jmpa-dns-{id}
     zones: List[DNSZone] = field(default_factory=list)
     recursion: bool = True
