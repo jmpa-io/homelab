@@ -53,13 +53,18 @@ class ProxmoxHost(ContainerInstance):
         ipv4: IPv4 address
         ipv4_cidr: CIDR notation
         device_name: Network interface name
-        name: Instance name template
         bridge: Network bridge config
+        name: Instance name template
         lxc_services: LXC container services
         k8s_masters: K8s master node IPs
         k8s_nodes: K8s worker node IPs
     """
-    bridge: ProxmoxHostBridge
+    bridge: ProxmoxHostBridge = field(default_factory=lambda: ProxmoxHostBridge(
+        name='vmbr0',
+        ipv4_prefix='10.0',
+        ipv4_suffix='1',
+        ipv4_cidr='24'
+    ))
     name: str = 'jmpa-server-{id}'
     lxc_services: List[Service] = field(default_factory=list)
     k8s_masters: List[str] = field(default_factory=list)
