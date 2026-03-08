@@ -45,7 +45,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
   when: tailscale_enable_optimizer | default(true)
 
 - name: Create Tailscale booter service
@@ -56,7 +55,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Reload systemd daemon
   become: true

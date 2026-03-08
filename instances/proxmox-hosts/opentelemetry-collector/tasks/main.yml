@@ -29,7 +29,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
   notify: Restart otelcol service
 
 - name: Ensure otelcol service is enabled + started

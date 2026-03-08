@@ -22,7 +22,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Ensure 'network-autorestart' service is enabled + started.
   become: true
@@ -39,7 +38,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
   notify: Restart 'networking' service.
 
 - name: Update '/etc/hosts' (from template).
@@ -50,7 +48,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Update '/etc/resolv.conf' (from template).
   become: true
@@ -60,7 +57,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Update '/etc/dnsmasq.conf' (from template).
   become: true
@@ -70,7 +66,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
   notify: Restart 'dnsmasq' service.
 
 # dnsmasq_exporter.
@@ -89,7 +84,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Ensure 'dnsmasq_exporter' service is enabled + started.
   become: true

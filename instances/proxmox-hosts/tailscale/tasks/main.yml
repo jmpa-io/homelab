@@ -4,9 +4,8 @@
 - name: Include shared Tailscale setup tasks
   ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/tailscale/setup.yml"
   vars:
-    tailscale_advertise_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }},{{ ansible_host }}/32"
-    tailscale_tags: "{{ tailscale_tags | default([]) }}"
-    tailscale_enable_optimizer: true
+    tailscale_advertise_routes: "{{ ansible_host }}/32,{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }}"
+    tailscale_tags: ["{{ instance_name | regex_replace('-[0-9]+$', '') }}"]
 
 - name: Configure IP forwarding for Tailscale.
   become: true
@@ -27,7 +26,6 @@
     owner: root
     group: root
     mode: '0644'
-    backup: true
 
 - name: Reload systemd daemon.
   become: true
