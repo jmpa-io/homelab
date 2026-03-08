@@ -27,12 +27,16 @@ class Instance(ABC):
         name: Instance name template (e.g., 'server-{id}')
         host_services: List of services running on the instance
         ansible_host: Ansible connection address
+        ansible_port: SSH port for Ansible connections
+        ansible_user: SSH user for Ansible connections
         ipv4_with_cidr: Full CIDR (e.g., 192.168.1.1/24)
     """
     ipv4: str
     ipv4_cidr: str
     device_name: str
     name: str = 'jmpa-instance-{id}'
+    ansible_port: int = 22
+    ansible_user: str = 'root'
     host_services: List[HostService] = field(default_factory=list)
     ansible_host: str = field(init=False)
     ipv4_with_cidr: str = field(init=False)
@@ -66,5 +70,7 @@ class Instance(ABC):
         base.update(self.get_host_services())
         return {
             'ansible_host': self.ansible_host,
+            'ansible_port': self.ansible_port,
+            'ansible_user': self.ansible_user,
             'instance': base,
         }

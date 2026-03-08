@@ -189,6 +189,7 @@ def main():
       ipv4=ssm_client.get_parameter('/homelab/jmpa-nas-1/ipv4-address'),
       ipv4_cidr=default_cidr,
       device_name=ssm_client.get_parameter('/homelab/jmpa-nas-1/device-name'),
+      ansible_port=read_env_var('NAS_SSH_PORT', '9222', value_type=int),
       host_services=[
         collector,
       ],
