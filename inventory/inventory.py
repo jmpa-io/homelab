@@ -3,25 +3,31 @@ from typing import Dict, Any, Optional, Union
 from copy import deepcopy
 import random
 
-from instances.host import Host
+from instances.proxmox_host import ProxmoxHost
 from instances.nas import NAS
 from instances.vps import VPS
+from instances.dns import DNS
 from k8s_inventory import K8sInventory
 
 
 @dataclass
 class Inventory:
-  # Instance config - can be Host, NAS, VPS, etc.
-  instances: Dict[str, Union[Host, NAS, VPS]] = field(default_factory=dict)
+  # Instance config - can be ProxmoxHost, NAS, VPS, DNS, etc.
+  instances: Dict[str, Union[ProxmoxHost, NAS, VPS, DNS]] = field(default_factory=dict)
   vars: Dict[str, Any] = field(default_factory=dict)
 
   # Kubernetes config.
   kube_inventory: Optional[K8sInventory] = None
 
   # Internal instance counter.
-  _next_id_per_type: Dict[str, int] = field(default_factory=lambda: {'Host': 1, 'VPS': 1, 'NAS': 1}, init=False, repr=False)
+  _next_id_per_type: Dict[str, int] = field(default_factory=lambda: {
+    'ProxmoxHost': 1,
+    'VPS': 1,
+    'NAS': 1,
+    'DNS': 1
+  }, init=False, repr=False)
 
-  def add_instance(self, instance: Union[Host, NAS, VPS]):
+  def add_instance(self, instance: Union[ProxmoxHost, NAS, VPS, DNS]):
     """Adds a single instance to the inventory."""
     instance_type = type(instance).__name__
     instance_id = self._next_id_per_type[instance_type]
@@ -29,24 +35,24 @@ class Inventory:
     # Setup name of instance.
     instance.name = instance.name.format(id=instance_id)
 
-    # Bridge setup (Host only).
-    if isinstance(instance, Host):
+    # Bridge setup (ProxmoxHost only).
+    if isinstance(instance, ProxmoxHost):
         instance.bridge = deepcopy(instance.bridge)  # Ensure a unique bridge for a host.
         for attr in ('ipv4', 'ipv4_with_cidr', 'subnet', 'subnet_with_cidr'):
             setattr(instance.bridge, attr, getattr(instance.bridge, attr).format(id=instance_id))
 
-    # Container services setup (Host & VPS only).
+    # Container services setup (ProxmoxHost & VPS only).
     if hasattr(instance, 'lxc_services') and instance.lxc_services:
         instance.lxc_services = deepcopy(instance.lxc_services)
         for s in instance.lxc_services:
-            if isinstance(instance, Host):
+            if isinstance(instance, ProxmoxHost):
                 # Use host bridge to assign IP
                 s.ipv4 = f'{instance.bridge.ipv4_prefix}.{instance_id}.{s.container_id}'
                 s.ipv4_cidr = instance.bridge.ipv4_cidr
                 s.ipv4_with_cidr = f'{s.ipv4}/{instance.bridge.ipv4_cidr}'
 
-    # Proxy static records (Host only).
-    if isinstance(instance, Host) and hasattr(instance, 'lxc_services'):
+    # Proxy static records (ProxmoxHost only).
+    if isinstance(instance, ProxmoxHost) and hasattr(instance, 'lxc_services'):
         self._setup_proxy_static_records(instance)
 
     # Add instance, using an ansible-appropriate name.
@@ -62,7 +68,7 @@ class Inventory:
     self._next_id_per_type[instance_type] += 1
 
 
-  def add_instances(self, *instances: Union[Host, NAS, VPS]):
+  def add_instances(self, *instances: Union[ProxmoxHost, NAS, VPS, DNS]):
     """Adds multiple instances to the inventory."""
     for instance in instances:
       self.add_instance(instance)
@@ -95,7 +101,7 @@ class Inventory:
     service_map = {}
 
     for instance in self.instances.values():
-      if isinstance(instance, Host):  # Only Host instances have proxy services
+      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances have proxy services
         proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
         for proxy in proxy_services:
           self._add_proxy_records_to_service_map(proxy, service_map)
@@ -122,7 +128,7 @@ class Inventory:
       return
 
     for i, (name, instance) in enumerate(self.instances.items(), start=1):
-      if isinstance(instance, Host):  # Only Host instances support K8s
+      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
         masters = []
         nodes = []
         prefix = f'{instance.bridge.ipv4_prefix}.{i}'
@@ -146,8 +152,9 @@ class Inventory:
     Generates the Ansible dynamic inventory as a dictionary.
     """
     # Separate instances by type
-    host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (Host, VPS))}
+    host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (ProxmoxHost, VPS))}
     nas_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
+    dns_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, DNS)}
 
     # Build hostvars for all instances
     hostvars = {name: inst.to_dict() for name, inst in self.instances.items()}
@@ -164,6 +171,9 @@ class Inventory:
         },
         'nas': {
             'hosts': list(nas_instances.keys())
+        },
+        'dns': {
+            'hosts': list(dns_instances.keys())
         }
     }
 
@@ -174,7 +184,7 @@ class Inventory:
     # Setup masters & nodes.
     master_ips = []; node_ips = []
     for instance in self.instances.values():
-      if isinstance(instance, Host):  # Only Host instances support K8s
+      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
         master_ips.extend(instance.k8s_masters)
         node_ips.extend(instance.k8s_nodes)
 
@@ -182,7 +192,6 @@ class Inventory:
     out['all']['vars']['common']['k3s'] = {
       'masters_ips_start_range': self.kube_inventory.masters_ips_start_range,
       'nodes_ips_start_range': self.kube_inventory.nodes_ips_start_range,
-
     }
 
     # Setup k3s inventory.

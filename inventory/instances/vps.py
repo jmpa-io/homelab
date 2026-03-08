@@ -16,7 +16,7 @@ class VPS(ContainerInstance):
       'ipv4': self.ipv4,
       'ipv4_cidr': self.ipv4_cidr,
       'ipv4_with_cidr': self.ipv4_with_cidr,
-      'wifi_device_name': self.wifi_device_name,
+      'device_name': self.device_name,
     }
 
     # Add host services.

@@ -4,8 +4,9 @@ import json
 from ssm import SSMClient
 from env import read_env_var
 
-from instances import Host, VPS, NAS
-from instances.host import HostBridge
+from instances import VPS, NAS, DNS
+from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
+from instances.dns import DNSZone
 from service import LXCService, HostService, Protocol
 from inventory import Inventory
 
@@ -86,7 +87,7 @@ def main():
   # Setup bridge.
   #
 
-  bridge = HostBridge(
+  bridge = ProxmoxHostBridge(
     name=read_env_var('HOST_BRIDGE_NAME', 'vmbr0'),
     ipv4_prefix=read_env_var('HOST_BRIDGE_IPV4_PREFIX', '10.0'),
     ipv4_suffix=read_env_var('HOST_BRIDGE_IPV4_SUFFIX', '1'),
@@ -97,14 +98,14 @@ def main():
   # Setup host services.
   #
   collector = HostService(
-    name='collector', 
+    name='collector',
     metrics_port=read_env_var('HOST_OTELCOL_METRICS_PORT', '8889'),
   )
   dnsmasq_exporter = HostService(
-    name='dnsmasq_exporter', 
+    name='dnsmasq_exporter',
     metrics_port=read_env_var("HOST_DNSMASQ_EXPORTER_METRICS_PORT", '9153'),
   )
-  
+
   #
   # Setup k3s config.
   #
@@ -130,14 +131,16 @@ def main():
   #
 
   inventory = Inventory(vars=inventory_vars, kube_inventory=kube_inventory)
+
+  # Add Proxmox hosts
   inventory.add_instances(
-    Host(
+    ProxmoxHost(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-server-1/ipv4-address'),
       ipv4_cidr=default_cidr,
-      wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-1/wifi-device-name'),
+      device_name=ssm_client.get_parameter('/homelab/jmpa-server-1/device-name'),
       bridge=bridge,
       host_services=[
-        collector, 
+        collector,
         dnsmasq_exporter,
       ],
       lxc_services=[
@@ -147,13 +150,13 @@ def main():
         grafana,
       ],
     ),
-    Host(
+    ProxmoxHost(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-server-2/ipv4-address'),
       ipv4_cidr=default_cidr,
-      wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-2/wifi-device-name'),
+      device_name=ssm_client.get_parameter('/homelab/jmpa-server-2/device-name'),
       bridge=bridge,
       host_services=[
-        collector, 
+        collector,
         dnsmasq_exporter,
       ],
       lxc_services=[
@@ -163,13 +166,13 @@ def main():
         grafana,
       ],
     ),
-    Host(
+    ProxmoxHost(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-server-3/ipv4-address'),
       ipv4_cidr=default_cidr,
-      wifi_device_name=ssm_client.get_parameter('/homelab/jmpa-server-3/wifi-device-name'),
+      device_name=ssm_client.get_parameter('/homelab/jmpa-server-3/device-name'),
       bridge=bridge,
       host_services=[
-        collector, 
+        collector,
         dnsmasq_exporter,
       ],
       lxc_services=[
@@ -180,14 +183,50 @@ def main():
       ],
     ),
   )
+
+  # Add NAS instance
   inventory.add_instances(
     NAS(
-      ipv4=ssm_client.get_parameter('/homelab/nas-1/ipv4-address'),
+      ipv4=ssm_client.get_parameter('/homelab/jmpa-nas-1/ipv4-address'),
       ipv4_cidr=default_cidr,
-      wifi_device_name=ssm_client.get_parameter('/homelab/nas-1/wifi-device-name'),
+      device_name=ssm_client.get_parameter('/homelab/jmpa-nas-1/device-name'),
       host_services=[
-        collector, 
+        collector,
       ],
+    )
+  )
+
+  # Add DNS instance
+  inventory.add_instances(
+    DNS(
+      ipv4=ssm_client.get_parameter('/homelab/jmpa-dns-1/ipv4-address'),
+      ipv4_cidr=default_cidr,
+      device_name=ssm_client.get_parameter('/homelab/jmpa-dns-1/device-name'),
+      host_services=[
+        collector,
+      ],
+      zones=[
+        DNSZone(
+          name="jmpa.lab",
+          records=[
+            {"name": "@", "type": "A", "value": "10.0.1.1"},
+            {"name": "*.jmpa.lab", "type": "CNAME", "value": "@"},
+          ],
+          allow_transfer=["localhost"],
+          also_notify=["10.0.1.2"],
+        ),
+        DNSZone(
+          name="1.0.10.in-addr.arpa",
+          type="master",
+          records=[
+            {"name": "1", "type": "PTR", "value": "gateway.jmpa.lab."},
+          ],
+        ),
+      ],
+      recursion=True,
+      forwarders=["1.1.1.1", "8.8.8.8"],
+      allow_query=["localhost", "10.0.0.0/8"],
+      allow_recursion=["localhost", "10.0.0.0/8"],
     )
   )
 

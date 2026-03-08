@@ -2,7 +2,7 @@
 
 nfs:
   src: "{{ hostvars[groups['nas'][0]]['ansible_host'] }}"
-  dest: /mnt/share
+  dest: /mnt/nfs
 
 packages:
   - nfs-common

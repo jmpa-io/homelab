@@ -1,28 +1,32 @@
-from dataclasses import dataclass, field
-from typing import List
+"""NAS (Network Attached Storage) instance type.
 
-from .instance import Instance
+Class Hierarchy:
+Instance
+└── NetworkedInstance
+    └── NAS
+"""
+
+from dataclasses import dataclass, field
+
+from .instance import NetworkedInstance
 
 
 @dataclass
-class NAS(Instance):
-  """Network Attached Storage instance."""
-  name: str = field(default='jmpa-nas-{id}', init=True)
+class NAS(NetworkedInstance):
+    """Network Attached Storage instance.
 
-  def to_dict(self) -> dict:
-    """Convert NAS instance to dictionary for Ansible consumption."""
-    nas = {
-      'name': self.name,
-      'ipv4': self.ipv4,
-      'ipv4_cidr': self.ipv4_cidr,
-      'ipv4_with_cidr': self.ipv4_with_cidr,
-      'wifi_device_name': self.wifi_device_name,
-    }
+    Attributes:
+        name: Instance name template (default: 'nas-{id}')
+        ipv4: IPv4 address
+        ipv4_cidr: CIDR notation
+        device_name: Network interface name
+        host_services: List of host services
+    """
+    name: str = field(default='nas-{id}')  # Changed from jmpa-nas-{id}
 
-    # Add host services
-    nas.update(self.get_host_services())
-
-    return {
-      'ansible_host': self.ansible_host,
-      'nas': nas,
-    }
+    def to_dict(self) -> dict:
+        """Convert to dictionary with 'nas' key instead of 'instance'."""
+        base = super().to_dict()
+        # Rename 'instance' key to 'nas' for NAS-specific configuration
+        base['nas'] = base.pop('instance')
+        return base
