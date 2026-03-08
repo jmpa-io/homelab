@@ -58,6 +58,14 @@ class Instance(ABC):
             "host_services": [s.to_dict() for s in self.host_services]
         }
 
+    def get_ansible_user(self) -> str:
+        """Get the ansible_user for this instance.
+
+        Override in subclasses to customize the user based on resolved name.
+        Default returns the ansible_user field value.
+        """
+        return self.ansible_user
+
     def _base_dict(self) -> dict:
         """Get base instance configuration."""
         base = {
@@ -71,6 +79,6 @@ class Instance(ABC):
         return {
             'ansible_host': self.ansible_host,
             'ansible_port': self.ansible_port,
-            'ansible_user': self.ansible_user,
+            'ansible_user': self.get_ansible_user(),
             'instance': base,
         }
