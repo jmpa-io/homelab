@@ -6,7 +6,6 @@ from env import read_env_var
 
 from instances import VPS, NAS, DNS
 from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
-from instances.dns import DNSZone
 from service import LXCService, HostService, Protocol
 from inventory import Inventory
 
@@ -205,28 +204,6 @@ def main():
       host_services=[
         collector,
       ],
-      zones=[
-        DNSZone(
-          name="jmpa.lab",
-          records=[
-            {"name": "@", "type": "A", "value": "10.0.1.1"},
-            {"name": "*.jmpa.lab", "type": "CNAME", "value": "@"},
-          ],
-          allow_transfer=["localhost"],
-          also_notify=["10.0.1.2"],
-        ),
-        DNSZone(
-          name="1.0.10.in-addr.arpa",
-          type="master",
-          records=[
-            {"name": "1", "type": "PTR", "value": "gateway.jmpa.lab."},
-          ],
-        ),
-      ],
-      recursion=True,
-      forwarders=["1.1.1.1", "8.8.8.8"],
-      allow_query=["localhost", "10.0.0.0/8"],
-      allow_recursion=["localhost", "10.0.0.0/8"],
     )
   )
 
