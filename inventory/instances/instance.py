@@ -80,5 +80,6 @@ class Instance(ABC):
             'ansible_host': self.ansible_host,
             'ansible_port': self.ansible_port,
             'ansible_user': self.get_ansible_user(),
+            'instance_name': self.name,
             'instance': base,
         }
