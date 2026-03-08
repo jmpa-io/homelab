@@ -7,8 +7,8 @@ from .container_instance import ContainerInstance
 @dataclass
 class VPS(ContainerInstance):
   """Virtual Private Server instance."""
-  name: str = field(default='vps-{id}')  # Changed from jmpa-vps-{id}
 
+  name: str = 'jmpa-vps-{id}'
   def to_dict(self) -> dict:
     """Convert VPS instance to dictionary for Ansible consumption."""
     vps = {

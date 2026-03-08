@@ -32,7 +32,7 @@ class Instance(ABC):
     ipv4: str
     ipv4_cidr: str
     device_name: str
-    name: str = field(default='instance-{id}')
+    name: str = 'jmpa-instance-{id}'
     host_services: List[HostService] = field(default_factory=list)
     ansible_host: str = field(init=False)
     ipv4_with_cidr: str = field(init=False)

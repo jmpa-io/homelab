@@ -11,6 +11,7 @@ from typing import List
 from copy import deepcopy
 
 from .container_instance import ContainerInstance
+from service import Service
 
 
 @dataclass
@@ -49,13 +50,18 @@ class ProxmoxHost(ContainerInstance):
     """Proxmox server with LXC and K8s support.
 
     Attributes:
-        name: Instance name (default: 'server-{id}')
+        ipv4: IPv4 address
+        ipv4_cidr: CIDR notation
+        device_name: Network interface name
+        name: Instance name template
         bridge: Network bridge config
+        lxc_services: LXC container services
         k8s_masters: K8s master node IPs
         k8s_nodes: K8s worker node IPs
     """
     bridge: ProxmoxHostBridge
-    name: str = field(default='server-{id}')  # Changed from jmpa-server-{id}
+    name: str = 'jmpa-server-{id}'
+    lxc_services: List[Service] = field(default_factory=list)
     k8s_masters: List[str] = field(default_factory=list)
     k8s_nodes: List[str] = field(default_factory=list)
 

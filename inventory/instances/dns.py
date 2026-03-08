@@ -44,15 +44,17 @@ class DNS(Instance):
     """DNS server instance.
 
     Attributes:
-        name: Instance name (default: 'dns-{id}')
+        ipv4: IPv4 address
+        ipv4_cidr: CIDR notation
+        device_name: Network interface name
+        name: Instance name template
         zones: DNS zones to manage
         recursion: Allow recursive queries
         forwarders: Upstream DNS servers
         allow_query: Networks allowed to query
         allow_recursion: Networks allowed recursion
-        )
     """
-    name: str = field(default='dns-{id}')  # Changed from jmpa-dns-{id}
+    name: str = 'jmpa-dns-{id}'
     zones: List[DNSZone] = field(default_factory=list)
     recursion: bool = True
     forwarders: List[str] = field(default_factory=lambda: ["1.1.1.1", "8.8.8.8"])
