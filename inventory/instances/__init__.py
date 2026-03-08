@@ -9,11 +9,10 @@ infrastructure.
 Class Hierarchy
 --------------
 Instance (Base)
-└── NetworkedInstance
-    ├── NAS (Network Attached Storage)
-    ├── DNS (Domain Name Server)
-    └── ContainerInstance
-        └── ProxmoxHost
+├── NAS (Network Attached Storage)
+├── DNS (Domain Name Server)
+└── ContainerInstance
+    └── ProxmoxHost
 
 Instance Types
 -------------
@@ -31,18 +30,11 @@ Instance Types
 
 Common Features
 -------------
-All instances share some common features through inheritance:
-
-1. Base Instance:
-   - Name-based identification
-   - Host service support
-   - Dictionary conversion for Ansible
-
-2. NetworkedInstance:
-   - IP address management
-   - CIDR notation handling
-   - WiFi device configuration
-   - Ansible host setup
+All instances include:
+- IP address management and CIDR notation
+- Network device configuration
+- Host service support
+- Ansible inventory integration
 
 Usage Example
 ------------

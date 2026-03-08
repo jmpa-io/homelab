@@ -2,9 +2,8 @@
 
 Class Hierarchy:
 Instance
-└── NetworkedInstance
-    └── ContainerInstance
-        └── ProxmoxHost
+└── ContainerInstance
+    └── ProxmoxHost
 """
 
 from dataclasses import dataclass, field
@@ -55,13 +54,7 @@ class ProxmoxHost(ContainerInstance):
         k8s_masters: K8s master node IPs
         k8s_nodes: K8s worker node IPs
     """
-    # Required fields from NetworkedInstance must come first
-    ipv4: str
-    ipv4_cidr: str
-    device_name: str
-    # Required field specific to ProxmoxHost
     bridge: ProxmoxHostBridge
-    # Optional fields with defaults
     name: str = field(default='server-{id}')  # Changed from jmpa-server-{id}
     k8s_masters: List[str] = field(default_factory=list)
     k8s_nodes: List[str] = field(default_factory=list)

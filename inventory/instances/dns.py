@@ -2,15 +2,14 @@
 
 Class Hierarchy:
 Instance
-└── NetworkedInstance
-    └── DNS
+└── DNS
 """
 
 from dataclasses import dataclass, field
 from typing import List, Dict
 from copy import deepcopy
 
-from .instance import NetworkedInstance
+from .instance import Instance
 
 
 @dataclass
@@ -41,7 +40,7 @@ class DNSZone:
 
 
 @dataclass
-class DNS(NetworkedInstance):
+class DNS(Instance):
     """DNS server instance.
 
     Attributes:
@@ -53,11 +52,6 @@ class DNS(NetworkedInstance):
         allow_recursion: Networks allowed recursion
         )
     """
-    # Required fields from NetworkedInstance must come first
-    ipv4: str
-    ipv4_cidr: str
-    device_name: str
-    # Optional fields with defaults
     name: str = field(default='dns-{id}')  # Changed from jmpa-dns-{id}
     zones: List[DNSZone] = field(default_factory=list)
     recursion: bool = True
@@ -78,30 +72,8 @@ class DNS(NetworkedInstance):
         self.allow_recursion = deepcopy(self.allow_recursion)
 
     def to_dict(self) -> dict:
-        """Convert DNS instance to dictionary.
-
-        Extends the NetworkedInstance dictionary with DNS-specific configuration
-        including zones, recursion settings, and access controls.
-
-        Returns:
-            dict: Full DNS configuration for Ansible inventory
-                {
-                    'ansible_host': '192.168.1.53',
-                    'dns': {
-                        'name': 'dns-1',
-                        'ipv4': '192.168.1.53',
-                        'ipv4_cidr': '24',
-                        'ipv4_with_cidr': '192.168.1.53/24',
-                        'device_name': 'eth0',
-                        'config': {
-                            'recursion': true,
-                            'forwarders': [...],
-                            'zones': [...]
-                        }
-                    }
-                }
-        """
-        base = super().to_dict()
+        """Convert DNS instance to dictionary with DNS-specific config."""
+        base = self._base_dict()
         # Add DNS-specific configuration
         base['instance']['config'] = {
             'recursion': self.recursion,

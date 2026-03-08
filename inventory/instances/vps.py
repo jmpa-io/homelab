@@ -7,11 +7,6 @@ from .container_instance import ContainerInstance
 @dataclass
 class VPS(ContainerInstance):
   """Virtual Private Server instance."""
-  # Required fields from NetworkedInstance must come first
-  ipv4: str
-  ipv4_cidr: str
-  device_name: str
-  # Optional fields with defaults
   name: str = field(default='vps-{id}')  # Changed from jmpa-vps-{id}
 
   def to_dict(self) -> dict:

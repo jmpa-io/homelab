@@ -2,11 +2,10 @@
 
 Class hierarchy:
 Instance (Base)
-└── NetworkedInstance
-    ├── NAS
-    ├── DNS
-    └── ContainerInstance
-        └── ProxmoxHost
+├── NAS
+├── DNS
+└── ContainerInstance
+    └── ProxmoxHost
 """
 
 from dataclasses import dataclass, field
@@ -22,15 +21,27 @@ class Instance(ABC):
     """Base class for all instance types.
 
     Attributes:
-        name: Instance name for identification
+        ipv4: IPv4 address
+        ipv4_cidr: CIDR notation (e.g., 24)
+        device_name: Network interface name (e.g., eth0)
+        name: Instance name template (e.g., 'server-{id}')
         host_services: List of services running on the instance
+        ansible_host: Ansible connection address
+        ipv4_with_cidr: Full CIDR (e.g., 192.168.1.1/24)
     """
-    name: str = field(init=False)  # Set by child classes
+    ipv4: str
+    ipv4_cidr: str
+    device_name: str
+    name: str = field(default='instance-{id}')
     host_services: List[HostService] = field(default_factory=list)
+    ansible_host: str = field(init=False)
+    ipv4_with_cidr: str = field(init=False)
 
     def __post_init__(self):
-        """Deep copy host services to avoid sharing between instances."""
+        """Set up network fields and deep copy host services."""
         self.host_services = deepcopy(self.host_services)
+        self.ansible_host = self.ipv4
+        self.ipv4_with_cidr = f'{self.ipv4}/{self.ipv4_cidr}'
 
     @abstractmethod
     def to_dict(self) -> dict:
@@ -43,38 +54,8 @@ class Instance(ABC):
             "host_services": [s.to_dict() for s in self.host_services]
         }
 
-
-@dataclass
-class NetworkedInstance(Instance):
-    """Base class for instances that require network configuration.
-
-    This class extends Instance to add common networking functionality
-    used by most instance types. It handles IP address management,
-    CIDR notation, and Ansible host configuration.
-
-    Attributes:
-        name: Instance name template (e.g., 'server-{id}')
-        ipv4: IPv4 address of the instance
-        ipv4_cidr: CIDR notation number (e.g., 24 for /24)
-        device_name: Name of the network interface (e.g., eth0, wlan0)
-        ansible_host: Ansible connection address (derived from ipv4)
-        ipv4_with_cidr: Full CIDR notation (e.g., 192.168.1.1/24)
-    """
-    name: str  # Template like 'server-{id}' - will be formatted by inventory
-    ipv4: str
-    ipv4_cidr: str
-    device_name: str
-    ansible_host: str = field(init=False)
-    ipv4_with_cidr: str = field(init=False)
-
-    def __post_init__(self):
-        """Set up network fields and initialize parent."""
-        super().__post_init__()  # Initialize host services
-        self.ansible_host = self.ipv4
-        self.ipv4_with_cidr = f'{self.ipv4}/{self.ipv4_cidr}'
-
-    def to_dict(self) -> dict:
-        """Convert to standard network configuration format."""
+    def _base_dict(self) -> dict:
+        """Get base instance configuration."""
         base = {
             'name': self.name,
             'ipv4': self.ipv4,

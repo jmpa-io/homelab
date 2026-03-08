@@ -1,22 +1,21 @@
-"""ContainerInstance extends NetworkedInstance to support LXC containers.
+"""ContainerInstance extends Instance to support LXC containers.
 
 Class Hierarchy:
 Instance
-└── NetworkedInstance
-    └── ContainerInstance
-        └── ProxmoxHost
+└── ContainerInstance
+    └── ProxmoxHost
 """
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
 from copy import deepcopy
 
-from .instance import NetworkedInstance
+from .instance import Instance
 from service import Service
 
 
 @dataclass
-class ContainerInstance(NetworkedInstance):
+class ContainerInstance(Instance):
     """Instance that supports LXC container services.
 
     Attributes:
@@ -26,12 +25,6 @@ class ContainerInstance(NetworkedInstance):
         device_name: Network interface name
         lxc_services: List of LXC container services
     """
-    # Required fields from NetworkedInstance must come first
-    ipv4: str
-    ipv4_cidr: str
-    device_name: str
-    # Optional fields with defaults
-    name: str = field(default='server-{id}')
     lxc_services: List[Service] = field(default_factory=list)
 
     def __post_init__(self):
@@ -45,6 +38,6 @@ class ContainerInstance(NetworkedInstance):
 
     def to_dict(self) -> dict:
         """Convert to dictionary with instance and service configs."""
-        base = super().to_dict()
+        base = self._base_dict()
         base['services'] = self.get_container_services()
         return base
