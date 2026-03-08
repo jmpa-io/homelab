@@ -131,7 +131,7 @@ def main():
 
   inventory = Inventory(vars=inventory_vars, kube_inventory=kube_inventory)
 
-  # Add Proxmox hosts
+  # Add Proxmox hosts.
   inventory.add_instances(
     ProxmoxHost(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-server-1/ipv4-address'),
@@ -183,7 +183,7 @@ def main():
     ),
   )
 
-  # Add NAS instance
+  # Add NAS instance.
   inventory.add_instances(
     NAS(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-nas-1/ipv4-address'),
@@ -195,7 +195,7 @@ def main():
     )
   )
 
-  # Add DNS instance
+  # Add DNS instance.
   inventory.add_instances(
     DNS(
       ipv4=ssm_client.get_parameter('/homelab/jmpa-dns-1/ipv4-address'),
@@ -206,6 +206,18 @@ def main():
       ],
     )
   )
+
+  # Add VPS instance (example - uncomment when ready to use).
+  # inventory.add_instances(
+  #   VPS(
+  #     ipv4=ssm_client.get_parameter('/homelab/jmpa-vps-1/ipv4-address'),
+  #     ipv4_cidr=default_cidr,
+  #     device_name=ssm_client.get_parameter('/homelab/jmpa-vps-1/device-name'),
+  #     host_services=[
+  #       collector,
+  #     ],
+  #   )
+  # ).
 
   # Print inventory as JSON.
   print(json.dumps(inventory.to_dict(), indent=2))

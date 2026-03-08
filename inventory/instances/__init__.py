@@ -42,7 +42,7 @@ Usage Example
 from instances import ProxmoxHost, NAS, DNS
 from instances.proxmox_host import ProxmoxHostBridge
 
-# Create a Proxmox host (becomes server-1)
+# Create a Proxmox host (becomes server-1).
 host = ProxmoxHost(
     ipv4='192.168.1.10',
     ipv4_cidr='24',
@@ -55,14 +55,14 @@ host = ProxmoxHost(
     )
 )
 
-# Create a NAS instance (becomes nas-1)
+# Create a NAS instance (becomes nas-1).
 nas = NAS(
     ipv4='192.168.1.20',
     ipv4_cidr='24',
     device_name='eth0'
 )
 
-# Create a DNS instance (becomes dns-1)
+# Create a DNS instance (becomes dns-1).
 dns = DNS(
     ipv4='192.168.1.53',
     ipv4_cidr='24',

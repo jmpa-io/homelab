@@ -110,7 +110,7 @@ class ProxmoxHost(ContainerInstance):
         """
         base = super().to_dict()
 
-        # Add bridge configuration
+        # Add bridge configuration.
         base['instance']['bridge'] = {
             'name': self.bridge.name,
             'ipv4': self.bridge.ipv4,
@@ -121,7 +121,7 @@ class ProxmoxHost(ContainerInstance):
             'default_ipv4_suffix': self.bridge.ipv4_suffix,
         }
 
-        # Add k3s configuration if present
+        # Add k3s configuration if present.
         if self.k8s_masters or self.k8s_nodes:
             k3s_dict = {}
             if self.k8s_masters:
@@ -130,6 +130,6 @@ class ProxmoxHost(ContainerInstance):
                 k3s_dict['nodes'] = self.k8s_nodes
             base['k3s'] = k3s_dict
 
-        # Rename 'instance' key to 'host' for host-specific configuration
+        # Rename 'instance' key to 'host' for host-specific configuration.
         base['host'] = base.pop('instance')
         return base

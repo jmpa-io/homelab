@@ -1,0 +1,5 @@
+---
+# Setup Tailscale on VPS instance.
+
+- name: Include shared Tailscale setup tasks
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/tailscale/setup.yml"

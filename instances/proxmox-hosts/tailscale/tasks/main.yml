@@ -1,14 +1,12 @@
 ---
+# Setup Tailscale on Proxmox host with additional host-specific services.
 
-- name: Setup apt + install packages.
-  include_tasks: apt/main.yml
-
-- name: Enable and start Tailscale daemon.
-  become: true
-  ansible.builtin.systemd:
-    name: tailscaled
-    enabled: true
-    state: started
+- name: Include shared Tailscale setup tasks
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/tailscale/setup.yml"
+  vars:
+    tailscale_advertise_routes: "{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }},{{ ansible_host }}/32"
+    tailscale_tags: "{{ tailscale_tags | default([]) }}"
+    tailscale_enable_optimizer: true
 
 - name: Configure IP forwarding for Tailscale.
   become: true
@@ -20,26 +18,6 @@
   loop:
     - { name: 'net.ipv4.ip_forward', value: '1' }
     - { name: 'net.ipv6.conf.all.forwarding', value: '1' }
-
-- name: Add Tailscale optimizer service.
-  become: true
-  ansible.builtin.template:
-    src: etc/systemd/system/tailscale-optimizer.service
-    dest: /etc/systemd/system/tailscale-optimizer.service
-    owner: root
-    group: root
-    mode: '0644'
-    backup: true
-
-- name: Add Tailscale booter service.
-  become: true
-  ansible.builtin.template:
-    src: etc/systemd/system/tailscale-booter.service
-    dest: /etc/systemd/system/tailscale-booter.service
-    owner: root
-    group: root
-    mode: '0644'
-    backup: true
 
 - name: Add Tailscale nginx reverse proxy routing service.
   become: true
@@ -56,19 +34,9 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Restart Tailscale daemon.
+- name: Enable and start Tailscale nginx reverse proxy routing service.
   become: true
   ansible.builtin.systemd:
-    name: tailscaled
-    state: restarted
-
-- name: Enable and start Tailscale services.
-  become: true
-  ansible.builtin.systemd:
-    name: "{{ item }}"
+    name: tailscale-nginx-reverse-proxy-routing
     enabled: true
     state: started
-  loop:
-    - tailscale-optimizer
-    - tailscale-booter
-    - tailscale-nginx-reverse-proxy-routing

@@ -1,0 +1,79 @@
+---
+# Shared Tailscale installation task.
+# This file is included by instance-specific tailscale tasks.
+
+- name: Download Tailscale GPG key
+  become: true
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }}/{{ ansible_distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: '0644'
+
+- name: Add Tailscale repository
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list.d/tailscale.list
+    line: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} main"
+    create: true
+    mode: '0644'
+
+- name: Update apt cache
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Tailscale and ethtool
+  become: true
+  ansible.builtin.apt:
+    name:
+      - tailscale
+      - ethtool
+    state: present
+
+- name: Enable and start Tailscale daemon
+  become: true
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Create Tailscale optimizer service
+  become: true
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/tasks/tailscale/tailscale-optimizer.service.j2"
+    dest: /etc/systemd/system/tailscale-optimizer.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  when: tailscale_enable_optimizer | default(true)
+
+- name: Create Tailscale booter service
+  become: true
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/tasks/tailscale/tailscale-booter.service.j2"
+    dest: /etc/systemd/system/tailscale-booter.service
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+
+- name: Reload systemd daemon
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start Tailscale optimizer service
+  become: true
+  ansible.builtin.systemd:
+    name: tailscale-optimizer
+    enabled: true
+    state: started
+  when: tailscale_enable_optimizer | default(true)
+
+- name: Enable and start Tailscale booter service
+  become: true
+  ansible.builtin.systemd:
+    name: tailscale-booter
+    enabled: true
+    state: started

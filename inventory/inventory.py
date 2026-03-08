@@ -46,7 +46,7 @@ class Inventory:
         instance.lxc_services = deepcopy(instance.lxc_services)
         for s in instance.lxc_services:
             if isinstance(instance, ProxmoxHost):
-                # Use host bridge to assign IP
+                # Use host bridge to assign IP.
                 s.ipv4 = f'{instance.bridge.ipv4_prefix}.{instance_id}.{s.container_id}'
                 s.ipv4_cidr = instance.bridge.ipv4_cidr
                 s.ipv4_with_cidr = f'{s.ipv4}/{instance.bridge.ipv4_cidr}'
@@ -75,11 +75,11 @@ class Inventory:
 
   def _setup_proxy_static_records(self, instance):
     """Setup static records for proxy services on a host instance."""
-    # Find proxy services (services that should act as reverse proxies)
+    # Find proxy services (services that should act as reverse proxies).
     proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
 
     for proxy in proxy_services:
-      # Create static records for this proxy
+      # Create static records for this proxy.
       proxy.static_records = [
         {
           'subdomain': s.name,
@@ -92,8 +92,8 @@ class Inventory:
 
   def _is_proxy_service(self, service):
     """Determine if a service should act as a reverse proxy."""
-    # This is where you can define the logic for what makes a service a proxy
-    # For now, we'll use the name-based approach, but this could be made more flexible
+    # This is where you can define the logic for what makes a service a proxy.
+    # For now, we'll use the name-based approach, but this could be made more flexible.
     return service.name == 'nginx_reverse_proxy'
 
   def build_global_service_map(self):
@@ -115,7 +115,7 @@ class Inventory:
       backend = record['forward_to_ipv4_with_port']
       protocol = record['protocol']
 
-      # Use setdefault to avoid the if/not in pattern
+      # Use setdefault to avoid the if/not in pattern.
       service_entry = service_map.setdefault(service_name, {
         'backends': [],
         'protocol': protocol
@@ -151,15 +151,15 @@ class Inventory:
     """
     Generates the Ansible dynamic inventory as a dictionary.
     """
-    # Separate instances by type
+    # Separate instances by type.
     host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (ProxmoxHost, VPS))}
     nas_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
     dns_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, DNS)}
 
-    # Build hostvars for all instances
+    # Build hostvars for all instances.
     hostvars = {name: inst.to_dict() for name, inst in self.instances.items()}
 
-    # 'all' includes all instances
+    # 'all' includes all instances.
     out = {
         '_meta': {'hostvars': hostvars},
         'all': {
@@ -199,7 +199,7 @@ class Inventory:
       'vars': {
         'k3s_version': self.kube_inventory.version,
         'ansible_user': self.kube_inventory.ansible_user,
-        # 'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key,
+        # 'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key.
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
         'token': self.kube_inventory.token,
       },

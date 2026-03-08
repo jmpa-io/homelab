@@ -113,7 +113,7 @@
         set -euo pipefail
         VMID={{ create_vm_template__template_vmid }}
         TARGET_SIZE="{{ create_vm_template__vm_disk | default('') }}"
-        # find first unused storage ref (e.g. local:10001/vm-10001-disk-2.qcow2)
+        # find first unused storage ref (e.g. local:10001/vm-10001-disk-2.qcow2).
         DISK_REF=$(qm config "$VMID" | awk '/^unused/ {print $2; exit}' || true)
         if [ -z "$DISK_REF" ]; then
           echo "NO unused disk found for VM $VMID" >&2
@@ -121,16 +121,16 @@
         fi
         echo "Found unused disk: $DISK_REF"
 
-        # Save existing scsi0 for rollback (may be empty)
+        # Save existing scsi0 for rollback (may be empty).
         OLD_SCsi0=$(qm config "$VMID" | awk -F': ' '/^scsi0:/ {print $2; exit}' || true)
         echo "Old scsi0: $OLD_SCsi0" > /tmp/qm-${VMID}-old-scsi0 || true
 
-        # attach as scsi0 and set boot
+        # attach as scsi0 and set boot.
         qm set "$VMID" --scsi0 "$DISK_REF"
         qm set "$VMID" --boot order=scsi0
         qm set "$VMID" --bootdisk scsi0
 
-        # best-effort resize
+        # best-effort resize.
         if [ -n "$TARGET_SIZE" ]; then
           qm resize "$VMID" scsi0 "$TARGET_SIZE" || true
         fi

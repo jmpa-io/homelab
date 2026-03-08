@@ -33,6 +33,6 @@ class LXCService(Service):
   ipv4_cidr: str = field(init=False, default='')  # eg. '24'
   ipv4_with_cidr: str = field(init=False, default='')  # eg. '10.0.1.1/24'
 
-  # Static records for proxy services - populated by inventory logic
+  # Static records for proxy services - populated by inventory logic.
   static_records: List[Dict[str, str]] = field(default_factory=list, init=False)
 
