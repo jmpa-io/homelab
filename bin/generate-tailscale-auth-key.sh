@@ -60,7 +60,6 @@ response=$(curl -s -X POST \
         }
       }
     },
-    "expirySeconds": 7776000,
     "description": "Ansible automation key"
   }') \
   || die "Failed to generate Tailscale auth key."
