@@ -23,15 +23,16 @@ fi
 tailnet=$(aws ssm get-parameter \
   --name "/homelab/tailscale/tailnet" \
   --query 'Parameter.Value' \
-  --output text 2>/dev/null) \
+  --output text 2>/dev/null \
+  --with-decryption) \
   || die "Failed to fetch the Tailscale tailnet from AWS SSM Parameter Store."
 
 # Fetch API key from SSM.
 apiKey=$(aws ssm get-parameter \
   --name "/homelab/tailscale/api-key" \
-  --with-decryption \
   --query 'Parameter.Value' \
-  --output text 2>/dev/null) \
+  --output text 2>/dev/null \
+  --with-decryption) \
   || die "Failed to fetch the Tailscale API key from AWS SSM Parameter Store."
 
 # Check auth.
