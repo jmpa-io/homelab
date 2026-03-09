@@ -15,7 +15,11 @@ ExecStart=/usr/bin/env bash -c '\
     --advertise-routes="{{ tailscale_advertise_routes }}" \
 {% endif %}
     --accept-routes \
-    --accept-dns=false \
+{% if tailscale_accept_dns is defined %}
+    --accept-dns={{ tailscale_accept_dns }} \
+{% else %}
+    --accept-dns=true \
+{% endif %}
 {% if tailscale_tags is defined and tailscale_tags | length > 0 %}
     --advertise-tags="{{ tailscale_tags | map("string") | map("regex_replace", "^", "tag:") | join(",") }}" \
 {% endif %}

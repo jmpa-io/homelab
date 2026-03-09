@@ -6,3 +6,4 @@
   vars:
     tailscale_advertise_routes: "{{ ansible_host }}/32"
     tailscale_tags: ["{{ instance_name | regex_replace('-[0-9]+$', '') }}"]
+    tailscale_accept_dns: false

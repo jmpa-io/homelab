@@ -15,16 +15,16 @@
 # ▌▝▌▛▌▄▌
 #
 
-# - name: Setup NAS.
-#   hosts: nas
-#   roles:
-#
-#     # packages.
-#     - instances/nas/base
-#
-#     # nfs server.
-#     - instances/nas/nfs-server
-#
+- name: Setup NAS.
+  hosts: nas
+  roles:
+
+    # Packages.
+    - instances/nas/base
+
+    # Tailscale.
+    - instances/nas/tailscale
+
 # ▖▖    ▗
 # ▙▌▛▌▛▘▜▘▛▘
 # ▌▌▙▌▄▌▐▖▄▌
