@@ -3,7 +3,7 @@
 
 # Funcs.
 die() { echo "$1" >&2; exit "${2:-1}"; }
-diejq() { echo "$1" | jq '.' >&2; exit "${2:-1}"; }
+diejq() { echo "$1:" >&2; <<< "$2" jq '.' >&2; exit "${3:-1}"; }
 
 # Check pwd.
 [[ ! -d .git ]] \
@@ -66,10 +66,10 @@ response=$(curl -s -X POST \
   || die "Failed to generate Tailscale auth key."
 
 # Extract key from response.
-authKey=$(<<< "$response" jq -r '.key // empty') \
-  || diejq "$response" "Failed to parse Tailscale API response."
+authKey=$(<<< "$response" jq -r '.key // empty' 2>/dev/null) \
+  || diejq "Failed to parse Tailscale API response" "$response"
 [[ -z "$authKey" ]] \
-  && diejq "$response" "Failed to extract auth key from API response."
+  && diejq "Failed to extract auth key from API response" "$response"
 
 # Store in AWS SSM.
 aws ssm put-parameter \
