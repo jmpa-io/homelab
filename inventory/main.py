@@ -42,9 +42,7 @@ def main():
       'default_ui_port': read_env_var('PROXMOX_DEFAULT_UI_PORT', '8006'),
     },
     'tailscale': {
-      'tailnet': ssm_client.get_parameter('/homelab/tailscale/tailnet'),
-      'api_key': ssm_client.get_parameter('/homelab/tailscale/api-key'),
-      'oauth_private_key': ssm_client.get_parameter('/homelab/tailscale/oauth-client-token'),
+      'auth_key': ssm_client.get_parameter('/homelab/tailscale/auth-key'),
     },
     'ssl': {
       'private_key': ssm_client.get_parameter('/homelab/ssl/private-key'),
