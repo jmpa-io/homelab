@@ -7,17 +7,6 @@
     tailscale_advertise_routes: "{{ ansible_host }}/32,{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }}"
     tailscale_tags: ["{{ instance_name | regex_replace('-[0-9]+$', '') }}"]
 
-- name: Configure IP forwarding for Tailscale.
-  become: true
-  ansible.builtin.sysctl:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
-    state: present
-    reload: true
-  loop:
-    - { name: 'net.ipv4.ip_forward', value: '1' }
-    - { name: 'net.ipv6.conf.all.forwarding', value: '1' }
-
 - name: Add Tailscale nginx reverse proxy routing service.
   become: true
   ansible.builtin.template:

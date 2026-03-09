@@ -9,7 +9,7 @@ ExecStart=/usr/bin/env bash -c '\
   /usr/bin/tailscale status &>/dev/null || \
   /usr/bin/tailscale up \
     --reset \
-    --auth-key="{{ tailscale.auth_key }}?ephemeral=true" \
+    --auth-key="{{ tailscale.auth_key }}" \
     --hostname "{{ instance_name }}" \
 {% if tailscale_advertise_routes is defined and tailscale_advertise_routes != "" %}
     --advertise-routes="{{ tailscale_advertise_routes }}" \
