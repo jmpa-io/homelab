@@ -19,6 +19,10 @@ if [[ ${#missing[@]} -ne 0 ]]; then
   die "Missing dep${s}: ${missing[*]}."
 fi
 
+# Check auth.
+aws sts get-caller-identity &>/dev/null \
+  || die "Unable to connect to AWS; are you authed?"
+
 # Fetch tailnet from SSM.
 tailnet=$(aws ssm get-parameter \
   --name "/homelab/tailscale/tailnet" \
@@ -27,22 +31,38 @@ tailnet=$(aws ssm get-parameter \
   --with-decryption) \
   || die "Failed to fetch the Tailscale tailnet from AWS SSM Parameter Store."
 
-# Fetch OAuth client token from SSM.
-oauthClientToken=$(aws ssm get-parameter \
-  --name "/homelab/tailscale/oauth-client-token" \
+# Fetch OAuth client ID from SSM.
+oauthClientId=$(aws ssm get-parameter \
+  --name "/homelab/tailscale/oauth-client-id" \
+  --query 'Parameter.Value' \
+  --output text 2>/dev/null) \
+  || die "Failed to fetch the Tailscale OAuth client ID from AWS SSM Parameter Store."
+
+# Fetch OAuth client secret from SSM.
+oauthClientSecret=$(aws ssm get-parameter \
+  --name "/homelab/tailscale/oauth-client-secret" \
   --query 'Parameter.Value' \
   --output text 2>/dev/null \
   --with-decryption) \
-  || die "Failed to fetch the Tailscale OAuth client token from AWS SSM Parameter Store."
+  || die "Failed to fetch the Tailscale OAuth client secret from AWS SSM Parameter Store."
 
-# Check auth.
-aws sts get-caller-identity &>/dev/null \
-  || die "Unable to connect to AWS; are you authed?"
+# Exchange OAuth credentials for access token.
+tokenResponse=$(curl -s -X POST \
+  "https://api.tailscale.com/api/v2/oauth/token" \
+  -u "$oauthClientId:$oauthClientSecret" \
+  -d "grant_type=client_credentials") \
+  || die "Failed to exchange OAuth credentials for access token."
+
+# Extract access token.
+accessToken=$(<<< "$tokenResponse" jq -r '.access_token // empty' 2>/dev/null) \
+  || diejq "Failed to parse OAuth token response" "$tokenResponse" 1
+[[ -z "$accessToken" ]] \
+  && diejq "Failed to extract access token from OAuth response" "$tokenResponse" 1
 
 # Generate auth key using Tailscale API.
 response=$(curl -s -X POST \
   "https://api.tailscale.com/api/v2/tailnet/$tailnet/keys" \
-  -H "Authorization: Bearer $oauthClientToken" \
+  -H "Authorization: Bearer $accessToken" \
   -H "Content-Type: application/json" \
   -d '{
     "capabilities": {
@@ -67,9 +87,9 @@ response=$(curl -s -X POST \
 
 # Extract key from response.
 authKey=$(<<< "$response" jq -r '.key // empty' 2>/dev/null) \
-  || diejq "Failed to parse Tailscale API response" "$response"
+  || diejq "Failed to parse Tailscale API response" "$response" 1
 [[ -z "$authKey" ]] \
-  && diejq "Failed to extract auth key from API response" "$response"
+  && diejq "Failed to extract auth key from API response" "$response" 1
 
 # Store in AWS SSM.
 aws ssm put-parameter \
