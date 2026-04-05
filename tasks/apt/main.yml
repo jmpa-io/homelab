@@ -3,10 +3,16 @@
 - name: Update and upgrade apt packages.
   become: true
   ansible.builtin.apt:
-    update_cache: yes
+    update_cache: true
     upgrade: dist
     cache_valid_time: 3600
     force_apt_get: true
+
+- name: Autoremove unused apt packages.
+  become: true
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true
 
 - name: Install required apt packages.
   become: true
