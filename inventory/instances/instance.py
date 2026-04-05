@@ -36,7 +36,7 @@ class Instance(ABC):
     device_name: str
     name: str = 'jmpa-instance-{id}'
     ansible_port: int = 22
-    ansible_user: str = 'root'
+    ansible_user: str = 'me'
     host_services: List[HostService] = field(default_factory=list)
     ansible_host: str = field(init=False)
     ipv4_with_cidr: str = field(init=False)
@@ -80,6 +80,8 @@ class Instance(ABC):
             'ansible_host': self.ansible_host,
             'ansible_port': self.ansible_port,
             'ansible_user': self.get_ansible_user(),
+            'ansible_become': True,
+            'ansible_become_method': 'sudo',
             'instance_name': self.name,
             'instance': base,
         }
