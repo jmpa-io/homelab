@@ -27,7 +27,7 @@
   become: true
   ansible.builtin.systemd:
     name: network-autorestart
-    enabled: yes
+    enabled: true
     state: started
 
 - name: Update '/etc/network/interfaces' (from template).
@@ -89,5 +89,5 @@
   become: true
   ansible.builtin.systemd:
     name: dnsmasq_exporter
-    enabled: yes
+    enabled: true
     state: started

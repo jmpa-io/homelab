@@ -11,5 +11,5 @@
     fstype: nfs
     state: mounted
     opts: defaults
-    dump: 0
-    passno: 0
+    dump: '0'
+    passno: '0'

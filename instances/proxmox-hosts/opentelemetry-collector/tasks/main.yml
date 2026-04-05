@@ -35,7 +35,7 @@
   become: true
   ansible.builtin.systemd:
     name: "{{ otel_type }}"
-    enabled: yes
+    enabled: true
     state: started
 
 - name: Cleanup .deb

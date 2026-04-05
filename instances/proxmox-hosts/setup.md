@@ -13,7 +13,7 @@ This section covers setting up a new `jmpa-server` physical machine.
 
 On the new machine...
 
-1. [Estabilish an internet connection, through `Ethernet` or `Wi-Fi`](#establish-an-internet-connection).
+1. [Establish an internet connection, through `Ethernet` or `Wi-Fi`](#establish-an-internet-connection).
 1. [Update dependencies](#update-dependencies).
 1. [Setup `ssh`](#setting-up-ssh).
 
@@ -27,9 +27,9 @@ To download the `Proxmox` dependencies (or any dependencies really), you need an
 # Setup /etc/network/interfaces to look like:
 cat <<EOF | sudo tee /etc/network/interfaces
 
-# The lookback network interface.
+# The loopback network interface.
 auto lo
-iface lo inet lookback
+iface lo inet loopback
 
 # Ethernet.
 auto enoxxxx
@@ -138,7 +138,7 @@ EOF
 cat <<EOF | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
 deb [arch=amd64] http://download.proxmox.com/debian/pve bookworm pve-no-subscription
 
-EOFdpkg -l | grep wpasupplicant
+EOF
 
 # Setup Proxmox VE repository key.
 sudo wget https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg -O /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg

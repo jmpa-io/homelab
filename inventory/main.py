@@ -218,7 +218,7 @@ def main():
   #       collector,
   #     ],
   #   )
-  # ).
+  # )
 
   # Print inventory as JSON.
   print(json.dumps(inventory.to_dict(), indent=2))
