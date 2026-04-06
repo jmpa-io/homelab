@@ -1,0 +1,21 @@
+---
+
+# Cleanup configuration for deprecated dnsmasq setup.
+cleanup_services:
+  - dnsmasq_exporter
+  - dnsmasq
+
+cleanup_service_files:
+  - /etc/systemd/system/dnsmasq_exporter.service
+
+cleanup_binaries:
+  - /usr/local/bin/dnsmasq_exporter
+
+cleanup_config_files:
+  - /etc/dnsmasq.conf
+
+cleanup_packages:
+  - dnsmasq
+
+# Also cleanup Ansible backup files (*.20* in /etc).
+cleanup_ansible_backups: true

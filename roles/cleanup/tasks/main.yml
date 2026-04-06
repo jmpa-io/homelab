@@ -1,0 +1,70 @@
+---
+
+# Generic cleanup role for removing deprecated services, packages, and files.
+# Configure via cleanup_items variable.
+
+- name: Stop and disable services.
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop: "{{ cleanup_services | default([]) }}"
+  ignore_errors: true
+
+- name: Remove service files.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ cleanup_service_files | default([]) }}"
+
+- name: Remove binaries.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ cleanup_binaries | default([]) }}"
+
+- name: Remove configuration files.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ cleanup_config_files | default([]) }}"
+
+- name: Uninstall packages.
+  become: true
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: absent
+    purge: true
+  loop: "{{ cleanup_packages | default([]) }}"
+  ignore_errors: true
+
+- name: Reload systemd daemon.
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: (cleanup_services | default([]) | length > 0) or (cleanup_service_files | default([]) | length > 0)
+
+- name: Find Ansible backup files in /etc.
+  become: true
+  ansible.builtin.find:
+    paths: /etc
+    patterns: '*.20*'
+    file_type: file
+    recurse: true
+  register: ansible_backup_files
+  when: cleanup_ansible_backups | default(true)
+
+- name: Remove Ansible backup files.
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ ansible_backup_files.files }}"
+  when:
+    - cleanup_ansible_backups | default(true)
+    - ansible_backup_files.files is defined
+    - ansible_backup_files.files | length > 0

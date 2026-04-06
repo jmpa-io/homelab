@@ -1,5 +1,14 @@
 ---
 
+# Cleanup deprecated items (e.g., dnsmasq).
+- name: Load cleanup configuration.
+  include_vars:
+    file: vars/cleanup.yml
+
+- name: Run cleanup tasks.
+  include_role:
+    name: cleanup
+
 - name: Setup apt + install packages.
   include_tasks: tasks/apt/main.yml
 
