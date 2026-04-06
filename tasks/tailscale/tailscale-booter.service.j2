@@ -11,6 +11,7 @@ ExecStart=/usr/bin/env bash -c '\
     --reset \
     --auth-key="{{ tailscale.auth_key }}" \
     --hostname "{{ instance_name }}" \
+    --ephemeral \
 {% if tailscale_advertise_routes is defined and tailscale_advertise_routes != "" %}
     --advertise-routes="{{ tailscale_advertise_routes }}" \
 {% endif %}

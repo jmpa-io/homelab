@@ -51,6 +51,7 @@ response=$(curl -s -X POST \
           "reusable": true,
           "ephemeral": true,
           "preauthorized": true,
+          "expiryDisabled": true,
           "tags": [
             "tag:jmpa-server",
             "tag:jmpa-nas",
