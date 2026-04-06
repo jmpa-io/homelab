@@ -12,18 +12,11 @@ ExecStart=/usr/bin/env bash -c '\
     --auth-key="{{ tailscale.auth_key }}" \
     --hostname "{{ instance_name }}" \
     --ephemeral \
-    --accept-routes \
-{% if tailscale_accept_dns is defined %}
-    --accept-dns={{ tailscale_accept_dns }} \
-{% else %}
-    --accept-dns=true \
-{% endif %}
-{% if tailscale_advertise_routes is defined and tailscale_advertise_routes != "" %}
-    --advertise-routes="{{ tailscale_advertise_routes }}" \
-{% endif %}
-{% if tailscale_tags is defined and tailscale_tags | length > 0 %}
-    --advertise-tags="{{ tailscale_tags | map("string") | map("regex_replace", "^", "tag:") | join(",") }}"
-{% endif %}
+    --accept-routes{% if tailscale_accept_dns is defined %} \
+    --accept-dns={{ tailscale_accept_dns }}{% else %} \
+    --accept-dns=true{% endif %}{% if tailscale_advertise_routes is defined and tailscale_advertise_routes != "" %} \
+    --advertise-routes="{{ tailscale_advertise_routes }}"{% endif %}{% if tailscale_tags is defined and tailscale_tags | length > 0 %} \
+    --advertise-tags="{{ tailscale_tags | map("string") | map("regex_replace", "^", "tag:") | join(",") }}"{% endif %}\
 '
 RemainAfterExit=yes
 
