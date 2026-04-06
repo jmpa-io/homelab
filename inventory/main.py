@@ -21,9 +21,10 @@ def main():
   common_subnet_ipv4 = ssm_client.get_parameter('/homelab/subnet')
   default_cidr = read_env_var('DEFAULT_CIDR', 24, False, int)
   inventory_vars = {
-    # 'ansible_ssh_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # Commented out - using SSH keys instead
+    # 'ansible_ssh_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # Commented out - using SSH keys for most hosts
     'ansible_become_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # User 'me' password for sudo
     'ansible_python_interpreter': read_env_var('ANSIBLE_PYTHON_INTERPRETER', '/usr/bin/python3'),
+    'ansible_ssh_pass_fallback': ssm_client.get_parameter('/homelab/ssh-password'),  # Fallback password for hosts that don't support SSH keys
     'common': {
       'internet_gateway': {
         "ipv4": ssm_client.get_parameter('/homelab/internet-gateway')

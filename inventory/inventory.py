@@ -170,7 +170,10 @@ class Inventory:
             'hosts': list(host_instances.keys())
         },
         'nas': {
-            'hosts': list(nas_instances.keys())
+            'hosts': list(nas_instances.keys()),
+            'vars': {
+                'ansible_ssh_pass': self.vars.get('ansible_ssh_pass_fallback')  # NAS uses password auth fallback
+            }
         },
         'dns': {
             'hosts': list(dns_instances.keys())
