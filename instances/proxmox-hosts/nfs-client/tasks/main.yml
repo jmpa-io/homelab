@@ -3,13 +3,22 @@
 - name: Setup apt + install packages.
   include_tasks: tasks/apt/main.yml
 
-- name: Mount network directory.
+- name: Create mount directories for each NAS.
+  become: true
+  ansible.builtin.file:
+    path: "/mnt/nfs/{{ hostvars[item]['instance_name'] }}"
+    state: directory
+    mode: '0755'
+  loop: "{{ groups['nas'] }}"
+
+- name: Mount NFS shares from each NAS.
   become: true
   ansible.posix.mount:
-    name: "{{ nfs.dest }}"
-    src: "{{ nfs.src }}:{{ nfs.dest }}"
+    name: "/mnt/nfs/{{ hostvars[item]['instance_name'] }}"
+    src: "{{ hostvars[item]['ansible_host'] }}:/mnt/nfs"
     fstype: nfs
     state: mounted
     opts: defaults
     dump: '0'
     passno: '0'
+  loop: "{{ groups['nas'] }}"

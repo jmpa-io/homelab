@@ -30,28 +30,28 @@
 # ▌▌▙▌▄▌▐▖▄▌
 #
 
-# - name: Setup proxmox-hosts.
-#  hosts: proxmox_hosts
-#  roles:
-#
-#     # packages.
-#     - instances/proxmox-hosts/base
-#
-#     # networking & dns.
-#     - instances/proxmox-hosts/networking-and-dns
-#
-#     # tailscale.
-#     - instances/proxmox-hosts/tailscale
-#
-#     # systemd.
-#     - instances/proxmox-hosts/systemd
-#
-#     # nfs client.
-#     - instances/proxmox-hosts/nfs-client
-#
-#     # observability.
-#     - instances/proxmox-hosts/opentelemetry-collector
-#
+- name: Setup proxmox-hosts.
+  hosts: proxmox_hosts
+  roles:
+
+    # packages.
+    - instances/proxmox-hosts/base
+
+    # networking & dns.
+    - instances/proxmox-hosts/networking-and-dns
+
+    # tailscale.
+    - instances/proxmox-hosts/tailscale
+
+    # systemd.
+    - instances/proxmox-hosts/systemd
+
+    # nfs client.
+    - instances/proxmox-hosts/nfs-client
+
+    # observability.
+    - instances/proxmox-hosts/opentelemetry-collector
+
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
 # ▐ ▙▖▌▌▌▙▌▐▖█▌▐▖▙▖▄▌

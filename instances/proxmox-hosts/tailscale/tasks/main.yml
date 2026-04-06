@@ -5,7 +5,6 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/tasks/tailscale/setup.yml"
   vars:
     tailscale_advertise_routes: "{{ ansible_host }}/32,{{ host.bridge.subnet }}/{{ host.bridge.ipv4_cidr }}"
-    tailscale_tags: ["{{ instance_name | regex_replace('-[0-9]+$', '') }}"]
 
 - name: Add Tailscale nginx reverse proxy routing service.
   become: true
