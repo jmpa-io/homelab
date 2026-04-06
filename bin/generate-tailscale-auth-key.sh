@@ -51,13 +51,7 @@ response=$(curl -s -X POST \
           "reusable": true,
           "ephemeral": true,
           "preauthorized": true,
-          "expiryDisabled": true,
-          "tags": [
-            "jmpa-server",
-            "jmpa-nas",
-            "jmpa-dns",
-            "jmpa-vps"
-          ]
+          "expiryDisabled": true
         }
       }
     },
