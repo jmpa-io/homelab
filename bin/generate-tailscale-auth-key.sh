@@ -53,10 +53,10 @@ response=$(curl -s -X POST \
           "preauthorized": true,
           "expiryDisabled": true,
           "tags": [
-            "tag:jmpa-server",
-            "tag:jmpa-nas",
-            "tag:jmpa-dns",
-            "tag:jmpa-vps"
+            "jmpa-server",
+            "jmpa-nas",
+            "jmpa-dns",
+            "jmpa-vps"
           ]
         }
       }
