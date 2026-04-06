@@ -57,6 +57,7 @@
     owner: root
     group: root
     mode: '0644'
+    follow: false
 
 - name: Update '/etc/dnsmasq.conf' (from template).
   become: true
