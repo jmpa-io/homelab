@@ -1,29 +1,29 @@
 ---
 
-- name: Setup DNS.
-  hosts: dns
-  roles:
-
-    # Packages.
-    - instances/dns/base
-
+# - name: Setup DNS.
+#   hosts: dns
+#  roles:
+#
+#    # Packages.
+#    - instances/dns/base
+#
     # Tailscale.
-    - instances/dns/tailscale
+#    - instances/dns/tailscale
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▌▌▚
 # ▌▝▌▛▌▄▌
 #
 
-- name: Setup NAS.
-  hosts: nas
-  roles:
+# - name: Setup NAS.
+#  hosts: nas
+#  roles:
 
     # Packages.
-    - instances/nas/base
+#    - instances/nas/base
 
     # Tailscale.
-    - instances/nas/tailscale
+#    - instances/nas/tailscale
 
 # ▖▖    ▗
 # ▙▌▛▌▛▘▜▘▛▘
@@ -50,7 +50,7 @@
     - instances/proxmox-hosts/nfs-client
 
     # observability.
-    - instances/proxmox-hosts/opentelemetry-collector
+    #- instances/proxmox-hosts/opentelemetry-collector
 
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘

@@ -42,7 +42,7 @@ check-playbook: playbook.yml
 
 run-playbook: ## Executes the Ansible playbook.
 run-playbook: playbook.yml
-	ansible-playbook -vv $< \
+	ansible-playbook -vv $< -f 5 \
 		--extra-vars root_playbook_directory="$$PWD"
 
 #
