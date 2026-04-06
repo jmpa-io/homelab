@@ -3,6 +3,13 @@
 - name: Setup apt + install packages.
   include_tasks: tasks/apt/main.yml
 
+- name: Create parent NFS mount directory.
+  become: true
+  ansible.builtin.file:
+    path: /mnt/nfs
+    state: directory
+    mode: '0755'
+
 - name: Create mount directories for each NAS.
   become: true
   ansible.builtin.file:

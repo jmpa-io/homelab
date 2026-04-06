@@ -101,10 +101,6 @@ def main():
     name='collector',
     metrics_port=read_env_var('HOST_OTELCOL_METRICS_PORT', '8889'),
   )
-  dnsmasq_exporter = HostService(
-    name='dnsmasq_exporter',
-    metrics_port=read_env_var("HOST_DNSMASQ_EXPORTER_METRICS_PORT", '9153'),
-  )
 
   #
   # Setup k3s config.
@@ -141,7 +137,6 @@ def main():
       bridge=bridge,
       host_services=[
         collector,
-        dnsmasq_exporter,
       ],
       lxc_services=[
         nginx_reverse_proxy,
@@ -157,7 +152,6 @@ def main():
       bridge=bridge,
       host_services=[
         collector,
-        dnsmasq_exporter,
       ],
       lxc_services=[
         nginx_reverse_proxy,
@@ -173,7 +167,6 @@ def main():
       bridge=bridge,
       host_services=[
         collector,
-        dnsmasq_exporter,
       ],
       lxc_services=[
         nginx_reverse_proxy,

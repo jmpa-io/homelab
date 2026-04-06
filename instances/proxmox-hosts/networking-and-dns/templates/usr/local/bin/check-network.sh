@@ -20,7 +20,7 @@ for (( i=1; i<=maxRetries; i++)); do
   # Check connectivity.
   ipUp=false; dnsUp=false
   ping -c 3 -W 5 1.1.1.1 >/dev/null 2>&1 && ipUp=true \
-    || log "($i of $maxRetries) Network unreachable ( check)"
+    || log "($i of $maxRetries) Network unreachable (IP check)"
   ping -c 1 -W 5 google.com >/dev/null 2>&1 && dnsUp=true \
     || log "($i of $maxRetries) Network reachable, but DNS failed (dnsmasq?)"
   if $ipUp && $dnsUp; then

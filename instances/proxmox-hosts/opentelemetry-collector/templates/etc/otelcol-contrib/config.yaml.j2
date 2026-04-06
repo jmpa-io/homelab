@@ -22,15 +22,6 @@ receivers:
       - networking
 
   # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver
-  prometheus/dnsmasq_exporter:
-    config:
-      scrape_configs:
-        - job_name: "dnsmasq_exporter"
-          scrape_interval: 30s
-          static_configs:
-            - targets: ["{{ ansible_host }}:{{ host.dnsmasq_exporter.metrics_port }}"]
-
-  # https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver
   prometheus/internal:
     config:
       scrape_configs:
@@ -75,7 +66,7 @@ service:
       exporters: [debug]
 
     metrics:
-      receivers: [otlp, prometheus/internal, prometheus/dnsmasq_exporter]
+      receivers: [otlp, prometheus/internal]
       processors: [batch]
       exporters: [debug, prometheus]
 
