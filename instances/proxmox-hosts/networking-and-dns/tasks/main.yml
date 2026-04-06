@@ -49,22 +49,6 @@
     group: root
     mode: '0644'
 
-- name: Remove '/etc/resolv.conf' symlink if it exists.
-  become: true
-  ansible.builtin.file:
-    path: /etc/resolv.conf
-    state: absent
-
-- name: Update '/etc/resolv.conf' (from template).
-  become: true
-  ansible.builtin.template:
-    src: etc/resolv.conf.j2
-    dest: /etc/resolv.conf
-    owner: root
-    group: root
-    mode: '0644'
-    force: true
-
 - name: Update '/etc/dnsmasq.conf' (from template).
   become: true
   ansible.builtin.template:
