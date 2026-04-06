@@ -1,12 +1,14 @@
 ---
 
 - name: Disable Postfix from starting at boot
+  become: true
   ansible.builtin.systemd:
     name: postfix@-.service
     enabled: false
     state: stopped
 
 - name: Mask Postfix to prevent manual start
+  become: true
   ansible.builtin.systemd:
     name: postfix@-.service
     masked: true
