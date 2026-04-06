@@ -11,7 +11,6 @@ ExecStart=/usr/bin/env bash -c '\
     --reset \
     --auth-key="{{ tailscale.auth_key }}" \
     --hostname "{{ instance_name }}" \
-    --ephemeral \
     --accept-routes{% if tailscale_accept_dns is defined %} \
     --accept-dns={{ tailscale_accept_dns }}{% else %} \
     --accept-dns=true{% endif %}{% if tailscale_advertise_routes is defined and tailscale_advertise_routes != "" %} \
