@@ -1,0 +1,136 @@
+---
+# Tasks for deploying Proxmox VE community scripts
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - script_url is defined and script_url != ""
+      - script_name is defined and script_name != ""
+      - container_id is defined and container_id != ""
+      - hostname is defined and hostname != ""
+    fail_msg: "Required variables not set. Need: script_url, script_name, container_id, hostname"
+
+- name: Calculate static IP from VMID if not explicitly set
+  ansible.builtin.set_fact:
+    calculated_static_ip: >-
+      {{
+        '10.0.' + ((bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+        (container_id | string)[-2:]
+      }}
+    calculated_gateway: >-
+      {{
+        '10.0.' + ((bridge | regex_replace('vmbr', '') | int) + 1) | string + '.1'
+      }}
+  when: static_ip == "" or gateway == ""
+
+- name: Set final static IP and gateway
+  ansible.builtin.set_fact:
+    final_static_ip: "{{ static_ip if static_ip != '' else calculated_static_ip }}"
+    final_gateway: "{{ gateway if gateway != '' else calculated_gateway }}"
+
+- name: Display network configuration
+  ansible.builtin.debug:
+    msg:
+      - "Container ID: {{ container_id }}"
+      - "Bridge: {{ bridge }}"
+      - "Static IP: {{ final_static_ip }}"
+      - "Gateway: {{ final_gateway }}"
+
+- name: Check if container already exists
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.shell: |
+    pct status {{ container_id }} 2>/dev/null || echo "not_found"
+  register: container_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if container already exists
+  ansible.builtin.fail:
+    msg: "Container {{ container_id }} already exists on {{ proxmox_host }}"
+  when: "'not_found' not in container_check.stdout"
+
+- name: Download community script to Proxmox host
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.get_url:
+    url: "{{ script_url }}"
+    dest: "/tmp/{{ script_name }}.sh"
+    mode: '0755'
+    force: true
+
+- name: Create environment file for script
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.template:
+    src: script-env.sh.j2
+    dest: "/tmp/{{ script_name }}.env"
+    mode: '0644'
+
+- name: Execute community script
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.shell: |
+    set -a
+    source /tmp/{{ script_name }}.env
+    set +a
+    /tmp/{{ script_name }}.sh
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: script_output
+  async: 3600
+  poll: 10
+  failed_when: script_output.rc != 0
+
+- name: Display script output
+  ansible.builtin.debug:
+    var: script_output.stdout_lines
+  when: verbose == "yes"
+
+- name: Wait for container to be fully started
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.shell: |
+    pct status {{ container_id }} | grep -q "running"
+  register: container_status
+  until: container_status.rc == 0
+  retries: 30
+  delay: 2
+  changed_when: false
+
+- name: Get container IP address
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.shell: |
+    pct exec {{ container_id }} -- hostname -I | awk '{print $1}'
+  register: container_ip
+  changed_when: false
+  retries: 10
+  delay: 3
+  until: container_ip.stdout != ""
+
+- name: Verify static IP matches expected
+  ansible.builtin.debug:
+    msg:
+      - "Expected IP: {{ final_static_ip }}"
+      - "Actual IP: {{ container_ip.stdout }}"
+      - "Match: {{ container_ip.stdout == final_static_ip }}"
+
+- name: Display container information
+  ansible.builtin.debug:
+    msg:
+      - "Container {{ container_id }} ({{ hostname }}) deployed successfully"
+      - "IP Address: {{ container_ip.stdout }}"
+      - "Gateway: {{ final_gateway }}"
+      - "Access: pct enter {{ container_id }}"
+
+- name: Cleanup script files
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/{{ script_name }}.sh"
+    - "/tmp/{{ script_name }}.env"
+  when: cleanup_script | bool
+
+- name: Add container to in-memory inventory
+  ansible.builtin.add_host:
+    name: "{{ hostname }}"
+    ansible_host: "{{ container_ip.stdout }}"
+    groups: "{{ script_name }}_containers"
+  when: container_ip.stdout != ""

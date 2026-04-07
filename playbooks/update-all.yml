@@ -1,0 +1,164 @@
+---
+# Update all LXC containers and VMs in the homelab
+# This playbook updates Proxmox hosts, LXC containers, and performs maintenance
+
+- name: Update Proxmox VE Hosts
+  hosts: proxmox_hosts
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: true
+        autoclean: true
+      register: proxmox_upgrade
+
+    - name: Check if reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+
+    - name: Display reboot status
+      ansible.builtin.debug:
+        msg: "Reboot required: {{ reboot_required.stat.exists }}"
+
+    - name: Reboot if required (with confirmation)
+      ansible.builtin.reboot:
+        msg: "Rebooting for system updates"
+        pre_reboot_delay: 5
+        post_reboot_delay: 30
+        reboot_timeout: 600
+      when:
+        - reboot_required.stat.exists
+        - auto_reboot | default(false) | bool
+
+- name: Update LXC Containers
+  hosts: proxmox_hosts
+  become: true
+  gather_facts: false
+
+  vars:
+    # Containers to exclude from updates (add VMIDs here)
+    excluded_containers: []
+
+  tasks:
+    - name: Get list of all running LXC containers
+      ansible.builtin.shell: |
+        pct list | awk 'NR>1 && $2=="running" {print $1}'
+      register: running_containers
+      changed_when: false
+
+    - name: Display containers to update
+      ansible.builtin.debug:
+        msg: "Updating containers: {{ running_containers.stdout_lines | difference(excluded_containers) }}"
+
+    - name: Update each LXC container
+      ansible.builtin.shell: |
+        pct exec {{ item }} -- bash -c "
+          apt-get update &&
+          DEBIAN_FRONTEND=noninteractive apt-get upgrade -y &&
+          apt-get autoremove -y &&
+          apt-get autoclean
+        "
+      loop: "{{ running_containers.stdout_lines | difference(excluded_containers) }}"
+      register: container_updates
+      failed_when: false
+      changed_when: "'upgraded' in container_updates.stdout"
+
+    - name: Display update results
+      ansible.builtin.debug:
+        msg: "Container {{ item.item }} updated: {{ 'upgraded' in item.stdout }}"
+      loop: "{{ container_updates.results }}"
+      when: container_updates.results is defined
+
+- name: Update DNS Server (Raspberry Pi)
+  hosts: dns
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: true
+        autoclean: true
+      register: dns_upgrade
+
+    - name: Update Pi-hole
+      ansible.builtin.shell: |
+        pihole -up
+      register: pihole_update
+      changed_when: "'up-to-date' not in pihole_update.stdout"
+      failed_when: false
+
+    - name: Check if reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: dns_reboot_required
+
+    - name: Display reboot status
+      ansible.builtin.debug:
+        msg: "DNS reboot required: {{ dns_reboot_required.stat.exists }}"
+
+- name: Update NAS
+  hosts: nas
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: true
+        autoclean: true
+      register: nas_upgrade
+
+    - name: Check if reboot is required
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: nas_reboot_required
+
+    - name: Display reboot status
+      ansible.builtin.debug:
+        msg: "NAS reboot required: {{ nas_reboot_required.stat.exists }}"
+
+- name: Update Summary
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Display update summary
+      ansible.builtin.debug:
+        msg:
+          - "=== Update Summary ==="
+          - ""
+          - "All systems have been updated."
+          - ""
+          - "Reboot required hosts:"
+          - "- Check Proxmox hosts for /var/run/reboot-required"
+          - "- Check DNS server for /var/run/reboot-required"
+          - "- Check NAS for /var/run/reboot-required"
+          - ""
+          - "To reboot automatically, run with: -e auto_reboot=true"
+          - ""
+          - "Manual reboot commands:"
+          - "  Proxmox: ssh <host> 'reboot'"
+          - "  DNS: ssh <dns> 'sudo reboot'"
+          - "  NAS: ssh <nas> 'sudo reboot'"

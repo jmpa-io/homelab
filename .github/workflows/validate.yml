@@ -1,0 +1,80 @@
+name: Validate Infrastructure
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'inventory/**'
+      - 'instances/**'
+      - 'roles/**'
+      - 'tasks/**'
+      - 'playbook.yml'
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate Ansible Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r inventory/requirements.txt
+          pip install ansible-lint yamllint
+          ansible-galaxy install -r requirements.yml
+
+      - name: Run YAML lint
+        run: |
+          yamllint -c .yamllint playbook.yml instances/ roles/ tasks/ services/
+        continue-on-error: true
+
+      - name: Run Ansible lint
+        run: |
+          ansible-lint playbook.yml
+        continue-on-error: true
+
+      - name: Validate Python inventory script
+        run: |
+          cd inventory
+          python3 -m py_compile main.py
+          python3 -m py_compile instances/*.py
+
+      - name: Check Ansible syntax (mock inventory)
+        run: |
+          # Create a minimal mock inventory for syntax checking
+          echo '{"all": {"hosts": ["localhost"]}}' > mock-inventory.json
+          ansible-playbook playbook.yml --syntax-check -i mock-inventory.json
+        continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'

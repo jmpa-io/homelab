@@ -1,0 +1,45 @@
+---
+# Deploy Ollama using Proxmox VE Community Script
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=ollama
+
+- name: Deploy Ollama LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    ollama_vmid: "{{ lookup('env', 'OLLAMA_VMID') | default('150', true) }}"
+    ollama_hostname: "{{ lookup('env', 'OLLAMA_HOSTNAME') | default('ollama', true) }}"
+    ollama_ram: "{{ lookup('env', 'OLLAMA_RAM') | default('8192', true) }}"
+    ollama_disk_size: "{{ lookup('env', 'OLLAMA_DISK_SIZE') | default('50', true) }}"
+    ollama_cpu_cores: "{{ lookup('env', 'OLLAMA_CPU_CORES') | default('4', true) }}"
+    ollama_bridge: "{{ lookup('env', 'OLLAMA_BRIDGE') | default('vmbr0', true) }}"
+
+  tasks:
+    - name: Deploy Ollama using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ollama.sh"
+        script_name: "ollama"
+        container_id: "{{ ollama_vmid }}"
+        hostname: "{{ ollama_hostname }}"
+        ram: "{{ ollama_ram }}"
+        swap: "512"
+        disk_size: "{{ ollama_disk_size }}"
+        cpu_cores: "{{ ollama_cpu_cores }}"
+        bridge: "{{ ollama_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Display Ollama access information
+      ansible.builtin.debug:
+        msg:
+          - "Ollama deployed successfully!"
+          - "Container ID: {{ ollama_vmid }}"
+          - "Hostname: {{ ollama_hostname }}"
+          - "Access: pct enter {{ ollama_vmid }}"
+          - "API: http://{{ final_static_ip }}:11434"
+          - ""
+          - "Test with: curl http://{{ final_static_ip }}:11434/api/generate -d '{\"model\":\"llama2\",\"prompt\":\"Why is the sky blue?\"}'"

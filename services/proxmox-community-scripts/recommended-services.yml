@@ -1,0 +1,116 @@
+---
+# Recommended Proxmox Community Scripts for Homelab
+
+- name: Deploy Monitoring Stack
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  tasks:
+    - name: Display recommended community scripts
+      ansible.builtin.debug:
+        msg:
+          - "=== MONITORING & OBSERVABILITY ==="
+          - "✅ Prometheus (VMID 140) - Metrics collection"
+          - "✅ Grafana (VMID 145) - Visualization"
+          - "✅ Proxmox Backup Server (VMID 100) - Backups"
+          - ""
+          - "=== AI & DEVELOPMENT ==="
+          - "✅ Ollama (VMID 150) - Self-hosted AI"
+          - "✅ GitHub Runner (VMID 180+) - CI/CD"
+          - ""
+          - "=== RECOMMENDED ADDITIONS ==="
+          - "📊 Uptime Kuma (VMID 155) - Uptime monitoring"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=uptime-kuma"
+          - ""
+          - "🔔 Ntfy (VMID 160) - Notification service"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=ntfy"
+          - ""
+          - "📝 Paperless-ngx (VMID 165) - Document management"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=paperless-ngx"
+          - ""
+          - "🌐 Nginx Proxy Manager (VMID 170) - Reverse proxy with UI"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=nginxproxymanager"
+          - ""
+          - "🔐 Vaultwarden (VMID 175) - Password manager"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=vaultwarden"
+          - ""
+          - "📚 Jellyfin (VMID 185) - Media server"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=jellyfin"
+          - ""
+          - "🏠 Home Assistant (VMID 190) - Home automation"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=homeassistant"
+          - ""
+          - "=== INFRASTRUCTURE ==="
+          - "🔧 Portainer (VMID 195) - Docker management"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=portainer"
+          - ""
+          - "📊 Netdata (VMID 200) - Real-time monitoring"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=netdata"
+          - ""
+          - "🔍 Elasticsearch (VMID 205) - Log aggregation"
+          - "   Script: https://community-scripts.github.io/ProxmoxVE/scripts?id=elasticsearch"
+          - ""
+          - "=== DEPLOYMENT COMMAND ==="
+          - "ansible-playbook services/proxmox-community-scripts/<service>.yml -i inventory.json"
+
+# Example deployment playbooks for recommended services
+
+- name: Deploy Uptime Kuma
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  vars:
+    service_vmid: "155"
+    service_hostname: "uptime-kuma"
+  tasks:
+    - name: Deploy Uptime Kuma
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
+        script_name: "uptime-kuma"
+        container_id: "{{ service_vmid }}"
+        hostname: "{{ service_hostname }}"
+        ram: "1024"
+        disk_size: "4"
+        cpu_cores: "1"
+        bridge: "vmbr0"
+
+- name: Deploy Ntfy
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  vars:
+    service_vmid: "160"
+    service_hostname: "ntfy"
+  tasks:
+    - name: Deploy Ntfy
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ntfy.sh"
+        script_name: "ntfy"
+        container_id: "{{ service_vmid }}"
+        hostname: "{{ service_hostname }}"
+        ram: "512"
+        disk_size: "2"
+        cpu_cores: "1"
+        bridge: "vmbr0"
+
+- name: Deploy Nginx Proxy Manager
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  vars:
+    service_vmid: "170"
+    service_hostname: "npm"
+  tasks:
+    - name: Deploy Nginx Proxy Manager
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/nginxproxymanager.sh"
+        script_name: "nginx-proxy-manager"
+        container_id: "{{ service_vmid }}"
+        hostname: "{{ service_hostname }}"
+        ram: "2048"
+        disk_size: "8"
+        cpu_cores: "2"
+        bridge: "vmbr0"

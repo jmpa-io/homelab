@@ -1,0 +1,40 @@
+---
+# Default variables for proxmox-community-script role
+
+# Proxmox host to run the script on (defaults to first proxmox host)
+proxmox_host: "{{ groups['proxmox_hosts'][0] if groups['proxmox_hosts'] is defined else 'localhost' }}"
+
+# Script configuration
+script_url: ""
+script_name: ""
+
+# Container/VM configuration
+container_id: ""
+hostname: ""
+ram: "2048"
+swap: "512"
+disk_size: "8"
+cpu_cores: "2"
+os_type: "debian"
+os_version: "12"
+bridge: "vmbr0"
+
+# Network configuration
+# Static IP will be auto-calculated based on VMID if not explicitly set
+# Pattern: Bridge prefix (10.0.X.) + last 2 digits of VMID
+# Example: VMID 111 on vmbr0 (10.0.1.) = 10.0.1.11
+# Example: VMID 269 on vmbr1 (10.0.2.) = 10.0.2.69
+static_ip: ""
+gateway: ""
+
+# Script behavior
+verbose: "yes"
+privileged: "no"
+features: "nesting=1"
+
+# Advanced options
+advanced_options: ""
+ssh_root_password: ""
+
+# Cleanup
+cleanup_script: true

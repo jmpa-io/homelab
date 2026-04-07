@@ -1,0 +1,108 @@
+name: Deploy Homelab Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'inventory/**'
+      - 'instances/**'
+      - 'roles/**'
+      - 'tasks/**'
+      - 'playbook.yml'
+      - '.github/workflows/deploy-homelab.yml'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - all
+          - proxmox-hosts
+          - nas
+          - dns
+          - services
+      dry_run:
+        description: 'Run in check mode (dry run)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    name: Deploy to Homelab
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r inventory/requirements.txt
+          ansible-galaxy install -r requirements.yml
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Generate dynamic inventory
+        run: |
+          cd inventory
+          python3 main.py > ../inventory.json
+          cat ../inventory.json
+
+      - name: Validate Ansible syntax
+        run: |
+          ansible-playbook playbook.yml --syntax-check -i inventory.json
+
+      - name: Run Ansible deployment (check mode)
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          ansible-playbook playbook.yml \
+            -i inventory.json \
+            --check \
+            --diff \
+            -v
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+
+      - name: Run Ansible deployment
+        if: ${{ inputs.dry_run != true }}
+        run: |
+          TARGET="${{ inputs.target || 'all' }}"
+
+          if [ "$TARGET" = "all" ]; then
+            ansible-playbook playbook.yml -i inventory.json -v
+          elif [ "$TARGET" = "proxmox-hosts" ]; then
+            ansible-playbook playbook.yml -i inventory.json --tags proxmox -v
+          elif [ "$TARGET" = "nas" ]; then
+            ansible-playbook playbook.yml -i inventory.json --tags nas -v
+          elif [ "$TARGET" = "dns" ]; then
+            ansible-playbook playbook.yml -i inventory.json --tags dns -v
+          elif [ "$TARGET" = "services" ]; then
+            ansible-playbook playbook.yml -i inventory.json --tags services -v
+          fi
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+
+      - name: Upload deployment logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-logs-${{ github.run_number }}
+          path: |
+            *.log
+            /tmp/ansible-*.log
+          retention-days: 30

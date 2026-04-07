@@ -1,0 +1,141 @@
+name: Update Homelab Infrastructure
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC (12 PM Melbourne time)
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      auto_reboot:
+        description: 'Automatically reboot hosts if required'
+        required: false
+        type: boolean
+        default: false
+      target:
+        description: 'Update target'
+        required: true
+        type: choice
+        options:
+          - all
+          - proxmox-hosts
+          - lxc-containers
+          - dns
+          - nas
+        default: 'all'
+
+jobs:
+  update:
+    name: Update Infrastructure
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r inventory/requirements.txt
+          ansible-galaxy install -r requirements.yml
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Generate dynamic inventory
+        run: |
+          cd inventory
+          python3 main.py > ../inventory.json
+
+      - name: Run updates
+        run: |
+          TARGET="${{ inputs.target || 'all' }}"
+          AUTO_REBOOT="${{ inputs.auto_reboot || 'false' }}"
+
+          ansible-playbook playbooks/update-all.yml \
+            -i inventory.json \
+            -e "auto_reboot=$AUTO_REBOOT" \
+            -v
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+
+      - name: Check for reboot requirements
+        id: reboot_check
+        run: |
+          cd inventory
+          python3 main.py > ../inventory.json
+
+          # Check Proxmox hosts
+          PROXMOX_REBOOT=$(ansible proxmox_hosts -i ../inventory.json -m shell -a "test -f /var/run/reboot-required && echo 'yes' || echo 'no'" 2>/dev/null | grep -c "yes" || echo "0")
+
+          # Check DNS
+          DNS_REBOOT=$(ansible dns -i ../inventory.json -m shell -a "test -f /var/run/reboot-required && echo 'yes' || echo 'no'" 2>/dev/null | grep -c "yes" || echo "0")
+
+          # Check NAS
+          NAS_REBOOT=$(ansible nas -i ../inventory.json -m shell -a "test -f /var/run/reboot-required && echo 'yes' || echo 'no'" 2>/dev/null | grep -c "yes" || echo "0")
+
+          echo "proxmox_reboot_count=$PROXMOX_REBOOT" >> $GITHUB_OUTPUT
+          echo "dns_reboot_count=$DNS_REBOOT" >> $GITHUB_OUTPUT
+          echo "nas_reboot_count=$NAS_REBOOT" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Create update summary
+        run: |
+          cat << EOF > update-summary.md
+          # Homelab Update Summary
+
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Target:** ${{ inputs.target || 'all' }}
+          **Auto-reboot:** ${{ inputs.auto_reboot || 'false' }}
+
+          ## Reboot Status
+
+          - **Proxmox Hosts:** ${{ steps.reboot_check.outputs.proxmox_reboot_count }} host(s) require reboot
+          - **DNS Server:** ${{ steps.reboot_check.outputs.dns_reboot_count }} host(s) require reboot
+          - **NAS:** ${{ steps.reboot_check.outputs.nas_reboot_count }} host(s) require reboot
+
+          ## Actions Taken
+
+          - ✅ Updated apt packages on all hosts
+          - ✅ Updated LXC containers
+          - ✅ Updated Pi-hole
+          - ✅ Cleaned up old packages
+
+          ## Next Steps
+
+          ${{ inputs.auto_reboot == 'true' && '✅ Hosts were automatically rebooted' || '⚠️ Manual reboot required for hosts listed above' }}
+
+          EOF
+
+          cat update-summary.md
+
+      - name: Upload update summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-summary-${{ github.run_number }}
+          path: update-summary.md
+          retention-days: 90
+
+      - name: Upload update logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-logs-${{ github.run_number }}
+          path: |
+            *.log
+            /tmp/ansible-*.log
+          retention-days: 30
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Homelab update failed. Check logs for details."

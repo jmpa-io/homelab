@@ -1,0 +1,6 @@
+---
+
+otel_type: "otelcol-contrib"
+otel_version: "0.125.0"
+# Raspberry Pi 2B uses ARMv7 architecture
+otel_deb: "{{ otel_type }}_{{ otel_version }}_linux_armv7.deb"

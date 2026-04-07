@@ -1,0 +1,16 @@
+# Pi-hole Custom CNAME Records
+# Auto-generated from Ansible inventory - DO NOT EDIT MANUALLY
+# Generated: {{ ansible_date_time.iso8601 }}
+
+# Domain configuration
+domain={{ common.dns.domain }}
+local=/{{ common.dns.domain }}/
+
+# Expand simple hostnames to FQDN
+expand-hosts
+
+# Additional CNAME records for services
+{% for service in community_services %}
+# {{ service.name }}
+cname={{ service.hostname }},{{ service.dns_record.hostname }}
+{% endfor %}

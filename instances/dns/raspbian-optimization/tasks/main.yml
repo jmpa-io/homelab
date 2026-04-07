@@ -1,0 +1,113 @@
+---
+# Raspbian optimization tasks for Raspberry Pi 2B with limited disk space.
+# This role removes GUI components and unnecessary packages to free up space.
+
+- name: Stop and disable GUI-related services.
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - lightdm
+    - gdm
+    - gdm3
+    - sddm
+    - xdm
+  ignore_errors: true
+
+- name: Remove GUI and desktop environment packages.
+  become: true
+  ansible.builtin.apt:
+    name: "{{ gui_packages_to_remove }}"
+    state: absent
+    purge: true
+    autoremove: true
+  register: gui_removal
+
+- name: Remove unnecessary packages.
+  become: true
+  ansible.builtin.apt:
+    name: "{{ unnecessary_packages }}"
+    state: absent
+    purge: true
+    autoremove: true
+
+- name: Clean apt cache.
+  become: true
+  ansible.builtin.apt:
+    autoclean: true
+
+- name: Remove orphaned packages.
+  become: true
+  ansible.builtin.shell: |
+    apt-get autoremove --purge -y
+    apt-get clean
+  changed_when: false
+
+- name: Find and remove old log files.
+  become: true
+  ansible.builtin.shell: |
+    journalctl --vacuum-time=7d
+    find /var/log -type f -name "*.gz" -delete
+    find /var/log -type f -name "*.old" -delete
+    find /var/log -type f -name "*.1" -delete
+  changed_when: false
+
+- name: Disable swap if present (saves disk space).
+  become: true
+  ansible.builtin.shell: |
+    dphys-swapfile swapoff || true
+    dphys-swapfile uninstall || true
+    systemctl disable dphys-swapfile || true
+  changed_when: false
+  ignore_errors: true
+
+- name: Remove swap file.
+  become: true
+  ansible.builtin.file:
+    path: /var/swap
+    state: absent
+
+- name: Configure log rotation to be more aggressive.
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/raspbian-optimization
+    content: |
+      /var/log/*.log {
+          daily
+          rotate 3
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 root adm
+      }
+    mode: '0644'
+
+- name: Limit systemd journal size.
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: "^#?SystemMaxUse="
+    line: "SystemMaxUse=50M"
+    state: present
+  notify: Restart journald
+
+- name: Remove documentation files to save space.
+  become: true
+  ansible.builtin.shell: |
+    rm -rf /usr/share/doc/*
+    rm -rf /usr/share/man/*
+    rm -rf /usr/share/info/*
+  changed_when: false
+  when: remove_documentation | default(true)
+
+- name: Display disk usage after optimization.
+  ansible.builtin.shell: df -h /
+  register: disk_usage
+  changed_when: false
+
+- name: Show disk usage.
+  ansible.builtin.debug:
+    var: disk_usage.stdout_lines

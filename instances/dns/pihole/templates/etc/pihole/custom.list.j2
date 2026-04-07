@@ -1,0 +1,28 @@
+# Pi-hole Custom DNS Records
+# Auto-generated from Ansible inventory - DO NOT EDIT MANUALLY
+# Source: inventory/main.py -> community_services
+# Generated: {{ ansible_date_time.iso8601 }}
+
+# Community Script Services
+{% for service in community_services %}
+{{ service.ipv4 }} {{ service.dns_record.hostname }}
+{{ service.ipv4 }} {{ service.dns_record.short_hostname }}
+{% endfor %}
+
+# Proxmox Hosts
+{% for host in groups['proxmox_hosts'] %}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}.{{ common.dns.domain }}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}
+{% endfor %}
+
+# NAS Hosts
+{% for host in groups['nas'] | default([]) %}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}.{{ common.dns.domain }}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}
+{% endfor %}
+
+# DNS Server (self)
+{% for host in groups['dns'] | default([]) %}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}.{{ common.dns.domain }}
+{{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}
+{% endfor %}

@@ -5,7 +5,8 @@ Instance
 └── NAS
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 from .instance import Instance
 
@@ -22,6 +23,10 @@ class NAS(Instance):
         host_services: List of host services
         ansible_port: SSH port for Ansible connections
         ansible_user: SSH user (defaults to instance name)
+
+    Note:
+        NAS volumes are auto-discovered via NFS exports (showmount -e)
+        rather than being hardcoded in the inventory.
     """
     name: str = 'jmpa-nas-{id}'
     ansible_port: int = 9222
@@ -33,5 +38,6 @@ class NAS(Instance):
     def to_dict(self) -> dict:
         """Convert to dictionary with 'nas' key instead of 'instance'."""
         base = self._base_dict()
-        base['nas'] = base.pop('instance')
+        nas_data = base.pop('instance')
+        base['nas'] = nas_data
         return base

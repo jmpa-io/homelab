@@ -1,0 +1,10 @@
+---
+
+- name: Restart otelcol service
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ otel_type }}"
+    state: restarted
+    enabled: true
+    daemon_reload: true
+

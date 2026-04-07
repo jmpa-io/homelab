@@ -6,7 +6,7 @@ from env import read_env_var
 
 from instances import VPS, NAS, DNS
 from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
-from service import LXCService, HostService, Protocol
+from service import LXCService, HostService, Protocol, CommunityScriptService
 from inventory import Inventory
 
 from k8s_inventory import K8sInventory
@@ -20,6 +20,8 @@ def main():
   # Setup inventory variables & config.
   common_subnet_ipv4 = ssm_client.get_parameter('/homelab/subnet')
   default_cidr = read_env_var('DEFAULT_CIDR', 24, False, int)
+  domain = read_env_var('DOMAIN', 'jmpa.lab')
+
   inventory_vars = {
     # 'ansible_ssh_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # Commented out - using SSH keys for most hosts
     'ansible_become_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # User 'me' password for sudo
@@ -35,7 +37,7 @@ def main():
         'ipv4_with_cidr': f'{common_subnet_ipv4}/{default_cidr}',
       },
       'dns': {
-        'domain': read_env_var('DOMAIN', 'jmpa.lab'),
+        'domain': domain,
       },
     },
     'proxmox': {
@@ -82,6 +84,55 @@ def main():
     default_port=read_env_var('GRAFANA_PORT', '3000'),
     protocol=Protocol.HTTP,
   )
+
+  #
+  # Setup community script services (for DNS records).
+  #
+
+  community_services = [
+    CommunityScriptService(
+      name='proxmox_backup_server',
+      vmid=read_env_var('PBS_VMID', 100, value_type=int),
+      hostname=read_env_var('PBS_HOSTNAME', 'pbs'),
+      port='8007',
+      protocol=Protocol.HTTPS,
+    ),
+    CommunityScriptService(
+      name='prometheus_community',
+      vmid=read_env_var('PROMETHEUS_VMID', 140, value_type=int),
+      hostname=read_env_var('PROMETHEUS_HOSTNAME', 'prometheus'),
+      port='9090',
+      protocol=Protocol.HTTP,
+    ),
+    CommunityScriptService(
+      name='grafana_community',
+      vmid=read_env_var('GRAFANA_VMID', 145, value_type=int),
+      hostname=read_env_var('GRAFANA_HOSTNAME', 'grafana'),
+      port='3000',
+      protocol=Protocol.HTTP,
+    ),
+    CommunityScriptService(
+      name='ollama',
+      vmid=read_env_var('OLLAMA_VMID', 150, value_type=int),
+      hostname=read_env_var('OLLAMA_HOSTNAME', 'ollama'),
+      port='11434',
+      protocol=Protocol.HTTP,
+    ),
+  ]
+
+  # Add community services to inventory vars for DNS configuration
+  inventory_vars['community_services'] = [
+    {
+      'name': svc.name,
+      'vmid': svc.vmid,
+      'hostname': svc.hostname,
+      'ipv4': svc.ipv4,
+      'port': svc.port,
+      'protocol': svc.protocol.value,
+      'dns_record': svc.to_dns_record(domain),
+    }
+    for svc in community_services if svc.add_to_dns
+  ]
 
   #
   # Setup bridge.

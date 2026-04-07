@@ -1,0 +1,135 @@
+---
+# Deploy Grafana using Proxmox VE Community Script
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=grafana
+
+- name: Deploy Grafana LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    grafana_vmid: "{{ lookup('env', 'GRAFANA_VMID') | default('145', true) }}"
+    grafana_hostname: "{{ lookup('env', 'GRAFANA_HOSTNAME') | default('grafana', true) }}"
+    grafana_ram: "{{ lookup('env', 'GRAFANA_RAM') | default('2048', true) }}"
+    grafana_disk_size: "{{ lookup('env', 'GRAFANA_DISK_SIZE') | default('10', true) }}"
+    grafana_cpu_cores: "{{ lookup('env', 'GRAFANA_CPU_CORES') | default('2', true) }}"
+    grafana_bridge: "{{ lookup('env', 'GRAFANA_BRIDGE') | default('vmbr0', true) }}"
+    prometheus_ip: "{{ lookup('env', 'PROMETHEUS_IP') | default('10.0.1.40', true) }}"
+
+  tasks:
+    - name: Deploy Grafana using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/grafana.sh"
+        script_name: "grafana"
+        container_id: "{{ grafana_vmid }}"
+        hostname: "{{ grafana_hostname }}"
+        ram: "{{ grafana_ram }}"
+        swap: "512"
+        disk_size: "{{ grafana_disk_size }}"
+        cpu_cores: "{{ grafana_cpu_cores }}"
+        bridge: "{{ grafana_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Wait for Grafana to be ready
+      ansible.builtin.pause:
+        seconds: 45
+
+    - name: Display Grafana access information
+      ansible.builtin.debug:
+        msg:
+          - "Grafana deployed successfully!"
+          - "Container ID: {{ grafana_vmid }}"
+          - "Hostname: {{ grafana_hostname }}"
+          - "Web UI: http://{{ final_static_ip }}:3000"
+          - "Default credentials: admin / admin (change on first login)"
+          - ""
+          - "Next steps:"
+          - "1. Add Prometheus as data source"
+          - "2. Import dashboards for Proxmox, OpenTelemetry, Pi-hole"
+          - "3. Configure alerting"
+
+- name: Configure Grafana with Prometheus data source
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    grafana_vmid: "{{ lookup('env', 'GRAFANA_VMID') | default('145', true) }}"
+    grafana_ip: "{{ final_static_ip }}"
+    prometheus_ip: "{{ lookup('env', 'PROMETHEUS_IP') | default('10.0.1.40', true) }}"
+    grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('admin', true) }}"
+
+  tasks:
+    - name: Wait for Grafana API to be ready
+      ansible.builtin.uri:
+        url: "http://{{ grafana_ip }}:3000/api/health"
+        method: GET
+        status_code: 200
+      register: grafana_health
+      until: grafana_health.status == 200
+      retries: 30
+      delay: 5
+
+    - name: Add Prometheus data source to Grafana
+      ansible.builtin.uri:
+        url: "http://{{ grafana_ip }}:3000/api/datasources"
+        method: POST
+        user: admin
+        password: "{{ grafana_admin_password }}"
+        force_basic_auth: yes
+        body_format: json
+        body:
+          name: "Prometheus"
+          type: "prometheus"
+          url: "http://{{ prometheus_ip }}:9090"
+          access: "proxy"
+          isDefault: true
+          jsonData:
+            timeInterval: "15s"
+        status_code: [200, 409]
+      register: datasource_result
+
+    - name: Import Proxmox dashboard
+      ansible.builtin.uri:
+        url: "http://{{ grafana_ip }}:3000/api/dashboards/import"
+        method: POST
+        user: admin
+        password: "{{ grafana_admin_password }}"
+        force_basic_auth: yes
+        body_format: json
+        body:
+          dashboard:
+            id: null
+            uid: "proxmox-overview"
+            title: "Proxmox Overview"
+          folderId: 0
+          overwrite: true
+          inputs:
+            - name: "DS_PROMETHEUS"
+              type: "datasource"
+              pluginId: "prometheus"
+              value: "Prometheus"
+        status_code: [200, 412]
+      register: dashboard_result
+      failed_when: false
+
+    - name: Display Grafana configuration status
+      ansible.builtin.debug:
+        msg:
+          - "Grafana configured successfully!"
+          - "Web UI: http://{{ grafana_ip }}:3000"
+          - "Username: admin"
+          - "Password: {{ grafana_admin_password }}"
+          - ""
+          - "Prometheus data source added: http://{{ prometheus_ip }}:9090"
+          - ""
+          - "Recommended dashboards to import:"
+          - "  - Proxmox: Dashboard ID 10048"
+          - "  - Node Exporter: Dashboard ID 1860"
+          - "  - OpenTelemetry: Dashboard ID 15983"
+          - "  - Pi-hole: Dashboard ID 10176"
+          - ""
+          - "Import dashboards: http://{{ grafana_ip }}:3000/dashboard/import"

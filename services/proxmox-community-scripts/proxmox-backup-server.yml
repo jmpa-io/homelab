@@ -1,0 +1,116 @@
+---
+# Deploy Proxmox Backup Server using Community Script
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=proxmox-backup-server
+
+- name: Deploy Proxmox Backup Server LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    pbs_vmid: "{{ lookup('env', 'PBS_VMID') | default('100', true) }}"
+    pbs_hostname: "{{ lookup('env', 'PBS_HOSTNAME') | default('pbs', true) }}"
+    pbs_ram: "{{ lookup('env', 'PBS_RAM') | default('4096', true) }}"
+    pbs_disk_size: "{{ lookup('env', 'PBS_DISK_SIZE') | default('32', true) }}"
+    pbs_cpu_cores: "{{ lookup('env', 'PBS_CPU_CORES') | default('2', true) }}"
+    pbs_bridge: "{{ lookup('env', 'PBS_BRIDGE') | default('vmbr0', true) }}"
+
+  tasks:
+    - name: Deploy Proxmox Backup Server using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/proxmox-backup-server.sh"
+        script_name: "proxmox-backup-server"
+        container_id: "{{ pbs_vmid }}"
+        hostname: "{{ pbs_hostname }}"
+        ram: "{{ pbs_ram }}"
+        swap: "512"
+        disk_size: "{{ pbs_disk_size }}"
+        cpu_cores: "{{ pbs_cpu_cores }}"
+        bridge: "{{ pbs_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Wait for PBS to be fully initialized
+      ansible.builtin.pause:
+        seconds: 60
+        prompt: "Waiting for Proxmox Backup Server to initialize..."
+
+    - name: Display PBS access information
+      ansible.builtin.debug:
+        msg:
+          - "Proxmox Backup Server deployed successfully!"
+          - "Container ID: {{ pbs_vmid }}"
+          - "Hostname: {{ pbs_hostname }}"
+          - "Web UI: https://{{ final_static_ip }}:8007"
+          - "Default credentials: root / (password set during installation)"
+          - ""
+          - "Next steps:"
+          - "1. Access web UI and complete initial setup"
+          - "2. Create datastore pointing to NAS Volume 3: /mnt/nfs/<nas-name>/volume3"
+          - "3. Configure backup jobs in Proxmox VE to use PBS"
+          - "4. Set up backup schedules and retention policies"
+
+- name: Configure Proxmox VE to use Proxmox Backup Server
+  hosts: proxmox_hosts
+  gather_facts: false
+  become: true
+
+  vars:
+    pbs_vmid: "{{ lookup('env', 'PBS_VMID') | default('100', true) }}"
+    pbs_server: "{{ hostvars[groups['proxmox_hosts'][0]]['ansible_host'] }}"
+    pbs_datastore: "{{ lookup('env', 'PBS_DATASTORE') | default('backups', true) }}"
+    pbs_username: "{{ lookup('env', 'PBS_USERNAME') | default('root@pam', true) }}"
+    pbs_password: "{{ lookup('env', 'PBS_PASSWORD') | mandatory }}"
+
+  tasks:
+    - name: Calculate PBS IP address
+      ansible.builtin.set_fact:
+        pbs_ip: >-
+          {{
+            '10.0.' + ((pbs_bridge | default('vmbr0') | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+            (pbs_vmid | string)[-2:]
+          }}
+
+    - name: Add PBS as backup storage in Proxmox VE
+      ansible.builtin.shell: |
+        pvesm add pbs pbs-backup \
+          --server {{ pbs_ip }} \
+          --datastore {{ pbs_datastore }} \
+          --username {{ pbs_username }} \
+          --password {{ pbs_password }} \
+          --fingerprint $(ssh root@{{ pbs_ip }} 'proxmox-backup-manager cert info | grep Fingerprint | cut -d: -f2-' | tr -d ' ')
+      register: pbs_add_result
+      failed_when: false
+      changed_when: "'already exists' not in pbs_add_result.stderr"
+
+    - name: Create backup schedule for all VMs and containers
+      ansible.builtin.shell: |
+        pvesh create /cluster/backup \
+          --storage pbs-backup \
+          --schedule "02:00" \
+          --dow mon,tue,wed,thu,fri,sat,sun \
+          --mode snapshot \
+          --compress zstd \
+          --mailnotification failure \
+          --all 1 \
+          --enabled 1 \
+          --prune-backups 'keep-daily=7,keep-weekly=4,keep-monthly=3'
+      register: backup_schedule_result
+      failed_when: false
+      changed_when: "'already exists' not in backup_schedule_result.stderr"
+
+    - name: Display backup configuration
+      ansible.builtin.debug:
+        msg:
+          - "Proxmox Backup Server integration configured!"
+          - "PBS Server: {{ pbs_ip }}"
+          - "Datastore: {{ pbs_datastore }}"
+          - "Schedule: Daily at 02:00"
+          - "Retention: 7 daily, 4 weekly, 3 monthly"
+          - ""
+          - "View backups: pvesm list pbs-backup"
+          - "Manual backup: vzdump <vmid> --storage pbs-backup"
+          - "PBS Web UI: https://{{ pbs_ip }}:8007"

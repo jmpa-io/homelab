@@ -1,14 +1,23 @@
 ---
 
-# - name: Setup DNS.
-#   hosts: dns
-#  roles:
-#
-#    # Packages.
-#    - instances/dns/base
-#
+- name: Setup DNS.
+  hosts: dns
+  roles:
+
+    # Raspbian optimization (remove GUI, minimize disk usage).
+    - instances/dns/raspbian-optimization
+
+    # Packages.
+    - instances/dns/base
+
     # Tailscale.
-#    - instances/dns/tailscale
+    - instances/dns/tailscale
+
+    # Pi-hole (installation + configuration).
+    - instances/dns/pihole
+
+    # Observability.
+    - instances/dns/opentelemetry-collector
 
 # ▖ ▖▄▖▄▖
 # ▛▖▌▌▌▚

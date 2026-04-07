@@ -1,0 +1,123 @@
+---
+# Pi-hole installation and configuration for Raspbian DNS server
+# This role installs Pi-hole and configures DNS records from inventory
+
+# ============================================================================
+# INSTALLATION
+# ============================================================================
+
+- name: Update apt cache
+  become: true
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install Pi-hole dependencies
+  become: true
+  ansible.builtin.apt:
+    name:
+      - curl
+      - git
+      - ca-certificates
+      - dnsutils
+    state: present
+
+- name: Check if Pi-hole is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/pihole
+  register: pihole_binary
+
+- name: Create Pi-hole setup configuration
+  become: true
+  ansible.builtin.template:
+    src: etc/pihole/setupVars.conf.j2
+    dest: /etc/pihole/setupVars.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: not pihole_binary.stat.exists
+
+- name: Download Pi-hole installer
+  ansible.builtin.get_url:
+    url: https://install.pi-hole.net
+    dest: /tmp/pihole-install.sh
+    mode: '0755'
+  when: not pihole_binary.stat.exists
+
+- name: Install Pi-hole (unattended)
+  become: true
+  ansible.builtin.shell: |
+    bash /tmp/pihole-install.sh --unattended
+  args:
+    creates: /usr/local/bin/pihole
+  register: pihole_install
+  when: not pihole_binary.stat.exists
+
+- name: Set Pi-hole web interface password
+  become: true
+  ansible.builtin.shell: |
+    pihole -a -p "{{ pihole_password }}"
+  when:
+    - pihole_password is defined
+    - pihole_password | length > 0
+  no_log: true
+
+- name: Ensure Pi-hole FTL service is enabled and started
+  become: true
+  ansible.builtin.systemd:
+    name: pihole-FTL
+    enabled: true
+    state: started
+
+- name: Clean up installer
+  ansible.builtin.file:
+    path: /tmp/pihole-install.sh
+    state: absent
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+- name: Ensure Pi-hole custom DNS directory exists
+  become: true
+  ansible.builtin.file:
+    path: /etc/pihole
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate Pi-hole custom DNS entries from inventory
+  become: true
+  ansible.builtin.template:
+    src: etc/pihole/custom.list.j2
+    dest: /etc/pihole/custom.list
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart pihole-FTL
+
+- name: Generate Pi-hole local DNS entries for Proxmox hosts
+  become: true
+  ansible.builtin.template:
+    src: etc/pihole/05-pihole-custom-cname.conf.j2
+    dest: /etc/dnsmasq.d/05-pihole-custom-cname.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  notify: Restart pihole-FTL
+
+- name: Display Pi-hole status
+  ansible.builtin.debug:
+    msg:
+      - "Pi-hole configured successfully on {{ ansible_hostname }}"
+      - "Web interface: http://{{ ansible_host }}/admin"
+      - "DNS server: {{ ansible_host }}"
+      - ""
+      - "Configured services:"
+      - "{{ community_services | map(attribute='hostname') | list }}"
+      - ""
+      - "DNS records are automatically synced from inventory."
+      - "To add new services, update inventory/main.py and re-run this playbook."

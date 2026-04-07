@@ -1,0 +1,83 @@
+name: Deploy Ollama
+
+on:
+  workflow_dispatch:
+    inputs:
+      vmid:
+        description: 'Container VMID'
+        required: false
+        default: '150'
+      hostname:
+        description: 'Container hostname'
+        required: false
+        default: 'ollama'
+      ram:
+        description: 'RAM in MB'
+        required: false
+        default: '8192'
+      disk_size:
+        description: 'Disk size in GB'
+        required: false
+        default: '50'
+      cpu_cores:
+        description: 'CPU cores'
+        required: false
+        default: '4'
+      bridge:
+        description: 'Network bridge'
+        required: false
+        default: 'vmbr0'
+
+jobs:
+  deploy-ollama:
+    name: Deploy Ollama LXC
+    runs-on: [self-hosted, homelab]
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Ansible dependencies
+        run: |
+          pip install -r inventory/requirements.txt
+          ansible-galaxy install -r requirements.yml
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Generate dynamic inventory
+        run: |
+          cd inventory
+          python3 main.py > ../inventory.json
+
+      - name: Deploy Ollama
+        run: |
+          ansible-playbook services/proxmox-community-scripts/ollama.yml \
+            -i inventory.json \
+            -e "ollama_vmid=${{ inputs.vmid }}" \
+            -e "ollama_hostname=${{ inputs.hostname }}" \
+            -e "ollama_ram=${{ inputs.ram }}" \
+            -e "ollama_disk_size=${{ inputs.disk_size }}" \
+            -e "ollama_cpu_cores=${{ inputs.cpu_cores }}" \
+            -e "ollama_bridge=${{ inputs.bridge }}" \
+            -v
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+
+      - name: Display deployment summary
+        run: |
+          echo "✅ Ollama deployed successfully!"
+          echo "Container ID: ${{ inputs.vmid }}"
+          echo "Hostname: ${{ inputs.hostname }}"
+          echo "Access: pct enter ${{ inputs.vmid }}"

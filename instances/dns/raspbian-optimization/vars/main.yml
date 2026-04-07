@@ -1,0 +1,57 @@
+---
+
+# GUI packages to remove from Raspbian
+gui_packages_to_remove:
+  - xserver-xorg
+  - xserver-xorg-core
+  - xserver-xorg-video-all
+  - xserver-common
+  - lightdm
+  - lightdm-gtk-greeter
+  - raspberrypi-ui-mods
+  - rpd-plym-splash
+  - lxde
+  - lxde-common
+  - lxde-core
+  - lxsession
+  - lxpanel
+  - pcmanfm
+  - openbox
+  - obconf
+  - desktop-base
+  - desktop-file-utils
+  - gnome-themes-standard
+  - gnome-icon-theme
+  - gtk2-engines
+  - gtk2-engines-pixbuf
+  - gvfs
+  - gvfs-backends
+  - gvfs-fuse
+  - xdg-utils
+  - x11-common
+  - x11-utils
+  - x11-xserver-utils
+
+# Other unnecessary packages for a headless DNS server
+unnecessary_packages:
+  - wolfram-engine
+  - libreoffice*
+  - scratch
+  - scratch2
+  - sonic-pi
+  - minecraft-pi
+  - python-pygame
+  - python3-pygame
+  - penguinspuzzle
+  - smartsim
+  - java-common
+  - oracle-java8-jdk
+  - bluej
+  - greenfoot
+  - nodered
+  - claws-mail
+  - chromium-browser
+  - rpi-chromium-mods
+
+# Whether to remove documentation files (saves significant space)
+remove_documentation: true

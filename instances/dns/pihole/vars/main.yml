@@ -1,0 +1,29 @@
+# Pi-hole installation configuration for Raspbian
+
+# Web interface password (optional - if not set, use 'pihole -a -p' to set manually)
+pihole_password: ""
+
+# Pi-hole installation settings
+pihole_interface: "eth0"
+pihole_ipv4_address: "{{ ansible_host }}/24"
+pihole_ipv4_gateway: "{{ common.internet_gateway.ipv4 }}"
+
+# DNS settings
+pihole_dns_1: "1.1.1.1"  # Cloudflare
+pihole_dns_2: "1.0.0.1"  # Cloudflare secondary
+pihole_dnssec: "true"
+pihole_conditional_forwarding: "false"
+
+# Web interface settings
+pihole_webserver: "lighttpd"
+pihole_web_port: "80"
+pihole_blocking_enabled: "true"
+
+# Query logging
+pihole_query_logging: "true"
+pihole_install_web_interface: "true"
+pihole_install_web_server: "true"
+pihole_lighttpd_enabled: "true"
+
+# Privacy settings
+pihole_privacy_level: "0"  # 0=show everything, 3=anonymous

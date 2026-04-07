@@ -1,0 +1,137 @@
+---
+# Deploy Prometheus using Proxmox VE Community Script
+# https://community-scripts.github.io/ProxmoxVE/scripts?id=prometheus
+
+- name: Deploy Prometheus LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    prometheus_vmid: "{{ lookup('env', 'PROMETHEUS_VMID') | default('140', true) }}"
+    prometheus_hostname: "{{ lookup('env', 'PROMETHEUS_HOSTNAME') | default('prometheus', true) }}"
+    prometheus_ram: "{{ lookup('env', 'PROMETHEUS_RAM') | default('4096', true) }}"
+    prometheus_disk_size: "{{ lookup('env', 'PROMETHEUS_DISK_SIZE') | default('20', true) }}"
+    prometheus_cpu_cores: "{{ lookup('env', 'PROMETHEUS_CPU_CORES') | default('2', true) }}"
+    prometheus_bridge: "{{ lookup('env', 'PROMETHEUS_BRIDGE') | default('vmbr0', true) }}"
+
+  tasks:
+    - name: Deploy Prometheus using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/prometheus.sh"
+        script_name: "prometheus"
+        container_id: "{{ prometheus_vmid }}"
+        hostname: "{{ prometheus_hostname }}"
+        ram: "{{ prometheus_ram }}"
+        swap: "512"
+        disk_size: "{{ prometheus_disk_size }}"
+        cpu_cores: "{{ prometheus_cpu_cores }}"
+        bridge: "{{ prometheus_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Wait for Prometheus to be ready
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Display Prometheus access information
+      ansible.builtin.debug:
+        msg:
+          - "Prometheus deployed successfully!"
+          - "Container ID: {{ prometheus_vmid }}"
+          - "Hostname: {{ prometheus_hostname }}"
+          - "Web UI: http://{{ final_static_ip }}:9090"
+          - ""
+          - "Next steps:"
+          - "1. Configure Prometheus to scrape OpenTelemetry collectors"
+          - "2. Add Proxmox VE metrics exporters"
+          - "3. Configure alerting rules"
+
+- name: Configure Prometheus to scrape OpenTelemetry collectors
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  become: true
+
+  vars:
+    prometheus_vmid: "{{ lookup('env', 'PROMETHEUS_VMID') | default('140', true) }}"
+    prometheus_config: |
+      global:
+        scrape_interval: 15s
+        evaluation_interval: 15s
+        external_labels:
+          cluster: 'homelab'
+          environment: 'production'
+
+      scrape_configs:
+        # OpenTelemetry collectors on Proxmox hosts
+        - job_name: 'otel-proxmox-hosts'
+          static_configs:
+            - targets:
+      {% for host in groups['proxmox_hosts'] %}
+              - '{{ hostvars[host]['ansible_host'] }}:8889'
+      {% endfor %}
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: instance
+              regex: '([^:]+):.*'
+              replacement: '$1'
+
+        # OpenTelemetry collector on DNS (Raspberry Pi)
+        - job_name: 'otel-dns'
+          static_configs:
+            - targets:
+      {% for host in groups['dns'] %}
+              - '{{ hostvars[host]['ansible_host'] }}:8889'
+      {% endfor %}
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: instance
+              regex: '([^:]+):.*'
+              replacement: '$1'
+
+        # Prometheus self-monitoring
+        - job_name: 'prometheus'
+          static_configs:
+            - targets: ['localhost:9090']
+
+        # Proxmox VE hosts (if node_exporter is installed)
+        - job_name: 'proxmox-nodes'
+          static_configs:
+            - targets:
+      {% for host in groups['proxmox_hosts'] %}
+              - '{{ hostvars[host]['ansible_host'] }}:9100'
+      {% endfor %}
+
+  tasks:
+    - name: Create Prometheus configuration
+      ansible.builtin.shell: |
+        pct exec {{ prometheus_vmid }} -- bash -c 'cat > /etc/prometheus/prometheus.yml << "EOF"
+        {{ prometheus_config }}
+        EOF'
+      register: config_result
+
+    - name: Reload Prometheus configuration
+      ansible.builtin.shell: |
+        pct exec {{ prometheus_vmid }} -- systemctl reload prometheus
+      register: reload_result
+
+    - name: Verify Prometheus targets
+      ansible.builtin.shell: |
+        sleep 5
+        curl -s http://{{ final_static_ip }}:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, instance: .labels.instance, health: .health}'
+      register: targets_status
+      failed_when: false
+
+    - name: Display Prometheus configuration status
+      ansible.builtin.debug:
+        msg:
+          - "Prometheus configured to scrape:"
+          - "  - {{ groups['proxmox_hosts'] | length }} Proxmox hosts (OpenTelemetry)"
+          - "  - {{ groups['dns'] | length }} DNS servers (OpenTelemetry)"
+          - "  - Prometheus self-monitoring"
+          - ""
+          - "Access Prometheus: http://{{ final_static_ip }}:9090"
+          - "View targets: http://{{ final_static_ip }}:9090/targets"

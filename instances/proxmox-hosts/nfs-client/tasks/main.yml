@@ -10,22 +10,57 @@
     state: directory
     mode: '0755'
 
-- name: Create mount directories for each NAS.
+- name: Discover NFS exports from each NAS.
+  ansible.builtin.shell: |
+    showmount -e {{ hostvars[item]['ansible_host'] }} | tail -n +2 | awk '{print $1}'
+  loop: "{{ groups['nas'] | default([]) }}"
+  register: nas_exports
+  changed_when: false
+  failed_when: false
+  when:
+    - groups['nas'] is defined
+    - groups['nas'] | length > 0
+
+- name: Build NAS volume mount list from discovered exports.
+  ansible.builtin.set_fact:
+    nas_volume_mounts: >-
+      {{
+        nas_volume_mounts | default([]) +
+        (nas_result.stdout_lines | default([]) | map('regex_replace', '^(.*)$',
+          '{"nas":"' + nas_result.item + '","nas_name":"' + hostvars[nas_result.item]['instance_name'] +
+          '","nas_ip":"' + hostvars[nas_result.item]['ansible_host'] + '","volume":"\\1","volume_name":"' +
+          '\\1' | basename + '"}') | map('from_json') | list)
+      }}
+  loop: "{{ nas_exports.results | default([]) }}"
+  loop_control:
+    loop_var: nas_result
+    label: "{{ hostvars[nas_result.item]['instance_name'] }}"
+  when:
+    - nas_result.rc is defined
+    - nas_result.rc == 0
+    - nas_result.stdout_lines is defined
+    - nas_result.stdout_lines | length > 0
+
+- name: Create mount directories for each discovered NAS volume.
   become: true
   ansible.builtin.file:
-    path: "/mnt/nfs/{{ hostvars[item]['instance_name'] }}"
+    path: "/mnt/nfs/{{ item.nas_name }}/{{ item.volume_name }}"
     state: directory
     mode: '0755'
-  loop: "{{ groups['nas'] }}"
+  loop: "{{ nas_volume_mounts | default([]) }}"
+  loop_control:
+    label: "{{ item.nas_name }}/{{ item.volume_name }}"
 
-- name: Mount NFS shares from each NAS.
+- name: Mount NFS shares from each discovered NAS volume.
   become: true
   ansible.posix.mount:
-    name: "/mnt/nfs/{{ hostvars[item]['instance_name'] }}"
-    src: "{{ hostvars[item]['ansible_host'] }}:/mnt/nfs"
+    name: "/mnt/nfs/{{ item.nas_name }}/{{ item.volume_name }}"
+    src: "{{ item.nas_ip }}:{{ item.volume }}"
     fstype: nfs
     state: mounted
-    opts: defaults
+    opts: defaults,_netdev
     dump: '0'
     passno: '0'
-  loop: "{{ groups['nas'] }}"
+  loop: "{{ nas_volume_mounts | default([]) }}"
+  loop_control:
+    label: "{{ item.nas_name }}/{{ item.volume_name }}"
