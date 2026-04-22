@@ -21,6 +21,13 @@
 {{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}
 {% endfor %}
 
+# NAS-Hosted Services
+# Services running on the NAS that need separate DNS entries
+{% for host in groups['nas'] | default([]) %}
+{{ hostvars[host]['ansible_host'] }} jellyfin.{{ common.dns.domain }}
+{{ hostvars[host]['ansible_host'] }} jellyfin
+{% endfor %}
+
 # DNS Server (self)
 {% for host in groups['dns'] | default([]) %}
 {{ hostvars[host]['ansible_host'] }} {{ hostvars[host]['inventory_hostname'] }}.{{ common.dns.domain }}

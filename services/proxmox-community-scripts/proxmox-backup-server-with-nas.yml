@@ -1,0 +1,255 @@
+---
+# Deploy Proxmox Backup Server and configure it to use NAS Volume 3
+# This playbook:
+# 1. Deploys PBS as an LXC container
+# 2. Mounts NAS Volume 3 inside the PBS container
+# 3. Creates a datastore pointing to the NAS
+# 4. Configures Proxmox VE hosts to use PBS for backups
+
+- name: Deploy Proxmox Backup Server LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: true
+
+  vars:
+    pbs_vmid: "{{ lookup('env', 'PBS_VMID') | default('100', true) }}"
+    pbs_hostname: "{{ lookup('env', 'PBS_HOSTNAME') | default('pbs', true) }}"
+    pbs_ram: "{{ lookup('env', 'PBS_RAM') | default('4096', true) }}"
+    pbs_disk_size: "{{ lookup('env', 'PBS_DISK_SIZE') | default('32', true) }}"
+    pbs_cpu_cores: "{{ lookup('env', 'PBS_CPU_CORES') | default('2', true) }}"
+    pbs_bridge: "{{ lookup('env', 'PBS_BRIDGE') | default('vmbr0', true) }}"
+    pbs_datastore_name: "{{ lookup('env', 'PBS_DATASTORE_NAME') | default('nas-backups', true) }}"
+
+  tasks:
+    - name: Verify NAS is available
+      ansible.builtin.assert:
+        that:
+          - groups['nas'] is defined
+          - groups['nas'] | length > 0
+        fail_msg: "No NAS found in inventory. PBS requires NAS for backup storage."
+
+    - name: Get NAS information
+      ansible.builtin.set_fact:
+        nas_host: "{{ groups['nas'][0] }}"
+        nas_name: "{{ hostvars[groups['nas'][0]]['instance_name'] }}"
+        nas_ip: "{{ hostvars[groups['nas'][0]]['ansible_host'] }}"
+
+    - name: Display NAS configuration
+      ansible.builtin.debug:
+        msg:
+          - "NAS Host: {{ nas_host }}"
+          - "NAS Name: {{ nas_name }}"
+          - "NAS IP: {{ nas_ip }}"
+          - "Backup Volume: volume3"
+
+    - name: Deploy Proxmox Backup Server using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/proxmox-backup-server.sh"
+        script_name: "proxmox-backup-server"
+        container_id: "{{ pbs_vmid }}"
+        hostname: "{{ pbs_hostname }}"
+        ram: "{{ pbs_ram }}"
+        swap: "512"
+        disk_size: "{{ pbs_disk_size }}"
+        cpu_cores: "{{ pbs_cpu_cores }}"
+        bridge: "{{ pbs_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Calculate PBS IP address
+      ansible.builtin.set_fact:
+        pbs_ip: >-
+          {{
+            '10.0.' + ((pbs_bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+            (pbs_vmid | string)[-2:]
+          }}
+
+    - name: Wait for PBS to be fully initialized
+      ansible.builtin.pause:
+        seconds: 60
+        prompt: "Waiting for Proxmox Backup Server to initialize..."
+
+    - name: Display PBS deployment information
+      ansible.builtin.debug:
+        msg:
+          - "Proxmox Backup Server deployed successfully!"
+          - "Container ID: {{ pbs_vmid }}"
+          - "Hostname: {{ pbs_hostname }}"
+          - "IP Address: {{ pbs_ip }}"
+          - "Web UI: https://{{ pbs_ip }}:8007"
+
+- name: Configure PBS Container with NFS Mount
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  become: true
+
+  vars:
+    pbs_vmid: "{{ lookup('env', 'PBS_VMID') | default('100', true) }}"
+    pbs_datastore_name: "{{ lookup('env', 'PBS_DATASTORE_NAME') | default('nas-backups', true) }}"
+    pbs_datastore_path: "/mnt/nas-backups"
+
+  tasks:
+    - name: Get NAS information
+      ansible.builtin.set_fact:
+        nas_name: "{{ hostvars[groups['nas'][0]]['instance_name'] }}"
+        nas_ip: "{{ hostvars[groups['nas'][0]]['ansible_host'] }}"
+
+    - name: Install NFS client in PBS container
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- bash -c "apt-get update && apt-get install -y nfs-common"
+      register: nfs_install
+      changed_when: "'0 upgraded' not in nfs_install.stdout"
+
+    - name: Create mount point in PBS container
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- mkdir -p {{ pbs_datastore_path }}
+      register: mkdir_result
+      changed_when: false
+
+    - name: Check NFS exports from NAS
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        showmount -e {{ nas_ip }} | grep volume3 | awk '{print $1}'
+      register: nas_volume3_export
+      changed_when: false
+      failed_when: nas_volume3_export.stdout == ""
+
+    - name: Display NFS export information
+      ansible.builtin.debug:
+        msg: "NFS Export: {{ nas_ip }}:{{ nas_volume3_export.stdout }}"
+
+    - name: Add NFS mount to PBS container fstab
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- bash -c "
+          if ! grep -q '{{ nas_ip }}:{{ nas_volume3_export.stdout }}' /etc/fstab; then
+            echo '{{ nas_ip }}:{{ nas_volume3_export.stdout }} {{ pbs_datastore_path }} nfs defaults,_netdev 0 0' >> /etc/fstab
+            echo 'added'
+          else
+            echo 'exists'
+          fi
+        "
+      register: fstab_result
+      changed_when: "'added' in fstab_result.stdout"
+
+    - name: Mount NFS share in PBS container
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- mount -a
+      register: mount_result
+      changed_when: false
+      failed_when: false
+
+    - name: Verify NFS mount
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- df -h {{ pbs_datastore_path }}
+      register: mount_check
+      changed_when: false
+
+    - name: Display mount information
+      ansible.builtin.debug:
+        var: mount_check.stdout_lines
+
+    - name: Create datastore directory
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- mkdir -p {{ pbs_datastore_path }}/{{ pbs_datastore_name }}
+      register: datastore_dir
+      changed_when: false
+
+    - name: Set permissions on datastore directory
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- chown -R backup:backup {{ pbs_datastore_path }}/{{ pbs_datastore_name }}
+      register: chown_result
+      changed_when: false
+      failed_when: false
+
+    - name: Create PBS datastore pointing to NAS
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.shell: |
+        pct exec {{ pbs_vmid }} -- proxmox-backup-manager datastore create {{ pbs_datastore_name }} {{ pbs_datastore_path }}/{{ pbs_datastore_name }}
+      register: datastore_create
+      failed_when: false
+      changed_when: "'already exists' not in datastore_create.stderr"
+
+    - name: Display datastore configuration
+      ansible.builtin.debug:
+        msg:
+          - "PBS Datastore configured successfully!"
+          - "Datastore Name: {{ pbs_datastore_name }}"
+          - "Datastore Path: {{ pbs_datastore_path }}/{{ pbs_datastore_name }}"
+          - "NFS Mount: {{ nas_ip }}:{{ nas_volume3_export.stdout }}"
+          - ""
+          - "Access PBS Web UI: https://{{ hostvars[inventory_hostname]['ansible_host'] }}:8007"
+          - "Default credentials: root@pam / (set during first login)"
+
+- name: Configure Proxmox VE Hosts to Use PBS
+  hosts: proxmox_hosts
+  gather_facts: false
+  become: true
+
+  vars:
+    pbs_vmid: "{{ lookup('env', 'PBS_VMID') | default('100', true) }}"
+    pbs_bridge: "{{ lookup('env', 'PBS_BRIDGE') | default('vmbr0', true) }}"
+    pbs_datastore_name: "{{ lookup('env', 'PBS_DATASTORE_NAME') | default('nas-backups', true) }}"
+    pbs_username: "{{ lookup('env', 'PBS_USERNAME') | default('root@pam', true) }}"
+    pbs_password: "{{ lookup('env', 'PBS_PASSWORD') | default('', true) }}"
+
+  tasks:
+    - name: Calculate PBS IP address
+      ansible.builtin.set_fact:
+        pbs_ip: >-
+          {{
+            '10.0.' + ((pbs_bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+            (pbs_vmid | string)[-2:]
+          }}
+
+    - name: Check if PBS password is set
+      ansible.builtin.debug:
+        msg: "WARNING: PBS_PASSWORD not set. You'll need to configure PBS storage manually."
+      when: pbs_password == ''
+
+    - name: Get PBS fingerprint
+      ansible.builtin.shell: |
+        ssh -o StrictHostKeyChecking=no root@{{ pbs_ip }} 'proxmox-backup-manager cert info | grep Fingerprint | cut -d: -f2-' | tr -d ' '
+      register: pbs_fingerprint
+      changed_when: false
+      failed_when: false
+      when: pbs_password != ''
+
+    - name: Add PBS as backup storage in Proxmox VE
+      ansible.builtin.shell: |
+        pvesm add pbs pbs-{{ pbs_datastore_name }} \
+          --server {{ pbs_ip }} \
+          --datastore {{ pbs_datastore_name }} \
+          --username {{ pbs_username }} \
+          --password '{{ pbs_password }}' \
+          --fingerprint {{ pbs_fingerprint.stdout }}
+      register: pbs_add_result
+      failed_when: false
+      changed_when: "'already exists' not in pbs_add_result.stderr"
+      when:
+        - pbs_password != ''
+        - pbs_fingerprint.rc == 0
+
+    - name: Display PBS integration status
+      ansible.builtin.debug:
+        msg:
+          - "Proxmox Backup Server integration configured!"
+          - "PBS Server: {{ pbs_ip }}"
+          - "Datastore: {{ pbs_datastore_name }}"
+          - "Storage ID: pbs-{{ pbs_datastore_name }}"
+          - ""
+          - "Manual backup: vzdump <vmid> --storage pbs-{{ pbs_datastore_name }}"
+          - "View backups: pvesm list pbs-{{ pbs_datastore_name }}"
+          - "PBS Web UI: https://{{ pbs_ip }}:8007"
+          - ""
+          - "To create backup schedule, run:"
+          - "  pvesh create /cluster/backup --storage pbs-{{ pbs_datastore_name }} --schedule '02:00' --all 1"

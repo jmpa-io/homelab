@@ -13,6 +13,7 @@
     ollama_disk_size: "{{ lookup('env', 'OLLAMA_DISK_SIZE') | default('50', true) }}"
     ollama_cpu_cores: "{{ lookup('env', 'OLLAMA_CPU_CORES') | default('4', true) }}"
     ollama_bridge: "{{ lookup('env', 'OLLAMA_BRIDGE') | default('vmbr0', true) }}"
+    ollama_ip: "10.0.1.{{ ollama_vmid | string | regex_replace('^.*(..)$', '\\1') }}"
 
   tasks:
     - name: Deploy Ollama using community script
@@ -40,6 +41,6 @@
           - "Container ID: {{ ollama_vmid }}"
           - "Hostname: {{ ollama_hostname }}"
           - "Access: pct enter {{ ollama_vmid }}"
-          - "API: http://{{ final_static_ip }}:11434"
+          - "API: http://{{ ollama_ip }}:11434"
           - ""
-          - "Test with: curl http://{{ final_static_ip }}:11434/api/generate -d '{\"model\":\"llama2\",\"prompt\":\"Why is the sky blue?\"}'"
+          - "Test with: curl http://{{ ollama_ip }}:11434/api/generate -d '{\"model\":\"llama2\",\"prompt\":\"Why is the sky blue?\"}'"

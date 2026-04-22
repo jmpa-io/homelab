@@ -118,6 +118,37 @@ def main():
       port='11434',
       protocol=Protocol.HTTP,
     ),
+    CommunityScriptService(
+      name='uptime_kuma',
+      vmid=read_env_var('UPTIME_KUMA_VMID', 155, value_type=int),
+      hostname=read_env_var('UPTIME_KUMA_HOSTNAME', 'uptime-kuma'),
+      port='3001',
+      protocol=Protocol.HTTP,
+    ),
+    CommunityScriptService(
+      name='speedtest',
+      vmid=read_env_var('SPEEDTEST_VMID', 160, value_type=int),
+      hostname=read_env_var('SPEEDTEST_HOSTNAME', 'speedtest'),
+      port='80',
+      protocol=Protocol.HTTP,
+    ),
+    CommunityScriptService(
+      name='n8n',
+      vmid=read_env_var('N8N_VMID', 165, value_type=int),
+      hostname=read_env_var('N8N_HOSTNAME', 'n8n'),
+      port='5678',
+      protocol=Protocol.HTTP,
+    ),
+    # GitHub runner doesn't need DNS - it connects outbound to GitHub
+    # and has no web UI. Access via IP: 10.0.1.80
+    CommunityScriptService(
+      name='github_runner',
+      vmid=read_env_var('GITHUB_RUNNER_VMID_BASE', 180, value_type=int),
+      hostname=read_env_var('GITHUB_RUNNER_HOSTNAME', 'github-runner'),
+      port='22',
+      protocol=Protocol.HTTP,
+      add_to_dns=False,  # No DNS needed - outbound connection only
+    ),
   ]
 
   # Add community services to inventory vars for DNS configuration

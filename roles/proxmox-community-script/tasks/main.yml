@@ -49,6 +49,18 @@
     msg: "Container {{ container_id }} already exists on {{ proxmox_host }}"
   when: "'not_found' not in container_check.stdout"
 
+- name: Verify Proxmox host has internet access
+  delegate_to: "{{ proxmox_host }}"
+  ansible.builtin.command: ping -c 1 -W 5 8.8.8.8
+  register: internet_check
+  failed_when: false
+  changed_when: false
+
+- name: Warn if no internet access
+  ansible.builtin.debug:
+    msg: "WARNING: Proxmox host may not have internet access. Script download might fail."
+  when: internet_check.rc != 0
+
 - name: Download community script to Proxmox host
   delegate_to: "{{ proxmox_host }}"
   ansible.builtin.get_url:
@@ -56,6 +68,10 @@
     dest: "/tmp/{{ script_name }}.sh"
     mode: '0755'
     force: true
+  register: download_result
+  retries: 3
+  delay: 5
+  until: download_result is succeeded
 
 - name: Create environment file for script
   delegate_to: "{{ proxmox_host }}"

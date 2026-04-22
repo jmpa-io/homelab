@@ -1,34 +1,66 @@
 ---
 # Deploy GitHub Actions Runner using Proxmox VE Community Script
-# https://community-scripts.github.io/ProxmoxVE/scripts?id=gitea-actions-runner
+# https://community-scripts.org/scripts/github-runner
+#
+# The community script expects these environment variables:
+#   - GITHUB_URL: GitHub org or repo URL (e.g., https://github.com/myorg or https://github.com/owner/repo)
+#   - GITHUB_TOKEN: Personal Access Token with appropriate permissions
+#     * For org runners: needs 'admin:org' scope
+#     * For repo runners: needs 'repo' scope
+#   - RUNNER_NAME: (optional) Custom runner name
+#   - RUNNER_LABELS: (optional) Comma-separated labels (default: self-hosted,linux,x64)
 
 - name: Deploy GitHub Actions Runner LXC Container
   hosts: proxmox_hosts
-  gather_facts: false
+  gather_facts: true
   serial: 1
 
   vars:
     runner_vmid_base: "{{ lookup('env', 'GITHUB_RUNNER_VMID_BASE') | default('180', true) | int }}"
     runner_hostname_prefix: "{{ lookup('env', 'GITHUB_RUNNER_HOSTNAME_PREFIX') | default('github-runner', true) }}"
-    runner_ram: "{{ lookup('env', 'GITHUB_RUNNER_RAM') | default('4096', true) }}"
-    runner_disk_size: "{{ lookup('env', 'GITHUB_RUNNER_DISK_SIZE') | default('20', true) }}"
+    runner_ram: "{{ lookup('env', 'GITHUB_RUNNER_RAM') | default('2048', true) }}"
+    runner_disk_size: "{{ lookup('env', 'GITHUB_RUNNER_DISK_SIZE') | default('10', true) }}"
     runner_cpu_cores: "{{ lookup('env', 'GITHUB_RUNNER_CPU_CORES') | default('2', true) }}"
     runner_bridge: "{{ lookup('env', 'GITHUB_RUNNER_BRIDGE') | default('vmbr0', true) }}"
-    github_repo: "{{ lookup('env', 'GITHUB_REPO') | mandatory }}"
+
+    # GitHub configuration - provide GITHUB_URL directly or it will be constructed from org/repo
+    github_url: "{{ lookup('env', 'GITHUB_URL') | default('', true) }}"
+    github_org: "{{ lookup('env', 'GITHUB_ORG') | default('', true) }}"
+    github_repo: "{{ lookup('env', 'GITHUB_REPO') | default('', true) }}"
     github_token: "{{ lookup('env', 'GITHUB_TOKEN') | mandatory }}"
 
+    # Runner configuration
+    runner_labels: "{{ lookup('env', 'GITHUB_RUNNER_LABELS') | default('self-hosted,linux,x64', true) }}"
+
   tasks:
-    - name: Calculate runner VMID for this host
+    - name: Validate GitHub configuration
+      ansible.builtin.assert:
+        that:
+          - github_url != "" or github_org != "" or github_repo != ""
+          - github_token != ""
+        fail_msg: "Must provide GITHUB_URL, GITHUB_ORG, or GITHUB_REPO, and GITHUB_TOKEN"
+
+    - name: Calculate runner VMID and hostname for this host
       ansible.builtin.set_fact:
-        runner_vmid: "{{ runner_vmid_base + (ansible_loop.index0 * 10) }}"
-        runner_hostname: "{{ runner_hostname_prefix }}-{{ ansible_loop.index0 + 1 }}"
+        runner_vmid: "{{ runner_vmid_base + (groups['proxmox_hosts'].index(inventory_hostname) * 10) }}"
+        runner_hostname: "{{ runner_hostname_prefix }}-{{ groups['proxmox_hosts'].index(inventory_hostname) + 1 }}"
+
+    - name: Set GitHub URL if not provided
+      ansible.builtin.set_fact:
+        final_github_url: >-
+          {{
+            github_url if github_url != ''
+            else ('https://github.com/' + github_org) if github_org != ''
+            else ('https://github.com/' + github_repo) if github_repo != ''
+            else ''
+          }}
 
     - name: Deploy GitHub Actions Runner using community script
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
         proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/gitea-actions-runner.sh"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/github-runner.sh"
         script_name: "github-runner"
         container_id: "{{ runner_vmid }}"
         hostname: "{{ runner_hostname }}"
@@ -41,8 +73,10 @@
         features: "nesting=1,keyctl=1"
         verbose: "yes"
         advanced_options: |
-          export GITHUB_REPO="{{ github_repo }}"
+          export GITHUB_URL="{{ final_github_url }}"
           export GITHUB_TOKEN="{{ github_token }}"
+          export RUNNER_NAME="{{ runner_hostname }}"
+          export RUNNER_LABELS="{{ runner_labels }}"
 
     - name: Wait for runner to be ready
       ansible.builtin.pause:
@@ -54,7 +88,9 @@
           - "GitHub Actions Runner deployed successfully!"
           - "Container ID: {{ runner_vmid }}"
           - "Hostname: {{ runner_hostname }}"
-          - "Repository: {{ github_repo }}"
+          - "GitHub URL: {{ final_github_url }}"
+          - "Runner Labels: {{ runner_labels }}"
           - "Access: pct enter {{ runner_vmid }}"
           - ""
-          - "Check runner status in GitHub: https://github.com/{{ github_repo }}/settings/actions/runners"
+          - "Check runner status in GitHub:"
+          - "  {{ final_github_url }}/settings/actions/runners"

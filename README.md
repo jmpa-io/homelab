@@ -67,7 +67,7 @@ aws ssm put-parameter --name /homelab/proxmox/api-token --type SecureString --ov
 
 ## 🏗️ `Getting started`
 
-To get started with this repository, you need a Proxmox host. If you're unsure how to do this, click [here](./docs/proxmox/README.md).
+To get started with this repository, you need a Proxmox host. See the [Proxmox documentation](https://www.proxmox.com/en/proxmox-virtual-environment/get-started) for installation instructions.
 
 This setup uses `3` Proxmox hosts, as of writing, which is dynamically configured in the [`inventory/main.py`](./inventory/main.py). You would need to configure this file to match the number of servers you're running. See the [`inventory/README.md`](./inventory/README.md) for more information.
 

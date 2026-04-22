@@ -43,7 +43,7 @@
           - "Prometheus deployed successfully!"
           - "Container ID: {{ prometheus_vmid }}"
           - "Hostname: {{ prometheus_hostname }}"
-          - "Web UI: http://{{ final_static_ip }}:9090"
+          - "Web UI: http://10.0.1.{{ prometheus_vmid | string | regex_replace('^.*(..)$', '\\1') }}:9090"
           - ""
           - "Next steps:"
           - "1. Configure Prometheus to scrape OpenTelemetry collectors"
@@ -53,76 +53,47 @@
 - name: Configure Prometheus to scrape OpenTelemetry collectors
   hosts: proxmox_hosts[0]
   gather_facts: false
-  become: true
 
   vars:
     prometheus_vmid: "{{ lookup('env', 'PROMETHEUS_VMID') | default('140', true) }}"
-    prometheus_config: |
-      global:
-        scrape_interval: 15s
-        evaluation_interval: 15s
-        external_labels:
-          cluster: 'homelab'
-          environment: 'production'
-
-      scrape_configs:
-        # OpenTelemetry collectors on Proxmox hosts
-        - job_name: 'otel-proxmox-hosts'
-          static_configs:
-            - targets:
-      {% for host in groups['proxmox_hosts'] %}
-              - '{{ hostvars[host]['ansible_host'] }}:8889'
-      {% endfor %}
-          relabel_configs:
-            - source_labels: [__address__]
-              target_label: instance
-              regex: '([^:]+):.*'
-              replacement: '$1'
-
-        # OpenTelemetry collector on DNS (Raspberry Pi)
-        - job_name: 'otel-dns'
-          static_configs:
-            - targets:
-      {% for host in groups['dns'] %}
-              - '{{ hostvars[host]['ansible_host'] }}:8889'
-      {% endfor %}
-          relabel_configs:
-            - source_labels: [__address__]
-              target_label: instance
-              regex: '([^:]+):.*'
-              replacement: '$1'
-
-        # Prometheus self-monitoring
-        - job_name: 'prometheus'
-          static_configs:
-            - targets: ['localhost:9090']
-
-        # Proxmox VE hosts (if node_exporter is installed)
-        - job_name: 'proxmox-nodes'
-          static_configs:
-            - targets:
-      {% for host in groups['proxmox_hosts'] %}
-              - '{{ hostvars[host]['ansible_host'] }}:9100'
-      {% endfor %}
+    prometheus_ip: "10.0.1.{{ prometheus_vmid | string | regex_replace('^.*(..)$', '\\1') }}"
 
   tasks:
-    - name: Create Prometheus configuration
+    - name: Create Prometheus configuration from template
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/roles/proxmox-community-script/templates/prometheus-config.yml.j2"
+        dest: "/tmp/prometheus-config.yml"
+        mode: '0644'
+
+    - name: Copy configuration to Prometheus container
+      delegate_to: "{{ inventory_hostname }}"
       ansible.builtin.shell: |
-        pct exec {{ prometheus_vmid }} -- bash -c 'cat > /etc/prometheus/prometheus.yml << "EOF"
-        {{ prometheus_config }}
-        EOF'
+        pct push {{ prometheus_vmid }} /tmp/prometheus-config.yml /etc/prometheus/prometheus.yml
       register: config_result
 
+    - name: Cleanup temporary config file
+      delegate_to: "{{ inventory_hostname }}"
+      ansible.builtin.file:
+        path: /tmp/prometheus-config.yml
+        state: absent
+
     - name: Reload Prometheus configuration
+      delegate_to: "{{ inventory_hostname }}"
       ansible.builtin.shell: |
         pct exec {{ prometheus_vmid }} -- systemctl reload prometheus
       register: reload_result
 
+    - name: Wait for Prometheus to reload
+      ansible.builtin.pause:
+        seconds: 5
+
     - name: Verify Prometheus targets
-      ansible.builtin.shell: |
-        sleep 5
-        curl -s http://{{ final_static_ip }}:9090/api/v1/targets | jq '.data.activeTargets[] | {job: .labels.job, instance: .labels.instance, health: .health}'
-      register: targets_status
+      ansible.builtin.uri:
+        url: "http://{{ prometheus_ip }}:9090/api/v1/targets"
+        method: GET
+        return_content: yes
+      register: targets_response
       failed_when: false
 
     - name: Display Prometheus configuration status
@@ -130,8 +101,8 @@
         msg:
           - "Prometheus configured to scrape:"
           - "  - {{ groups['proxmox_hosts'] | length }} Proxmox hosts (OpenTelemetry)"
-          - "  - {{ groups['dns'] | length }} DNS servers (OpenTelemetry)"
+          - "  - {{ groups['dns'] | default([]) | length }} DNS servers (OpenTelemetry)"
           - "  - Prometheus self-monitoring"
           - ""
-          - "Access Prometheus: http://{{ final_static_ip }}:9090"
-          - "View targets: http://{{ final_static_ip }}:9090/targets"
+          - "Access Prometheus: http://{{ prometheus_ip }}:9090"
+          - "View targets: http://{{ prometheus_ip }}:9090/targets"

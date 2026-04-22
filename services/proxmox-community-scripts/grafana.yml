@@ -14,6 +14,7 @@
     grafana_cpu_cores: "{{ lookup('env', 'GRAFANA_CPU_CORES') | default('2', true) }}"
     grafana_bridge: "{{ lookup('env', 'GRAFANA_BRIDGE') | default('vmbr0', true) }}"
     prometheus_ip: "{{ lookup('env', 'PROMETHEUS_IP') | default('10.0.1.40', true) }}"
+    grafana_ip: "10.0.1.{{ grafana_vmid | string | regex_replace('^.*(..)$', '\\1') }}"
 
   tasks:
     - name: Deploy Grafana using community script
@@ -44,7 +45,7 @@
           - "Grafana deployed successfully!"
           - "Container ID: {{ grafana_vmid }}"
           - "Hostname: {{ grafana_hostname }}"
-          - "Web UI: http://{{ final_static_ip }}:3000"
+          - "Web UI: http://{{ grafana_ip }}:3000"
           - "Default credentials: admin / admin (change on first login)"
           - ""
           - "Next steps:"

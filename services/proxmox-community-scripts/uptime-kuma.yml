@@ -1,0 +1,75 @@
+---
+# Deploy Uptime Kuma using Proxmox VE Community Script
+# https://community-scripts.org/scripts/uptime-kuma
+
+- name: Deploy Uptime Kuma LXC Container
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+
+  vars:
+    uptime_kuma_vmid: "{{ lookup('env', 'UPTIME_KUMA_VMID') | default('155', true) }}"
+    uptime_kuma_hostname: "{{ lookup('env', 'UPTIME_KUMA_HOSTNAME') | default('uptime-kuma', true) }}"
+    uptime_kuma_ram: "{{ lookup('env', 'UPTIME_KUMA_RAM') | default('1024', true) }}"
+    uptime_kuma_disk_size: "{{ lookup('env', 'UPTIME_KUMA_DISK_SIZE') | default('4', true) }}"
+    uptime_kuma_cpu_cores: "{{ lookup('env', 'UPTIME_KUMA_CPU_CORES') | default('1', true) }}"
+    uptime_kuma_bridge: "{{ lookup('env', 'UPTIME_KUMA_BRIDGE') | default('vmbr0', true) }}"
+
+  tasks:
+    - name: Deploy Uptime Kuma using community script
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+      vars:
+        proxmox_host: "{{ inventory_hostname }}"
+        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
+        script_name: "uptime-kuma"
+        container_id: "{{ uptime_kuma_vmid }}"
+        hostname: "{{ uptime_kuma_hostname }}"
+        ram: "{{ uptime_kuma_ram }}"
+        swap: "256"
+        disk_size: "{{ uptime_kuma_disk_size }}"
+        cpu_cores: "{{ uptime_kuma_cpu_cores }}"
+        bridge: "{{ uptime_kuma_bridge }}"
+        privileged: "no"
+        features: "nesting=1"
+        verbose: "yes"
+
+    - name: Calculate Uptime Kuma IP address
+      ansible.builtin.set_fact:
+        uptime_kuma_ip: >-
+          {{
+            '10.0.' + ((uptime_kuma_bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+            (uptime_kuma_vmid | string)[-2:]
+          }}
+
+    - name: Wait for Uptime Kuma to be ready
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Display Uptime Kuma access information
+      ansible.builtin.debug:
+        msg:
+          - "Uptime Kuma deployed successfully!"
+          - "Container ID: {{ uptime_kuma_vmid }}"
+          - "Hostname: {{ uptime_kuma_hostname }}"
+          - "IP Address: {{ uptime_kuma_ip }}"
+          - "Web UI: http://{{ uptime_kuma_ip }}:3001"
+          - ""
+          - "First-time setup:"
+          - "1. Access the web UI"
+          - "2. Create admin account"
+          - "3. Add monitors for your services:"
+          - "   - Proxmox VE hosts"
+          - "   - DNS servers (Pi-hole)"
+          - "   - Prometheus (http://10.0.1.40:9090)"
+          - "   - Grafana (http://10.0.1.45:3000)"
+          - "   - NAS"
+          - ""
+          - "Recommended monitors:"
+          - "  - HTTP(s) for web services"
+          - "  - Ping for network devices"
+          - "  - Port for specific services"
+          - "  - DNS for Pi-hole"
+          - ""
+          - "Configure notifications:"
+          - "  - Email, Slack, Discord, Telegram, etc."
+          - "  - Set up status pages for public monitoring"

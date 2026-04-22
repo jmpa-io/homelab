@@ -1,70 +1,76 @@
 #!/usr/bin/env bash
-# cleanup-ansible-backups.sh
 # Removes timestamped backup files created by Ansible on remote instances.
 
-set -euo pipefail
+set -e
 
-#
-# Functions.
-#
-
+# Funcs.
+die() { echo "$1" >&2; exit "${2:-1}"; }
 usage() {
     cat <<EOF
-usage: $0 <hostname|ip> [ssh_port] [ssh_user]
+Usage: $0 <hostname|ip> [ssh_port] [ssh_user]
 
 Removes timestamped backup files created by Ansible on remote instances.
 
+Arguments:
+  hostname|ip    Target host (hostname or IP address)
+  ssh_port       SSH port (default: 22)
+  ssh_user       SSH user (default: root)
+
 Examples:
   $0 192.168.1.100
-  $0 jmpa-nas-1 9222 jmpa-nas-1
-  $0 jmpa-server-1 22 root
-
+  $0 jmpa-nas-1 9222 jmpa
+  $0 proxmox-host-1 22 root
 EOF
+    exit 64
 }
 
-die() {
-    echo "error: $*" >&2
-    exit 1
-}
-
-#
-# Main.
-#
-
-# Check if host is provided.
-[ $# -eq 0 ] && usage && die "missing hostname or ip address"
-
-HOST="$1"
-SSH_PORT="${2:-22}"
-SSH_USER="${3:-root}"
-
-echo "connecting to ${SSH_USER}@${HOST}:${SSH_PORT}..."
-
-# List backup files first.
-echo "searching for ansible backup files..."
-BACKUP_FILES=$(ssh -p "${SSH_PORT}" "${SSH_USER}@${HOST}" "find /etc -name '*.20*' -type f 2>/dev/null" || true)
-
-if [ -z "$BACKUP_FILES" ]; then
-    echo "no backup files found on ${HOST}"
-    exit 0
+# Check deps.
+deps=(ssh find wc)
+missing=()
+for dep in "${deps[@]}"; do hash "$dep" 2>/dev/null || missing+=("$dep"); done
+if [[ ${#missing[@]} -ne 0 ]]; then
+    [[ "${#missing[@]}" -gt 1 ]] && s="s"
+    die "Missing dep${s}: ${missing[*]}."
 fi
 
-# Display found files.
-echo "found the following backup files:"
-echo "$BACKUP_FILES"
+# Check args.
+[[ $# -eq 0 ]] && usage
+host="$1"
+sshPort="${2:-22}"
+sshUser="${3:-root}"
 
-# Ask for confirmation.
+# Test SSH connectivity.
+ssh -p "$sshPort" -o ConnectTimeout=5 -o BatchMode=yes "${sshUser}@${host}" "exit" 2>/dev/null \
+    || die "Cannot connect to ${host}:${sshPort} as ${sshUser}; Check SSH configuration."
+
+# Search for backup files.
+backupFiles=$(ssh -p "$sshPort" "${sshUser}@${host}" "find /etc -name '*.20*' -type f 2>/dev/null" || true)
+[[ -z "$backupFiles" ]] && \
+    { echo "No backup files found on ${host}; Exiting early..."; exit 0; }
+
+# Count and display files.
+fileCount=$(echo "$backupFiles" | wc -l | tr -d ' ')
+echo "Found ${fileCount} backup file(s) on ${host}:"
+echo "===================="
+echo "$backupFiles"
+echo "===================="
 echo ""
-read -rp "delete these files? (yes/no): " CONFIRM
 
-if [ "$CONFIRM" != "yes" ]; then
-    echo "aborted. no files were deleted."
-    exit 0
-fi
+# Confirm deletion.
+read -p "Delete these files? [y/N] " -n 1 -r
+echo
+[[ ! $REPLY =~ ^[Yy]$ ]] && { echo "Aborted."; exit 0; }
 
-# Delete the files.
-echo "deleting backup files..."
-ssh -p "${SSH_PORT}" "${SSH_USER}@${HOST}" "find /etc -name '*.20*' -type f -delete 2>/dev/null" || \
-    die "failed to delete backup files"
+# Delete files.
+while IFS= read -r file; do
+    ssh -p "$sshPort" "${sshUser}@${host}" "rm -f '$file'" \
+        || die "Failed to delete: $file"
+    echo "Deleted: $file"
+done <<< "$backupFiles"
 
-echo "successfully deleted backup files from ${HOST}"
+# Verify deletion.
+remainingFiles=$(ssh -p "$sshPort" "${sshUser}@${host}" "find /etc -name '*.20*' -type f 2>/dev/null" || true)
+[[ -z "$remainingFiles" ]] \
+    || die "Some files remain after deletion; Check manually."
+
+echo "All backup files removed successfully from ${host}."

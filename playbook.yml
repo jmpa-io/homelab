@@ -59,7 +59,7 @@
     - instances/proxmox-hosts/nfs-client
 
     # observability.
-    #- instances/proxmox-hosts/opentelemetry-collector
+    - instances/proxmox-hosts/opentelemetry-collector
 
 # ▄▖       ▜   ▗
 # ▐ █▌▛▛▌▛▌▐ ▀▌▜▘█▌▛▘
@@ -89,7 +89,7 @@
 # ▌▌▛▌▛▘▙▘█▌▛▘
 # ▙▘▙▌▙▖▛▖▙▖▌
 
-# TODO:
+# TODO: Add Docker/K8s deployment when ready
 
 # ▖▖▄▖ ▄▖
 # ▙▘▌▌▛▘

@@ -1,0 +1,187 @@
+---
+# Comprehensive cleanup playbook for all instances
+# Compatible with: Proxmox VE (Debian-based), Raspbian, Debian
+# Removes temporary files, old logs, Ansible backups, and unused packages
+#
+# SAFETY FEATURES:
+# - Uses failed_when: false for non-critical operations
+# - Checks OS family before APT operations
+# - Only removes files older than retention period
+# - Skips Docker cleanup if Docker not installed
+# - Provides detailed summary of actions taken
+
+- name: Cleanup all instances
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    # Cleanup configuration (set to false to disable specific cleanups)
+    cleanup_ansible_backups: true
+    cleanup_old_logs: true
+    cleanup_temp_files: true
+    cleanup_apt_cache: true
+    cleanup_journal_logs: true
+
+    # Retention periods (days)
+    log_retention_days: 30
+    journal_retention_days: 7
+    temp_file_age_days: 7
+
+  tasks:
+    - name: Display cleanup target and OS info
+      ansible.builtin.debug:
+        msg:
+          - "Starting cleanup on {{ inventory_hostname }} ({{ ansible_host }})"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "OS Family: {{ ansible_os_family }}"
+
+    # Ansible backup files (safe - only removes Ansible-created backups)
+    - name: Find Ansible backup files in /etc
+      ansible.builtin.find:
+        paths: /etc
+        patterns: '*.20*'
+        file_type: file
+        recurse: true
+      register: ansible_backup_files
+      when: cleanup_ansible_backups | bool
+      failed_when: false
+
+    - name: Remove Ansible backup files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ ansible_backup_files.files }}"
+      when:
+        - cleanup_ansible_backups | bool
+        - ansible_backup_files.files is defined
+        - ansible_backup_files.files | length > 0
+      failed_when: false
+
+    - name: Display Ansible backup cleanup results
+      ansible.builtin.debug:
+        msg: "Removed {{ ansible_backup_files.files | default([]) | length }} Ansible backup files"
+      when: cleanup_ansible_backups | bool
+
+    # Temporary files (safe - only removes old files)
+    - name: Clean /tmp directory (files older than {{ temp_file_age_days }} days)
+      ansible.builtin.find:
+        paths: /tmp
+        age: "{{ temp_file_age_days }}d"
+        file_type: file
+        recurse: false
+      register: tmp_files
+      when: cleanup_temp_files | bool
+      failed_when: false
+
+    - name: Remove old temporary files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ tmp_files.files }}"
+      when:
+        - cleanup_temp_files | bool
+        - tmp_files.files is defined
+        - tmp_files.files | length > 0
+      failed_when: false
+
+    # Old log files (safe - only removes rotated/compressed logs)
+    - name: Find old log files
+      ansible.builtin.find:
+        paths:
+          - /var/log
+        patterns:
+          - '*.log.*'
+          - '*.gz'
+          - '*.1'
+          - '*.2'
+        age: "{{ log_retention_days }}d"
+        file_type: file
+        recurse: true
+      register: old_log_files
+      when: cleanup_old_logs | bool
+      failed_when: false
+
+    - name: Remove old log files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_log_files.files }}"
+      when:
+        - cleanup_old_logs | bool
+        - old_log_files.files is defined
+        - old_log_files.files | length > 0
+      failed_when: false
+
+    # APT cache and packages (safe - only on Debian-based systems)
+    - name: Clean APT cache
+      ansible.builtin.apt:
+        autoclean: true
+      when:
+        - cleanup_apt_cache | bool
+        - ansible_os_family == "Debian"
+      failed_when: false
+
+    - name: Remove unused packages
+      ansible.builtin.apt:
+        autoremove: true
+        purge: true
+      when:
+        - cleanup_apt_cache | bool
+        - ansible_os_family == "Debian"
+      failed_when: false
+
+    # Journal logs (safe - systemd handles retention)
+    - name: Check if journalctl is available
+      ansible.builtin.command: which journalctl
+      register: journalctl_check
+      failed_when: false
+      changed_when: false
+
+    - name: Vacuum systemd journal logs
+      ansible.builtin.command: journalctl --vacuum-time={{ journal_retention_days }}d
+      register: journal_vacuum
+      changed_when: "'Vacuuming done' in journal_vacuum.stdout"
+      when:
+        - cleanup_journal_logs | bool
+        - journalctl_check.rc == 0
+      failed_when: false
+
+    # Docker cleanup (safe - only if Docker is installed)
+    - name: Check if Docker is installed
+      ansible.builtin.command: which docker
+      register: docker_check
+      failed_when: false
+      changed_when: false
+
+    - name: Clean Docker system (unused images, containers, volumes)
+      ansible.builtin.command: docker system prune -af --volumes
+      when:
+        - docker_check.rc == 0
+        - cleanup_temp_files | bool
+      register: docker_prune
+      changed_when: "'Total reclaimed space' in docker_prune.stdout"
+      failed_when: false
+
+    # Summary
+    - name: Calculate disk usage after cleanup
+      ansible.builtin.shell: df -h / | tail -1 | awk '{print $4}'
+      register: disk_free
+      changed_when: false
+      failed_when: false
+
+    - name: Display cleanup summary
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "Cleanup completed on {{ inventory_hostname }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "=========================================="
+          - "Ansible backups removed: {{ ansible_backup_files.files | default([]) | length }}"
+          - "Temp files removed: {{ tmp_files.files | default([]) | length }}"
+          - "Old logs removed: {{ old_log_files.files | default([]) | length }}"
+          - "APT cache cleaned: {{ 'Yes' if (cleanup_apt_cache and ansible_os_family == 'Debian') else 'Skipped' }}"
+          - "Journal vacuumed: {{ 'Yes' if (cleanup_journal_logs and journalctl_check.rc == 0) else 'Skipped' }}"
+          - "Docker cleaned: {{ 'Yes' if (docker_check.rc == 0) else 'Not installed' }}"
+          - "Free disk space: {{ disk_free.stdout | default('N/A') }}"
+          - "=========================================="

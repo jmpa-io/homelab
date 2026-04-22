@@ -1,0 +1,57 @@
+---
+# Deploy LibreSpeed Speedtest using Proxmox VE Community Script
+#
+# This playbook deploys a self-hosted speedtest server using the Proxmox VE
+# Community Script for LibreSpeed. LibreSpeed is a lightweight speedtest
+# implementation that can be used to test network performance.
+#
+# Usage:
+#   ansible-playbook services/proxmox-community-scripts/speedtest.yml
+#
+# Configuration:
+#   - SPEEDTEST_VMID: VM ID for the speedtest container (default: 160)
+#   - SPEEDTEST_HOSTNAME: Hostname for the speedtest server (default: speedtest)
+#   - SPEEDTEST_CORES: Number of CPU cores (default: 1)
+#   - SPEEDTEST_MEMORY: Memory in MB (default: 512)
+#   - SPEEDTEST_DISK_SIZE: Disk size in GB (default: 2)
+#
+# After deployment:
+#   - Access the speedtest UI at: http://speedtest.jmpa.lab
+#   - The service will be automatically added to Pi-hole DNS
+#   - No additional configuration required
+
+- name: Deploy LibreSpeed Speedtest
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  become: true
+
+  vars:
+    speedtest_vmid: "{{ lookup('env', 'SPEEDTEST_VMID') | default('160', true) }}"
+    speedtest_hostname: "{{ lookup('env', 'SPEEDTEST_HOSTNAME') | default('speedtest', true) }}"
+    speedtest_cores: "{{ lookup('env', 'SPEEDTEST_CORES') | default('1', true) }}"
+    speedtest_memory: "{{ lookup('env', 'SPEEDTEST_MEMORY') | default('512', true) }}"
+    speedtest_disk_size: "{{ lookup('env', 'SPEEDTEST_DISK_SIZE') | default('2', true) }}"
+
+  tasks:
+    - name: Deploy LibreSpeed Speedtest using community script
+      ansible.builtin.include_role:
+        name: proxmox-community-script
+      vars:
+        script_name: librespeed
+        container_id: "{{ speedtest_vmid }}"
+        container_hostname: "{{ speedtest_hostname }}"
+        container_cores: "{{ speedtest_cores }}"
+        container_memory: "{{ speedtest_memory }}"
+        container_disk_size: "{{ speedtest_disk_size }}"
+        # LibreSpeed runs on port 80 by default
+        container_port: "80"
+
+    - name: Display speedtest access information
+      ansible.builtin.debug:
+        msg:
+          - "LibreSpeed Speedtest deployed successfully!"
+          - "Access URL: http://{{ speedtest_hostname }}.jmpa.lab"
+          - "Direct IP: http://10.0.1.60"
+          - ""
+          - "The speedtest service is now available for testing network performance."
+          - "DNS record has been automatically added to Pi-hole."

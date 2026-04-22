@@ -1,0 +1,63 @@
+---
+# Deploy n8n Workflow Automation using Proxmox VE Community Script
+#
+# This playbook deploys n8n, a powerful workflow automation tool, using the
+# Proxmox VE Community Script. n8n allows you to automate tasks between
+# different services and APIs.
+#
+# Usage:
+#   ansible-playbook services/proxmox-community-scripts/n8n.yml
+#
+# Configuration:
+#   - N8N_VMID: VM ID for the n8n container (default: 165)
+#   - N8N_HOSTNAME: Hostname for the n8n server (default: n8n)
+#   - N8N_CORES: Number of CPU cores (default: 2)
+#   - N8N_MEMORY: Memory in MB (default: 2048)
+#   - N8N_DISK_SIZE: Disk size in GB (default: 8)
+#
+# After deployment:
+#   - Access n8n at: http://n8n.jmpa.lab:5678
+#   - The service will be automatically added to Pi-hole DNS
+#   - First login will prompt you to create an admin account
+#   - Data is persisted in the container at /root/.n8n
+
+- name: Deploy n8n Workflow Automation
+  hosts: proxmox_hosts[0]
+  gather_facts: false
+  become: true
+
+  vars:
+    n8n_vmid: "{{ lookup('env', 'N8N_VMID') | default('165', true) }}"
+    n8n_hostname: "{{ lookup('env', 'N8N_HOSTNAME') | default('n8n', true) }}"
+    n8n_cores: "{{ lookup('env', 'N8N_CORES') | default('2', true) }}"
+    n8n_memory: "{{ lookup('env', 'N8N_MEMORY') | default('2048', true) }}"
+    n8n_disk_size: "{{ lookup('env', 'N8N_DISK_SIZE') | default('8', true) }}"
+
+  tasks:
+    - name: Deploy n8n using community script
+      ansible.builtin.include_role:
+        name: proxmox-community-script
+      vars:
+        script_name: n8n
+        container_id: "{{ n8n_vmid }}"
+        container_hostname: "{{ n8n_hostname }}"
+        container_cores: "{{ n8n_cores }}"
+        container_memory: "{{ n8n_memory }}"
+        container_disk_size: "{{ n8n_disk_size }}"
+        # n8n runs on port 5678 by default
+        container_port: "5678"
+
+    - name: Display n8n access information
+      ansible.builtin.debug:
+        msg:
+          - "n8n Workflow Automation deployed successfully!"
+          - "Access URL: http://{{ n8n_hostname }}.jmpa.lab:5678"
+          - "Direct IP: http://10.0.1.65:5678"
+          - ""
+          - "First-time setup:"
+          - "  1. Navigate to the URL above"
+          - "  2. Create your admin account"
+          - "  3. Start creating workflows!"
+          - ""
+          - "DNS record has been automatically added to Pi-hole."
+          - "Data is persisted at /root/.n8n in the container."
