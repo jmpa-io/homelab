@@ -17,6 +17,10 @@ DASHBOARD_TOKEN_DURATION  ?= 24h
 DASHBOARD_SSM_PATH        ?= /homelab/k3s/dashboard-token
 KUBECONFIG_PATH           ?= services/vms/k3s/kubeconfig.yaml
 
+# EC2 settings.
+EC2_DIR         ?= terraform/ec2
+EC2_INSTANCE    ?= jmpa-ec2-1
+
 #
 # Targets.
 #
@@ -63,6 +67,12 @@ create-k3s-inventory: dist/k3s-inventory.json
 dist/k3s-inventory.json: dist
 dist/k3s-inventory.json: inventory/main.py
 	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))' > $@
+
+create-inventory: ## Creates the full 'dist/inventory.json'.
+create-inventory: dist/inventory.json
+dist/inventory.json: dist
+dist/inventory.json: inventory/main.py
+	@python $< > $@
 
 ping-k3s-inventory: ## Pings the k3s inventory.
 ping-k3s-inventory: dist/k3s-inventory.json
@@ -198,6 +208,39 @@ docker: image-root
 		-e "ANSIBLE_STRATEGY_PLUGINS=/usr/local/lib/python3.13/site-packages/ansible_mitogen/plugins/strategy/" \
 		-e "CI=true" \
 		"$(PROJECT)" bash
+
+---: ## ---
+
+#
+# EC2.
+#
+
+provision-ec2: ## Provision the EC2 fleet member via Terraform.
+provision-ec2:
+	@echo "Initialising Terraform..."
+	@cd $(EC2_DIR) && terraform init
+	@echo ""
+	@echo "Planning..."
+	@cd $(EC2_DIR) && terraform plan -out=tfplan
+	@echo ""
+	@echo "Applying..."
+	@cd $(EC2_DIR) && terraform apply tfplan
+	@echo ""
+	@echo "Done. Uncomment the EC2 block in inventory/main.py then run: make configure-ec2"
+
+destroy-ec2: ## Destroy the EC2 fleet member (WARNING: irreversible).
+destroy-ec2:
+	@echo "WARNING: This will destroy the EC2 instance and release the Elastic IP."
+	@read -p "Type 'yes' to confirm: " confirm && [ "$$confirm" = "yes" ] || exit 1
+	@cd $(EC2_DIR) && terraform destroy
+
+configure-ec2: ## Configure the EC2 fleet member via Ansible.
+configure-ec2: dist/inventory.json
+	ansible-playbook services/ec2/configure.yml \
+		-i $< \
+		--extra-vars "root_playbook_directory=$$PWD"
+
+.PHONY += provision-ec2 destroy-ec2 configure-ec2
 
 ---: ## ---
 

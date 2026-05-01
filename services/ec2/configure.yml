@@ -1,0 +1,283 @@
+---
+# Configure an EC2 instance as a fleet member.
+#
+# Prerequisites:
+#   1. Run `make provision-ec2` to create the instance via Terraform.
+#   2. Uncomment the EC2 instance block in inventory/main.py.
+#   3. Run `make configure-ec2` (or this playbook directly).
+#
+# What this playbook does:
+#   - Installs base packages and hardens SSH
+#   - Installs and connects Tailscale (so EC2 can reach the homelab LAN)
+#   - Installs nginx as a public-facing reverse proxy
+#   - Installs the OpenTelemetry collector (consistent with every other host)
+#   - Optionally joins the k3s cluster as a worker node
+
+- name: Configure EC2 fleet member.
+  hosts: ec2_hosts
+  become: true
+  gather_facts: true
+
+  vars:
+    ec2_timezone: "Australia/Melbourne"
+    ec2_hostname: "{{ ec2.name }}"
+    tailscale_auth_key: "{{ tailscale.auth_key }}"
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # Base system
+    # -------------------------------------------------------------------------
+
+    - name: Set hostname.
+      ansible.builtin.hostname:
+        name: "{{ ec2_hostname }}"
+
+    - name: Set timezone.
+      community.general.timezone:
+        name: "{{ ec2_timezone }}"
+
+    - name: Update apt cache and upgrade packages.
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+        cache_valid_time: 3600
+
+    - name: Install base packages.
+      ansible.builtin.apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - htop
+          - jq
+          - unzip
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - net-tools
+          - ufw
+          - fail2ban
+          - logrotate
+          - chrony
+        state: present
+
+    - name: Enable and start chrony (NTP).
+      ansible.builtin.systemd:
+        name: chrony
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # SSH hardening
+    # -------------------------------------------------------------------------
+
+    - name: Harden SSH configuration.
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+        validate: 'sshd -t -f %s'
+      loop:
+        - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+        - { regexp: '^#?PermitRootLogin',        line: 'PermitRootLogin no' }
+        - { regexp: '^#?X11Forwarding',          line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxAuthTries',           line: 'MaxAuthTries 3' }
+        - { regexp: '^#?ClientAliveInterval',    line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax',    line: 'ClientAliveCountMax 2' }
+      notify: Restart sshd
+
+    # -------------------------------------------------------------------------
+    # Firewall (UFW)
+    # -------------------------------------------------------------------------
+
+    - name: Set UFW default policies.
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+
+    - name: Allow SSH.
+      community.general.ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: Allow HTTP and HTTPS.
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '80'
+        - '443'
+
+    - name: Enable UFW.
+      community.general.ufw:
+        state: enabled
+
+    # -------------------------------------------------------------------------
+    # Tailscale — joins the homelab Tailnet so EC2 can reach private LAN services
+    # -------------------------------------------------------------------------
+
+    - name: Add Tailscale apt key.
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Add Tailscale apt repository.
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian bookworm main"
+        state: present
+        filename: tailscale
+
+    - name: Install Tailscale.
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: true
+
+    - name: Enable and start Tailscale service.
+      ansible.builtin.systemd:
+        name: tailscaled
+        enabled: true
+        state: started
+
+    - name: Connect Tailscale to homelab tailnet.
+      ansible.builtin.shell: |
+        tailscale up --authkey {{ tailscale_auth_key }} --hostname {{ ec2_hostname }} --accept-routes
+      args:
+        creates: /var/lib/tailscale/tailscaled.state
+      changed_when: true
+      no_log: true
+
+    - name: Allow Tailscale traffic in UFW.
+      community.general.ufw:
+        rule: allow
+        interface: tailscale0
+        direction: in
+
+    # -------------------------------------------------------------------------
+    # OpenTelemetry Collector — consistent with every other fleet host
+    # -------------------------------------------------------------------------
+
+    - name: Create otelcol user.
+      ansible.builtin.user:
+        name: otelcol
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Download OpenTelemetry Collector.
+      ansible.builtin.get_url:
+        url: "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v0.96.0/otelcol-contrib_0.96.0_linux_amd64.deb"
+        dest: /tmp/otelcol.deb
+        mode: '0644'
+
+    - name: Install OpenTelemetry Collector.
+      ansible.builtin.apt:
+        deb: /tmp/otelcol.deb
+        state: present
+
+    - name: Configure OpenTelemetry Collector.
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/otelcol-config.yaml.j2"
+        dest: /etc/otelcol-contrib/config.yaml
+        mode: '0644'
+        owner: otelcol
+        group: otelcol
+      notify: Restart otelcol
+
+    - name: Enable and start OpenTelemetry Collector.
+      ansible.builtin.systemd:
+        name: otelcol-contrib
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # Nginx reverse proxy
+    # -------------------------------------------------------------------------
+
+    - name: Install nginx.
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+
+    - name: Configure nginx.
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/templates/nginx.conf.j2"
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+      notify: Restart nginx
+
+    - name: Enable and start nginx.
+      ansible.builtin.systemd:
+        name: nginx
+        enabled: true
+        state: started
+
+    # -------------------------------------------------------------------------
+    # Store public IP back in SSM (refreshes if it changes after a reboot)
+    # -------------------------------------------------------------------------
+
+    - name: Get current public IP.
+      ansible.builtin.uri:
+        url: https://checkip.amazonaws.com
+        return_content: true
+      register: current_public_ip
+      changed_when: false
+      delegate_to: localhost
+
+    - name: Update SSM with current public IP.
+      ansible.builtin.shell: |
+        aws ssm put-parameter \
+          --name "/homelab/ec2/{{ ec2_hostname }}/public-ip" \
+          --value "{{ current_public_ip.content | trim }}" \
+          --type String \
+          --overwrite \
+          --region "{{ ec2.region }}"
+      delegate_to: localhost
+      changed_when: true
+
+    # -------------------------------------------------------------------------
+    # Display summary
+    # -------------------------------------------------------------------------
+
+    - name: Display EC2 fleet member status.
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "EC2 Fleet Member Configured Successfully!"
+          - "=========================================="
+          - "  Hostname   : {{ ec2_hostname }}"
+          - "  Public IP  : {{ ansible_host }}"
+          - "  Region     : {{ ec2.region }}"
+          - "  Tailscale  : connected to homelab tailnet"
+          - ""
+          - "Next steps:"
+          - "  - To join k3s: run services/vms/k3s/main.yml"
+          - "    (uncomment EC2 in the k3s_nodes group in inventory/main.py)"
+          - "  - To check Tailscale: tailscale status"
+          - "  - To check nginx: systemctl status nginx"
+          - "=========================================="
+
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+
+    - name: Restart nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: restarted
+
+    - name: Restart otelcol
+      ansible.builtin.systemd:
+        name: otelcol-contrib
+        state: restarted

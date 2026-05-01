@@ -24,3 +24,15 @@ services/k8s/observability/thanos-objstore-secret.yml
 **/secrets/*.yaml
 *.secret.yml
 *.secret.yaml
+
+# Terraform - state and secrets must not be committed
+terraform/**/.terraform/
+terraform/**/.terraform.lock.hcl
+terraform/**/terraform.tfstate
+terraform/**/terraform.tfstate.backup
+terraform/**/terraform.tfvars
+terraform/**/tfplan
+
+# Ansible generated files
+services/vms/k3s/kubeconfig.yaml
+services/vms/k3s/argocd-credentials.txt

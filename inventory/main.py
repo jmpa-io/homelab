@@ -4,7 +4,7 @@ import json
 from ssm import SSMClient
 from env import read_env_var
 
-from instances import VPS, NAS, DNS
+from instances import VPS, NAS, DNS, EC2
 from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
 from service import LXCService, HostService, Protocol, CommunityScriptService
 from inventory import Inventory
@@ -289,6 +289,23 @@ def main():
   #   device_name=ssm_client.require_parameter('/homelab/jmpa-vps-1/device-name'),
   #   host_services=[collector],
   # ))
+
+  # Add EC2 instance(s).
+  # Uncomment after running: make provision-ec2
+  # The Terraform module stores the public IP and instance ID in SSM automatically.
+  #
+  # ec2_public_ip = ssm_client.get_parameter('/homelab/ec2/jmpa-ec2-1/public-ip')
+  # if ec2_public_ip:
+  #   inventory.add_instances(EC2(
+  #     ipv4=ec2_public_ip,
+  #     ipv4_cidr='32',                # single public IP
+  #     device_name='eth0',
+  #     region=read_env_var('AWS_REGION', 'ap-southeast-2'),
+  #     instance_id=ssm_client.get_parameter('/homelab/ec2/jmpa-ec2-1/instance-id'),
+  #     ssh_key_name=read_env_var('EC2_SSH_KEY_NAME', 'homelab'),
+  #     ansible_user='admin',          # Debian AMI; use 'ubuntu' for Ubuntu AMIs
+  #     host_services=[collector],
+  #   ))
 
   #
   # Setup K8s services configuration.

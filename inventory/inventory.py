@@ -6,13 +6,14 @@ from instances.proxmox_host import ProxmoxHost
 from instances.nas import NAS
 from instances.vps import VPS
 from instances.dns import DNS
+from instances.ec2 import EC2
 from k8s_inventory import K8sInventory
 
 
 @dataclass
 class Inventory:
-  # Instance config - can be ProxmoxHost, NAS, VPS, DNS, etc.
-  instances: Dict[str, Union[ProxmoxHost, NAS, VPS, DNS]] = field(default_factory=dict)
+  # Instance config - can be ProxmoxHost, NAS, VPS, DNS, EC2, etc.
+  instances: Dict[str, Union[ProxmoxHost, NAS, VPS, DNS, EC2]] = field(default_factory=dict)
   vars: Dict[str, Any] = field(default_factory=dict)
 
   # Kubernetes config.
@@ -23,7 +24,8 @@ class Inventory:
     'ProxmoxHost': 1,
     'VPS': 1,
     'NAS': 1,
-    'DNS': 1
+    'DNS': 1,
+    'EC2': 1,
   }, init=False, repr=False)
 
   def add_instance(self, instance: Union[ProxmoxHost, NAS, VPS, DNS]):
@@ -157,6 +159,7 @@ class Inventory:
     host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (ProxmoxHost, VPS))}
     nas_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
     dns_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, DNS)}
+    ec2_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, EC2)}
 
     # Build hostvars for all instances.
     hostvars = {name: inst.to_dict() for name, inst in self.instances.items()}
@@ -179,7 +182,10 @@ class Inventory:
         },
         'dns': {
             'hosts': list(dns_instances.keys())
-        }
+        },
+        'ec2_hosts': {
+            'hosts': list(ec2_instances.keys())
+        },
     }
 
     # Return early when there is no given kube_inventory.
