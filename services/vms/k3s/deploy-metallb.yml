@@ -1,0 +1,72 @@
+---
+# Configure MetalLB for LoadBalancer IP address assignment.
+#
+# MetalLB is installed by services/vms/k3s/main.yml via a manifest URL.
+# This playbook applies the IPAddressPool and L2Advertisement resources that
+# tell MetalLB which IP range to hand out to LoadBalancer services.
+#
+# Run this AFTER main.yml and BEFORE any playbook that expects LoadBalancer IPs
+# (deploy-gitops.yml, deploy-dashboard.yml, deploy-homepage.yml, etc.)
+#
+# The IP range is sourced from k8s_services.metallb.ip_range in the inventory,
+# which defaults to 10.0.0.200-10.0.0.250 and can be overridden via the
+# K3S_METALLB_IP_RANGE environment variable.
+
+- name: Configure MetalLB.
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  tasks:
+    - name: Wait for MetalLB to be ready.
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: metallb-controller
+        namespace: metallb-system
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: metallb_deployment
+      until: >
+        metallb_deployment.resources | length > 0 and
+        metallb_deployment.resources[0].status.readyReplicas | default(0) >= 1
+      retries: 30
+      delay: 10
+
+    - name: Apply MetalLB IPAddressPool.
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: IPAddressPool
+          metadata:
+            name: homelab-pool
+            namespace: metallb-system
+          spec:
+            addresses:
+              - "{{ k8s_services.metallb.ip_range }}"
+
+    - name: Apply MetalLB L2Advertisement.
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          apiVersion: metallb.io/v1beta1
+          kind: L2Advertisement
+          metadata:
+            name: homelab-l2
+            namespace: metallb-system
+          spec:
+            ipAddressPools:
+              - homelab-pool
+
+    - name: Display MetalLB configuration.
+      ansible.builtin.debug:
+        msg:
+          - "MetalLB configured successfully."
+          - "  IP pool : {{ k8s_services.metallb.ip_range }}"
+          - "  Mode    : L2 (ARP)"
+          - ""
+          - "LoadBalancer services will now receive IPs from this range."

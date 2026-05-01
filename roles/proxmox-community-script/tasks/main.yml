@@ -1,152 +1,155 @@
 ---
-# Tasks for deploying Proxmox VE community scripts
+# Tasks for deploying Proxmox VE community scripts.
 
-- name: Validate required variables
+- name: Validate required variables.
   ansible.builtin.assert:
     that:
-      - script_url is defined and script_url != ""
-      - script_name is defined and script_name != ""
-      - container_id is defined and container_id != ""
-      - hostname is defined and hostname != ""
-    fail_msg: "Required variables not set. Need: script_url, script_name, container_id, hostname"
+      - pcs_script_url is defined and pcs_script_url != ""
+      - pcs_script_name is defined and pcs_script_name != ""
+      - pcs_container_id is defined and pcs_container_id != ""
+      - pcs_hostname is defined and pcs_hostname != ""
+    fail_msg: "Required variables not set. Need: pcs_script_url, pcs_script_name, pcs_container_id, pcs_hostname"
 
-- name: Calculate static IP from VMID if not explicitly set
+- name: Calculate static IP from VMID if not explicitly set.
   ansible.builtin.set_fact:
-    calculated_static_ip: >-
+    pcs_calculated_static_ip: >-
       {{
-        '10.0.' + ((bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
-        (container_id | string)[-2:]
+        '10.0.' + ((pcs_bridge | regex_replace('vmbr', '') | int) + 1) | string + '.' +
+        (pcs_container_id | string)[-2:]
       }}
-    calculated_gateway: >-
+    pcs_calculated_gateway: >-
       {{
-        '10.0.' + ((bridge | regex_replace('vmbr', '') | int) + 1) | string + '.1'
+        '10.0.' + ((pcs_bridge | regex_replace('vmbr', '') | int) + 1) | string + '.1'
       }}
-  when: static_ip == "" or gateway == ""
+  when: pcs_static_ip == "" or pcs_gateway == ""
 
-- name: Set final static IP and gateway
+- name: Set final static IP and gateway.
   ansible.builtin.set_fact:
-    final_static_ip: "{{ static_ip if static_ip != '' else calculated_static_ip }}"
-    final_gateway: "{{ gateway if gateway != '' else calculated_gateway }}"
+    pcs_final_static_ip: "{{ pcs_static_ip if pcs_static_ip != '' else pcs_calculated_static_ip }}"
+    pcs_final_gateway: "{{ pcs_gateway if pcs_gateway != '' else pcs_calculated_gateway }}"
 
-- name: Display network configuration
+- name: Display network configuration.
   ansible.builtin.debug:
     msg:
-      - "Container ID: {{ container_id }}"
-      - "Bridge: {{ bridge }}"
-      - "Static IP: {{ final_static_ip }}"
-      - "Gateway: {{ final_gateway }}"
+      - "Container ID : {{ pcs_container_id }}"
+      - "Bridge       : {{ pcs_bridge }}"
+      - "Static IP    : {{ pcs_final_static_ip }}"
+      - "Gateway      : {{ pcs_final_gateway }}"
 
-- name: Check if container already exists
-  delegate_to: "{{ proxmox_host }}"
+- name: Check if container already exists.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.shell: |
-    pct status {{ container_id }} 2>/dev/null || echo "not_found"
-  register: container_check
+    pct status {{ pcs_container_id }} 2>/dev/null || echo "not_found"
+  register: pcs_container_check
   changed_when: false
   failed_when: false
 
-- name: Fail if container already exists
+- name: Fail if container already exists.
   ansible.builtin.fail:
-    msg: "Container {{ container_id }} already exists on {{ proxmox_host }}"
-  when: "'not_found' not in container_check.stdout"
+    msg: "Container {{ pcs_container_id }} already exists on {{ pcs_proxmox_host }}"
+  when: "'not_found' not in pcs_container_check.stdout"
 
-- name: Verify Proxmox host has internet access
-  delegate_to: "{{ proxmox_host }}"
+- name: Verify Proxmox host has internet access.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.command: ping -c 1 -W 5 8.8.8.8
-  register: internet_check
+  register: pcs_internet_check
   failed_when: false
   changed_when: false
 
-- name: Warn if no internet access
+- name: Warn if no internet access.
   ansible.builtin.debug:
     msg: "WARNING: Proxmox host may not have internet access. Script download might fail."
-  when: internet_check.rc != 0
+  when: pcs_internet_check.rc != 0
 
-- name: Download community script to Proxmox host
-  delegate_to: "{{ proxmox_host }}"
+- name: Download community script to Proxmox host.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.get_url:
-    url: "{{ script_url }}"
-    dest: "/tmp/{{ script_name }}.sh"
+    url: "{{ pcs_script_url }}"
+    dest: "/tmp/{{ pcs_script_name }}.sh"
     mode: '0755'
     force: true
-  register: download_result
+  register: pcs_download_result
   retries: 3
   delay: 5
-  until: download_result is succeeded
+  until: pcs_download_result is succeeded
 
-- name: Create environment file for script
-  delegate_to: "{{ proxmox_host }}"
+- name: Create environment file for script.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.template:
     src: script-env.sh.j2
-    dest: "/tmp/{{ script_name }}.env"
+    dest: "/tmp/{{ pcs_script_name }}.env"
     mode: '0644'
 
-- name: Execute community script
-  delegate_to: "{{ proxmox_host }}"
+- name: Execute community script.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.shell: |
     set -a
-    source /tmp/{{ script_name }}.env
+    source /tmp/{{ pcs_script_name }}.env
     set +a
-    /tmp/{{ script_name }}.sh
+    /tmp/{{ pcs_script_name }}.sh
   environment:
     DEBIAN_FRONTEND: noninteractive
-  register: script_output
+  register: pcs_script_output
   async: 3600
   poll: 10
-  failed_when: script_output.rc != 0
+  failed_when: pcs_script_output.rc != 0
+  changed_when: true
 
-- name: Display script output
+- name: Display script output.
   ansible.builtin.debug:
-    var: script_output.stdout_lines
-  when: verbose == "yes"
+    var: pcs_script_output.stdout_lines
+  when: pcs_verbose == "yes"
 
-- name: Wait for container to be fully started
-  delegate_to: "{{ proxmox_host }}"
+- name: Wait for container to be fully started.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.shell: |
-    pct status {{ container_id }} | grep -q "running"
-  register: container_status
-  until: container_status.rc == 0
+    set -o pipefail
+    pct status {{ pcs_container_id }} | grep -q "running"
+  register: pcs_container_status
+  until: pcs_container_status.rc == 0
   retries: 30
   delay: 2
   changed_when: false
 
-- name: Get container IP address
-  delegate_to: "{{ proxmox_host }}"
+- name: Get container IP address.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.shell: |
-    pct exec {{ container_id }} -- hostname -I | awk '{print $1}'
-  register: container_ip
+    set -o pipefail
+    pct exec {{ pcs_container_id }} -- hostname -I | awk '{print $1}'
+  register: pcs_container_ip
   changed_when: false
   retries: 10
   delay: 3
-  until: container_ip.stdout != ""
+  until: pcs_container_ip.stdout != ""
 
-- name: Verify static IP matches expected
+- name: Verify static IP matches expected.
   ansible.builtin.debug:
     msg:
-      - "Expected IP: {{ final_static_ip }}"
-      - "Actual IP: {{ container_ip.stdout }}"
-      - "Match: {{ container_ip.stdout == final_static_ip }}"
+      - "Expected IP : {{ pcs_final_static_ip }}"
+      - "Actual IP   : {{ pcs_container_ip.stdout }}"
+      - "Match       : {{ pcs_container_ip.stdout == pcs_final_static_ip }}"
 
-- name: Display container information
+- name: Display container information.
   ansible.builtin.debug:
     msg:
-      - "Container {{ container_id }} ({{ hostname }}) deployed successfully"
-      - "IP Address: {{ container_ip.stdout }}"
-      - "Gateway: {{ final_gateway }}"
-      - "Access: pct enter {{ container_id }}"
+      - "Container {{ pcs_container_id }} ({{ pcs_hostname }}) deployed successfully."
+      - "IP Address : {{ pcs_container_ip.stdout }}"
+      - "Gateway    : {{ pcs_final_gateway }}"
+      - "Access     : pct enter {{ pcs_container_id }}"
 
-- name: Cleanup script files
-  delegate_to: "{{ proxmox_host }}"
+- name: Cleanup script files.
+  delegate_to: "{{ pcs_proxmox_host }}"
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
   loop:
-    - "/tmp/{{ script_name }}.sh"
-    - "/tmp/{{ script_name }}.env"
-  when: cleanup_script | bool
+    - "/tmp/{{ pcs_script_name }}.sh"
+    - "/tmp/{{ pcs_script_name }}.env"
+  when: pcs_cleanup_script | bool
 
-- name: Add container to in-memory inventory
+- name: Add container to in-memory inventory.
   ansible.builtin.add_host:
-    name: "{{ hostname }}"
-    ansible_host: "{{ container_ip.stdout }}"
-    groups: "{{ script_name }}_containers"
-  when: container_ip.stdout != ""
+    name: "{{ pcs_hostname }}"
+    ansible_host: "{{ pcs_container_ip.stdout }}"
+    groups: "{{ pcs_script_name }}_containers"
+  when: pcs_container_ip.stdout != ""

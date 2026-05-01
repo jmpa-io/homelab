@@ -1,0 +1,27 @@
+[Unit]
+Description=Tempo Distributed Tracing System
+Documentation=https://grafana.com/docs/tempo/latest/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ tempo_user }}
+Group={{ tempo_group }}
+ExecStart=/usr/local/bin/tempo -config.file={{ tempo_config_dir }}/tempo.yml
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ tempo_data_dir }}
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,9 +1,6 @@
 ---
 - name: Setup k3s VMs.
-  hosts: proxmox_hosts[0]
-  strategy: free
-  collections:
-    - community.crypto
+  hosts: proxmox_hosts
   vars:
     proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
@@ -60,17 +57,19 @@
 
     - name: Ensure old known_hosts are cleared.
       delegate_to: localhost
-      loop: "{{ k3s.masters + k3s.nodes }}"
+      run_once: true
+      loop: "{{ groups['proxmox_hosts'] | map('extract', hostvars, ['k3s']) | map(attribute='masters') | sum(start=[]) + groups['proxmox_hosts'] | map('extract', hostvars, ['k3s']) | map(attribute='nodes') | sum(start=[]) }}"  # noqa: yaml[line-length]
       loop_control:
         loop_var: ip
       ansible.builtin.known_hosts:
         name: "{{ ip }}"
         state: absent
-      ignore_errors: true
+      ignore_errors: true  # noqa: ignore-errors
 
     - name: Add known_hosts.
       delegate_to: localhost
-      loop: "{{ k3s.masters + k3s.nodes }}"
+      run_once: true
+      loop: "{{ groups['proxmox_hosts'] | map('extract', hostvars, ['k3s']) | map(attribute='masters') | sum(start=[]) + groups['proxmox_hosts'] | map('extract', hostvars, ['k3s']) | map(attribute='nodes') | sum(start=[]) }}"  # noqa: yaml[line-length]
       loop_control:
         loop_var: ip
       ansible.builtin.known_hosts:
@@ -79,6 +78,7 @@
         state: present
 
     - name: Wait for VMs to be fully ready.
+      run_once: true
       ansible.builtin.pause:
         seconds: 30
         prompt: "Waiting for VMs to complete cloud-init..."
@@ -87,25 +87,26 @@
 - name: Install k3s on first master (cluster init).
   hosts: k3s_masters[0]
   become: true
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
   vars:
     k3s_version: "{{ common.k3s.version }}"
     k3s_cluster_init: true
     k3s_server_manifests_urls:
-      - url: https://raw.githubusercontent.com/metallb/metallb/v0.13.12/config/manifests/metallb-native.yaml
+      - url: https://raw.githubusercontent.com/metallb/metallb/{{ k8s_services.metallb.version }}/config/manifests/metallb-native.yaml
         filename: metallb.yaml
 
   tasks:
-    - name: Install k3s on first master.
+    - name: Install k3s on first master.  # noqa: command-instead-of-module risky-shell-pipe
       ansible.builtin.shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" sh -s - server \
           --cluster-init \
-          --disable traefik \
-          --disable servicelb \
-          --write-kubeconfig-mode 644 \
+          {{ k3s_install_options | join(' ') }} \
           --tls-san {{ ansible_host }}
       args:
         creates: /usr/local/bin/k3s
       register: k3s_install_result
+      changed_when: k3s_install_result.rc == 0 and k3s_install_result.stdout != ''
 
     - name: Wait for k3s to be ready.
       ansible.builtin.wait_for:
@@ -145,23 +146,24 @@
   hosts: k3s_masters[1:]
   become: true
   serial: 1
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
   vars:
     k3s_version: "{{ common.k3s.version }}"
     k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] }}"
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 
   tasks:
-    - name: Install k3s on additional masters.
+    - name: Install k3s on additional masters.  # noqa: command-instead-of-module risky-shell-pipe
       ansible.builtin.shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" K3S_TOKEN="{{ k3s_token }}" sh -s - server \
           --server {{ k3s_server_url }} \
-          --disable traefik \
-          --disable servicelb \
-          --write-kubeconfig-mode 644 \
+          {{ k3s_install_options | join(' ') }} \
           --tls-san {{ ansible_host }}
       args:
         creates: /usr/local/bin/k3s
       register: k3s_install_result
+      changed_when: k3s_install_result.rc == 0 and k3s_install_result.stdout != ''
 
     - name: Wait for k3s to be ready.
       ansible.builtin.wait_for:
@@ -180,12 +182,13 @@
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 
   tasks:
-    - name: Install k3s agent on worker nodes.
+    - name: Install k3s agent on worker nodes.  # noqa: command-instead-of-module risky-shell-pipe
       ansible.builtin.shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" K3S_TOKEN="{{ k3s_token }}" K3S_URL="{{ k3s_server_url }}" sh -
       args:
         creates: /usr/local/bin/k3s
       register: k3s_agent_install_result
+      changed_when: k3s_agent_install_result.rc == 0 and k3s_agent_install_result.stdout != ''
 
     - name: Wait for k3s agent to be ready.
       ansible.builtin.wait_for:
@@ -201,6 +204,7 @@
   tasks:
     - name: Wait for all nodes to be ready.
       ansible.builtin.shell: |
+        set -o pipefail
         kubectl get nodes --no-headers | wc -l
       register: node_count
       until: node_count.stdout | int == (groups['k3s_masters'] | length + groups['k3s_nodes'] | length)
@@ -208,14 +212,25 @@
       delay: 10
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
+
+    - name: Get worker node names from cluster.
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name | grep -v master
+      register: worker_node_names
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
 
     - name: Label worker nodes.
       ansible.builtin.shell: |
         kubectl label node {{ item }} node-role.kubernetes.io/worker=worker --overwrite
-      loop: "{{ groups['k3s_nodes'] }}"
+      loop: "{{ worker_node_names.stdout_lines }}"
+      register: label_result
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      ignore_errors: true
+      changed_when: "'labeled' in label_result.stdout"
 
     - name: Display cluster status.
       ansible.builtin.shell: |
@@ -223,6 +238,7 @@
       register: cluster_status
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      changed_when: false
 
     - name: Show cluster status.
       ansible.builtin.debug:

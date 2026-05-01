@@ -1,0 +1,19 @@
+---
+# K3s playbook-local variables.
+#
+# This file contains ONLY variables that describe runtime behaviour of these
+# playbooks specifically — filesystem paths on the remote nodes and install
+# flags passed to the k3s installer.
+#
+# Everything else (versions, namespaces, IPs, secrets, service config) lives
+# in the dynamic inventory (inventory/main.py -> k8s_services) sourced from
+# AWS SSM Parameter Store. Reference those values as {{ k8s_services.* }}.
+
+# Path to the kubeconfig file on k3s master nodes.
+k3s_kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+# Flags passed to the k3s install script.
+k3s_install_options:
+  - "--disable traefik"
+  - "--disable servicelb"
+  - "--write-kubeconfig-mode 644"

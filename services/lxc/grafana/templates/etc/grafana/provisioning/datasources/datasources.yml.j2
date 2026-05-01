@@ -1,0 +1,50 @@
+---
+apiVersion: 1
+
+datasources:
+  # Prometheus datasources
+{% for server in groups['all'] %}
+  - name: "Prometheus ({{ hostvars[server]['host']['name'] }})"
+    type: prometheus
+    access: proxy
+    url: http://{{ hostvars[server]['services']['prometheus']['ipv4'] }}:{{ hostvars[server]['services']['prometheus']['default_port'] }}
+    isDefault: true
+{% endfor %}
+
+  # Loki datasource
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://localhost:3100
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          name: TraceID
+          url: "$${__value.raw}"
+
+  # Tempo datasource
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://localhost:3200
+    uid: tempo
+    jsonData:
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'instance', 'pod', 'namespace']
+        mappedTags: [{ key: 'service.name', value: 'service' }]
+        mapTagNamesEnabled: false
+        spanStartTimeShift: '1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: false
+        filterBySpanID: false
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki

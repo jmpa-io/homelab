@@ -17,3 +17,10 @@ __pycache__
 
 # ignore compiled binaries in root.
 /main
+
+# Secrets - DO NOT COMMIT
+services/k8s/observability/thanos-objstore-secret.yml
+**/secrets/*.yml
+**/secrets/*.yaml
+*.secret.yml
+*.secret.yaml

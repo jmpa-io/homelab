@@ -1,0 +1,120 @@
+---
+# Deploy NFS Media Volumes for *arr Suite
+# This creates static PersistentVolumes that map to NAS media directories
+
+- name: Configure NFS Media Volumes for K3s
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  vars:
+    # Both values come from the dynamic inventory.
+    nfs_server_ip: "{{ k8s_services.nfs_storage.server }}"
+    nas_instance_name: "{{ hostvars[groups['nas'][0]]['instance_name'] }}"
+
+  tasks:
+    - name: Include common K3s tasks
+      ansible.builtin.include_tasks: tasks/common.yml
+
+    - name: Create media namespace
+      kubernetes.core.k8s:
+        name: media
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Ensure /tmp/k3s-manifests directory exists
+      ansible.builtin.file:
+        path: /tmp/k3s-manifests
+        state: directory
+        mode: '0755'
+
+    - name: Ensure NFS media directories exist on NAS
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      delegate_to: "{{ groups['proxmox_hosts'][0] }}"
+      become: true
+      loop:
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media"
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/movies"
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/tv"
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/music"
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/books"
+        - "/mnt/nfs/{{ nas_instance_name }}/volume1/downloads"
+
+    - name: Template NFS media volumes manifest
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../k8s/nfs-media-volumes.yaml.j2"
+        dest: /tmp/k3s-manifests/nfs-media-volumes.yaml
+        mode: '0644'
+
+    - name: Apply NFS media volumes
+      ansible.builtin.shell: |
+        kubectl apply -f /tmp/k3s-manifests/nfs-media-volumes.yaml
+      environment:
+        KUBECONFIG: "{{ k3s_kubeconfig_path }}"
+      register: media_volumes_result
+      changed_when: "'configured' in media_volumes_result.stdout or 'created' in media_volumes_result.stdout"
+
+    - name: Wait for PersistentVolumes to be available
+      kubernetes.core.k8s_info:
+        kind: PersistentVolume
+        name: "{{ item }}"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: pv_status
+      until: >
+        pv_status.resources | length > 0 and
+        (pv_status.resources[0].status.phase == "Available" or pv_status.resources[0].status.phase == "Bound")
+      retries: 10
+      delay: 3
+      loop:
+        - nfs-media-movies
+        - nfs-media-tv
+        - nfs-media-downloads
+        - nfs-media-root
+
+    - name: Get PersistentVolumes status
+      ansible.builtin.shell: |
+        kubectl get pv | grep nfs-media
+      environment:
+        KUBECONFIG: "{{ k3s_kubeconfig_path }}"
+      register: pv_list
+      changed_when: false
+
+    - name: Get PersistentVolumeClaims status
+      ansible.builtin.shell: |
+        kubectl get pvc -n media
+      environment:
+        KUBECONFIG: "{{ k3s_kubeconfig_path }}"
+      register: pvc_list
+      changed_when: false
+
+    - name: Display media volumes info
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "NFS Media Volumes Configured Successfully!"
+          - "=========================================="
+          - ""
+          - "NAS Server: {{ nfs_server_ip }}"
+          - ""
+          - "Media Volumes:"
+          - "  Movies:     /volume1/media/movies"
+          - "  TV Shows:   /volume1/media/tv"
+          - "  Music:      /volume1/media/music"
+          - "  Books:      /volume1/media/books"
+          - "  Downloads:  /volume1/downloads"
+          - "  Root Media: /volume1/media"
+          - ""
+          - "PersistentVolumes:"
+          - "{{ pv_list.stdout_lines }}"
+          - ""
+          - "PersistentVolumeClaims (namespace: media):"
+          - "{{ pvc_list.stdout_lines }}"
+          - "=========================================="

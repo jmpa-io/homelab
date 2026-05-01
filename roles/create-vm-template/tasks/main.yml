@@ -1,7 +1,7 @@
 ---
 
 - name: Ensure required variables are set.
-  fail:
+  ansible.builtin.fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
@@ -29,7 +29,7 @@
       loop:
         - stopped
         - absent
-      ignore_errors: true
+      ignore_errors: true  # noqa: ignore-errors
 
     - name: Download image.
       become: true
@@ -41,8 +41,8 @@
 
     - name: Bake image with virt-customize.
       become: true
-      shell: |
-        set -e
+      ansible.builtin.shell: |
+        set -eo pipefail
         virt-customize -a "{{ create_vm_template__temporary_image_path }}" \
           --install qemu-guest-agent,cloud-init,openssh-server \
           --update \
@@ -51,14 +51,16 @@
           --run-command 'cloud-init clean' \
           --truncate /etc/machine-id \
           --run-command 'rm -f /etc/netplan/*.yaml /etc/network/interfaces /etc/systemd/network/*.network' || true
+      changed_when: true
 
     - name: Compress image.
       become: true
-      shell: |
-        set -e
+      ansible.builtin.shell: |
+        set -eo pipefail
         qemu-img convert -O qcow2 -c -o preallocation=off \
           "{{ create_vm_template__temporary_image_path }}" \
-          "{{ create_vm_template__temporary_compressed_image_path}}"
+          "{{ create_vm_template__temporary_compressed_image_path }}"
+      changed_when: true
 
     - name: Create empty VM.
       community.general.proxmox_kvm:
@@ -84,32 +86,34 @@
 
     - name: Import disk.
       become: true
-      shell: |
-        set -e
+      ansible.builtin.shell: |
+        set -eo pipefail
         qm importdisk "{{ create_vm_template__template_vmid }}" \
           "{{ create_vm_template__temporary_compressed_image_path }}" \
           "{{ create_vm_template__vm_storage }}" \
           --format qcow2
+      changed_when: true
 
-    - name: Ensure VM is stopped before disk attach
+    - name: Ensure VM is stopped before disk attach.  # noqa: risky-shell-pipe
       become: true
-      shell: |
+      ansible.builtin.shell: |
         if qm status {{ create_vm_template__template_vmid }} 2>/dev/null | grep -q running; then
           qm stop {{ create_vm_template__template_vmid }}
           sleep 2
         fi
       args:
         executable: /bin/bash
+      changed_when: true
 
-    - name: Show current VM config (debug)
+    - name: Show current VM config (debug).
       become: true
-      shell: qm config {{ create_vm_template__template_vmid }}
+      ansible.builtin.command: qm config {{ create_vm_template__template_vmid }}
       register: qm_config_before
       changed_when: false
 
-    - name: Attach imported disk and set boot (safe)
+    - name: Attach imported disk and set boot (safe).
       become: true
-      shell: |
+      ansible.builtin.shell: |
         set -euo pipefail
         VMID={{ create_vm_template__template_vmid }}
         TARGET_SIZE="{{ create_vm_template__vm_disk | default('') }}"
@@ -139,10 +143,11 @@
       args:
         executable: /bin/bash
       register: attach_result
+      changed_when: true
 
-    - name: Show post-change VM config (debug)
+    - name: Show post-change VM config (debug).
       become: true
-      shell: qm config {{ create_vm_template__template_vmid }}
+      ansible.builtin.command: qm config {{ create_vm_template__template_vmid }}
       register: qm_config_after
       changed_when: false
 
@@ -166,21 +171,23 @@
         state: present
         timeout: 600
 
-    - name: Remove existing cloud-init disk (if any)
+    - name: Remove existing cloud-init disk (if any).
       become: true
-      shell: |
-        set -e
+      ansible.builtin.shell: |
+        set -eo pipefail
         if qm config {{ create_vm_template__template_vmid }} | grep -q '^scsi2:'; then
           qm set {{ create_vm_template__template_vmid }} --delete scsi2
         fi
         find /var/lib/vz/images/{{ create_vm_template__template_vmid }}/ -name "vm-{{ create_vm_template__template_vmid }}-cloudinit.qcow2" -delete || true
+      changed_when: true
 
     - name: Regenerate cloud-init config.
       become: true
-      shell: |
-        set -e
+      ansible.builtin.shell: |
+        set -eo pipefail
         qm set {{ create_vm_template__template_vmid }} --scsi2 {{ create_vm_template__vm_storage }}:cloudinit
         qm cloudinit update {{ create_vm_template__template_vmid }}
+      changed_when: true
 
     - name: Convert VM to template.
       community.general.proxmox_kvm:
@@ -193,4 +200,3 @@
         name: "{{ create_vm_template__template_name }}"
         state: template
         timeout: 120
-

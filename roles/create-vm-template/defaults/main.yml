@@ -9,4 +9,3 @@ create_vm_template__vm_storage: "local"
 create_vm_template__vm_cores: 4
 create_vm_template__vm_memory: 2048
 create_vm_template__vm_disk: 32G
-

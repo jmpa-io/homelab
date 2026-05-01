@@ -2,3 +2,8 @@
 profile: production
 use_default_rules: true
 
+# role-name[path]: The entire project uses absolute paths via root_playbook_directory
+# to reference roles. This is a deliberate architectural pattern — roles are not
+# installed via ansible-galaxy, they live in the repo. Suppressing project-wide.
+skip_list:
+  - role-name[path]

@@ -1,40 +1,39 @@
 ---
-# Default variables for proxmox-community-script role
+# Default variables for the proxmox-community-script role.
+# All variables are prefixed with pcs_ to avoid colliding with play-level
+# variables and Ansible built-in facts (e.g. 'hostname', 'bridge').
 
-# Proxmox host to run the script on (defaults to first proxmox host)
-proxmox_host: "{{ groups['proxmox_hosts'][0] if groups['proxmox_hosts'] is defined else 'localhost' }}"
+# Proxmox host to run the script on (defaults to first proxmox host).
+pcs_proxmox_host: "{{ groups['proxmox_hosts'][0] if groups['proxmox_hosts'] is defined else 'localhost' }}"
 
-# Script configuration
-script_url: ""
-script_name: ""
+# Script configuration.
+pcs_script_url: ""
+pcs_script_name: ""
 
-# Container/VM configuration
-container_id: ""
-hostname: ""
-ram: "2048"
-swap: "512"
-disk_size: "8"
-cpu_cores: "2"
-os_type: "debian"
-os_version: "12"
-bridge: "vmbr0"
+# Container/VM configuration.
+pcs_container_id: ""
+pcs_hostname: ""
+pcs_ram: "2048"
+pcs_swap: "512"
+pcs_disk_size: "8"
+pcs_cpu_cores: "2"
+pcs_os_type: "debian"
+pcs_os_version: "12"
+pcs_bridge: "vmbr0"
 
-# Network configuration
-# Static IP will be auto-calculated based on VMID if not explicitly set
-# Pattern: Bridge prefix (10.0.X.) + last 2 digits of VMID
-# Example: VMID 111 on vmbr0 (10.0.1.) = 10.0.1.11
-# Example: VMID 269 on vmbr1 (10.0.2.) = 10.0.2.69
-static_ip: ""
-gateway: ""
+# Network configuration.
+# Static IP is auto-calculated from VMID and bridge if not set.
+pcs_static_ip: ""
+pcs_gateway: ""
 
-# Script behavior
-verbose: "yes"
-privileged: "no"
-features: "nesting=1"
+# Script behaviour.
+pcs_verbose: "yes"
+pcs_privileged: "no"
+pcs_features: "nesting=1"
 
-# Advanced options
-advanced_options: ""
-ssh_root_password: ""
+# Advanced options.
+pcs_advanced_options: ""
+pcs_ssh_root_password: ""
 
-# Cleanup
-cleanup_script: true
+# Cleanup downloaded script files after execution.
+pcs_cleanup_script: true

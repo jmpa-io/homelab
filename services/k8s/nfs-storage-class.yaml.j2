@@ -104,13 +104,13 @@ spec:
             - name: PROVISIONER_NAME
               value: nfs-storage
             - name: NFS_SERVER
-              value: "{{ NFS_SERVER_IP }}"  # Replace with actual NAS IP
+              value: "{{ nfs_server_ip }}"
             - name: NFS_PATH
               value: "/volume4/k3s-storage"  # NAS Volume 4 path
       volumes:
         - name: nfs-client-root
           nfs:
-            server: "{{ NFS_SERVER_IP }}"  # Replace with actual NAS IP
+            server: "{{ nfs_server_ip }}"
             path: "/volume4/k3s-storage"
 
 ---

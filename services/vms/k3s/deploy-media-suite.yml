@@ -1,0 +1,157 @@
+---
+# Deploy complete *arr media suite to K3s cluster
+- name: Deploy Media Suite
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  vars:
+    # Rendered manifest staging directory on the controller.
+    manifest_staging_dir: "{{ playbook_dir }}/dist/manifests"
+
+  tasks:
+    - name: Ensure manifest staging directory exists
+      ansible.builtin.file:
+        path: "{{ manifest_staging_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+
+    - name: Render extended NFS media volumes manifest
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../k8s/nfs-media-volumes-extended.yaml.j2"
+        dest: "{{ manifest_staging_dir }}/nfs-media-volumes-extended.yaml"
+        mode: '0644'
+      delegate_to: localhost
+      vars:
+        nfs_server_ip: "{{ k8s_services.nfs_storage.server }}"
+
+    - name: Deploy extended NFS media volumes
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_staging_dir }}/nfs-media-volumes-extended.yaml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Deploy Sonarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/sonarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.sonarr.enabled | default(true)
+
+    - name: Deploy Radarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/radarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.radarr.enabled | default(true)
+
+    - name: Deploy Lidarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/lidarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.lidarr.enabled | default(true)
+
+    - name: Deploy Readarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/readarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.readarr.enabled | default(true)
+
+    - name: Deploy Prowlarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/prowlarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.prowlarr.enabled | default(true)
+
+    - name: Deploy Bazarr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/bazarr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.bazarr.enabled | default(true)
+
+    - name: Deploy Deluge (download client)
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/deluge.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.download_client == 'deluge'
+
+    - name: Deploy qBittorrent (download client)
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/qbittorrent.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.download_client == 'qbittorrent'
+
+    - name: Deploy Jellyseerr
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/jellyseerr.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.jellyseerr.enabled | default(true)
+
+    - name: Deploy Tautulli
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/tautulli.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: k8s_services.media.services.tautulli.enabled | default(true)
+
+    - name: Render Jellyfin external service manifest
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../k8s/arr-suite/jellyfin-external.yml.j2"
+        dest: "{{ manifest_staging_dir }}/jellyfin-external.yml"
+        mode: '0644'
+      delegate_to: localhost
+      vars:
+        jellyfin_host: "{{ k8s_services.media.jellyfin.host }}"
+
+    - name: Deploy Jellyfin external service
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_staging_dir }}/jellyfin-external.yml"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Wait for all deployments to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: media
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: media_deployments
+      until: >
+        media_deployments.resources | length > 0 and
+        media_deployments.resources | selectattr('status.readyReplicas', 'defined') | list | length == media_deployments.resources | length
+      retries: 30
+      delay: 10
+
+    - name: Get LoadBalancer IPs
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: media
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: media_services
+
+    - name: Display media suite information
+      ansible.builtin.debug:
+        msg:
+          - "Media suite deployed successfully!"
+          - "Download Client: {{ k8s_services.media.download_client }}"
+          - "Services:"
+          - "  Sonarr (TV): http://sonarr.media.svc.cluster.local:8989"
+          - "  Radarr (Movies): http://radarr.media.svc.cluster.local:7878"
+          - "  Lidarr (Music): http://lidarr.media.svc.cluster.local:8686"
+          - "  Readarr (Books): http://readarr.media.svc.cluster.local:8787"
+          - "  Prowlarr (Indexers): http://prowlarr.media.svc.cluster.local:9696"
+          - "  Bazarr (Subtitles): http://bazarr.media.svc.cluster.local:6767"
+          - "  Jellyseerr: http://jellyseerr.media.svc.cluster.local:5055"
+          - "  Tautulli: http://tautulli.media.svc.cluster.local:8181"
+          - "  Jellyfin (External): {{ k8s_services.media.jellyfin.host }}:{{ k8s_services.media.jellyfin.port }}"
+          - ""
+          - "All services are being monitored by Prometheus via ServiceMonitors"

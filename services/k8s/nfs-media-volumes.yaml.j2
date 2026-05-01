@@ -1,0 +1,160 @@
+---
+# NFS Media Volumes for *arr Suite
+# These are static PersistentVolumes that map directly to NAS directories
+# Perfect for Sonarr, Radarr, Prowlarr, qBittorrent, etc.
+
+# Movies PersistentVolume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-movies
+spec:
+  capacity:
+    storage: 5Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+  nfs:
+    server: "{{ nfs_server_ip }}"
+    path: "/volume1/media/movies"
+  mountOptions:
+    - nfsvers=4
+    - hard
+    - intr
+
+---
+# Movies PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-movies
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 5Ti
+  volumeName: nfs-media-movies
+
+---
+# TV Shows PersistentVolume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-tv
+spec:
+  capacity:
+    storage: 5Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+  nfs:
+    server: "{{ nfs_server_ip }}"
+    path: "/volume1/media/tv"
+  mountOptions:
+    - nfsvers=4
+    - hard
+    - intr
+
+---
+# TV Shows PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-tv
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 5Ti
+  volumeName: nfs-media-tv
+
+---
+# Downloads PersistentVolume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-downloads
+spec:
+  capacity:
+    storage: 2Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+  nfs:
+    server: "{{ nfs_server_ip }}"
+    path: "/volume1/downloads"
+  mountOptions:
+    - nfsvers=4
+    - hard
+    - intr
+
+---
+# Downloads PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-downloads
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 2Ti
+  volumeName: nfs-media-downloads
+
+---
+# Root Media PersistentVolume (for apps that need access to everything)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-root
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+  nfs:
+    server: "{{ nfs_server_ip }}"
+    path: "/volume1/media"
+  mountOptions:
+    - nfsvers=4
+    - hard
+    - intr
+
+---
+# Root Media PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-root
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 10Ti
+  volumeName: nfs-media-root
+
+---
+# Storage Class for static media volumes (no dynamic provisioning)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: nfs-media
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer

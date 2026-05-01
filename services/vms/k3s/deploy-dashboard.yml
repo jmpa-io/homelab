@@ -1,0 +1,126 @@
+---
+# Deploy Kubernetes Dashboard
+#
+# NOTE: Kubernetes Dashboard v3.x is distributed as a Helm chart.
+# This playbook uses kubernetes.core.helm to install it correctly.
+
+- name: Deploy Kubernetes Dashboard
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  tasks:
+    - name: Include common K3s tasks
+      ansible.builtin.include_tasks: tasks/common.yml
+
+    - name: Add Kubernetes Dashboard Helm repository
+      kubernetes.core.helm_repository:
+        name: kubernetes-dashboard
+        repo_url: https://kubernetes.github.io/dashboard/
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Install Kubernetes Dashboard via Helm
+      kubernetes.core.helm:
+        name: kubernetes-dashboard
+        chart_ref: kubernetes-dashboard/kubernetes-dashboard
+        chart_version: "{{ k8s_services.kubernetes_dashboard.version }}"
+        release_namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+        create_namespace: true
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        wait: true
+        timeout: 5m0s
+
+    - name: Wait for Dashboard to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+        name: kubernetes-dashboard-web
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: dashboard_deployment
+      until: >
+        dashboard_deployment.resources | length > 0 and
+        dashboard_deployment.resources[0].status.readyReplicas | default(0) > 0
+      retries: 30
+      delay: 10
+
+    - name: Create admin user ServiceAccount
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          apiVersion: v1
+          kind: ServiceAccount
+          metadata:
+            name: admin-user
+            namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+
+    - name: Create admin user ClusterRoleBinding
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: admin-user
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+            - kind: ServiceAccount
+              name: admin-user
+              namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+
+    - name: Patch Dashboard service for LoadBalancer
+      kubernetes.core.k8s:
+        state: patched
+        kind: Service
+        namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+        name: kubernetes-dashboard-web
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          spec:
+            type: "{{ k8s_services.kubernetes_dashboard.service_type }}"
+      when: k8s_services.kubernetes_dashboard.service_type == "LoadBalancer"
+
+    - name: Wait for LoadBalancer IP
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ k8s_services.kubernetes_dashboard.namespace }}"
+        name: kubernetes-dashboard-web
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: dashboard_service
+      until: >
+        dashboard_service.resources | length > 0 and
+        dashboard_service.resources[0].status.loadBalancer.ingress is defined
+      retries: 10
+      delay: 6
+      when: k8s_services.kubernetes_dashboard.service_type == "LoadBalancer"
+
+    - name: Create short-lived admin user token (for initial access verification)
+      ansible.builtin.shell: |
+        kubectl -n {{ k8s_services.kubernetes_dashboard.namespace }} \
+          create token admin-user --duration=8h
+      environment:
+        KUBECONFIG: "{{ k3s_kubeconfig_path }}"
+      register: dashboard_token
+      changed_when: false
+
+    - name: Display Dashboard access information
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "Kubernetes Dashboard Deployed Successfully!"
+          - "=========================================="
+          - "  URL: http://{{ dashboard_service.resources[0].status.loadBalancer.ingress[0].ip | default('PENDING') }}:8000"
+          - "  Token (valid for 8h — for initial access only):"
+          - "  {{ dashboard_token.stdout }}"
+          - ""
+          - "For a fresh token run: make rotate-dashboard-token"
+          - "  (stores it in SSM at /homelab/k3s/dashboard-token)"
+          - "=========================================="
+      when: k8s_services.kubernetes_dashboard.service_type == "LoadBalancer" and dashboard_service is defined

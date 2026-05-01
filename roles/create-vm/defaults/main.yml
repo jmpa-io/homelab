@@ -6,3 +6,8 @@ create_vm__vm_clone_from_name: "debian-12-nocloud-amd64"
 create_vm__vm_clone_from_vmid: 10000
 # ---
 create_vm__vm_username: root
+# ---
+# Set to true to skip deleting an existing VM before creation.
+# By default (false) any existing VM with the same VMID is stopped, removed,
+# and recreated from the template. Set to true to leave an existing VM in place.
+create_vm__skip_delete: false

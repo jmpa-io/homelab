@@ -1,0 +1,162 @@
+---
+# GitHub Actions Self-Hosted Runners on K3s
+# Deploys scalable, ephemeral runners using actions-runner-controller
+#
+# Prerequisites (handled by deploy-gitops.yml):
+#   - actions-runner-system namespace
+#   - controller-manager Secret containing github_token (sourced from SSM via inventory)
+#   - actions-runner-controller installed via Helm
+#
+# The github_token Secret is intentionally NOT stored here. It is created by
+# the Ansible deploy-gitops.yml playbook, which reads the token from the
+# dynamic inventory (ultimately sourced from AWS SSM /homelab/github/token).
+
+---
+# RunnerDeployment for organisation-level runners
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: RunnerDeployment
+metadata:
+  name: homelab-runners
+  namespace: actions-runner-system
+spec:
+  # Number of runner replicas
+  replicas: 3
+
+  template:
+    spec:
+      # Organization or repository
+      # For org: https://github.com/YOUR_ORG
+      # For repo: https://github.com/YOUR_ORG/YOUR_REPO
+      repository: jmpa-io/homelab  # Change this to your repo/org
+
+      # Runner labels
+      labels:
+        - self-hosted
+        - k3s
+        - homelab
+        - linux
+        - x64
+
+      # Runner group (optional, for enterprise)
+      # group: default
+
+      # Ephemeral runners (recommended - creates fresh runner for each job)
+      ephemeral: true
+
+      # Docker-in-Docker support
+      dockerdWithinRunnerContainer: true
+
+      # Resource limits
+      resources:
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+
+      # Node selector (optional - run on specific nodes)
+      # nodeSelector:
+      #   kubernetes.io/hostname: k3s-worker-1
+
+      # Tolerations (optional)
+      # tolerations:
+      #   - key: "workload"
+      #     operator: "Equal"
+      #     value: "ci"
+      #     effect: "NoSchedule"
+
+      # Volume mounts for caching (optional)
+      volumeMounts:
+        - name: work
+          mountPath: /runner/_work
+        - name: docker-cache
+          mountPath: /var/lib/docker
+
+      volumes:
+        - name: work
+          emptyDir: {}
+        - name: docker-cache
+          emptyDir: {}
+
+      # Use NFS for persistent caching (optional)
+      # volumes:
+      #   - name: work
+      #     persistentVolumeClaim:
+      #       claimName: runner-work-cache
+      #   - name: docker-cache
+      #     persistentVolumeClaim:
+      #       claimName: runner-docker-cache
+
+---
+# Horizontal Pod Autoscaler - scale based on pending jobs
+apiVersion: actions.summerwind.dev/v1alpha1
+kind: HorizontalRunnerAutoscaler
+metadata:
+  name: homelab-runners-autoscaler
+  namespace: actions-runner-system
+spec:
+  scaleTargetRef:
+    name: homelab-runners
+
+  # Minimum and maximum runners
+  minReplicas: 1
+  maxReplicas: 10
+
+  # Scale up when there are pending jobs
+  metrics:
+    - type: PercentageRunnersBusy
+      scaleUpThreshold: "0.75"    # Scale up when 75% busy
+      scaleDownThreshold: "0.25"  # Scale down when 25% busy
+      scaleUpFactor: "2"          # Double the runners
+      scaleDownFactor: "0.5"      # Halve the runners
+
+  # Scale down delay (prevent flapping)
+  scaleDownDelaySecondsAfterScaleOut: 300
+
+---
+# PersistentVolumeClaim for runner work cache (optional)
+# Uncomment if you want persistent caching across runner instances
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: runner-work-cache
+#   namespace: actions-runner-system
+# spec:
+#   accessModes:
+#     - ReadWriteMany
+#   storageClassName: nfs-client  # Use your NFS storage class
+#   resources:
+#     requests:
+#       storage: 50Gi
+
+---
+# PersistentVolumeClaim for Docker cache (optional)
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: runner-docker-cache
+#   namespace: actions-runner-system
+# spec:
+#   accessModes:
+#     - ReadWriteMany
+#   storageClassName: nfs-client
+#   resources:
+#     requests:
+#       storage: 50Gi
+
+---
+# ServiceMonitor for Prometheus monitoring (optional)
+# Requires prometheus-operator
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: actions-runner-controller
+#   namespace: actions-runner-system
+# spec:
+#   selector:
+#     matchLabels:
+#       app.kubernetes.io/name: actions-runner-controller
+#   endpoints:
+#     - port: metrics
+#       interval: 30s

@@ -1,0 +1,115 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: readarr-config
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-storage
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readarr
+  namespace: media
+  labels:
+    app: readarr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: readarr
+  template:
+    metadata:
+      labels:
+        app: readarr
+    spec:
+      containers:
+      - name: readarr
+        image: lscr.io/linuxserver/readarr:develop
+        ports:
+        - containerPort: 8787
+          name: http
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Australia/Melbourne"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: books
+          mountPath: /books
+        - name: downloads
+          mountPath: /downloads
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: readarr-config
+      - name: books
+        persistentVolumeClaim:
+          claimName: media-books
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: media-downloads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: readarr
+  namespace: media
+  labels:
+    app: readarr
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8787
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: readarr
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: readarr
+  namespace: media
+  labels:
+    app: readarr
+spec:
+  selector:
+    matchLabels:
+      app: readarr
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s

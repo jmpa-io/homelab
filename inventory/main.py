@@ -10,6 +10,12 @@ from service import LXCService, HostService, Protocol, CommunityScriptService
 from inventory import Inventory
 
 from k8s_inventory import K8sInventory
+from k8s_services import (
+  MediaSuite, K8sServices, ObservabilityConfig,
+  ArgoCDConfig, KubernetesDashboardConfig, MetalLBConfig,
+  NFSStorageConfig, GitHubRunnerConfig,
+)
+from homepage_config import HomepageConfig
 
 
 def main():
@@ -18,18 +24,23 @@ def main():
   ssm_client = SSMClient(read_env_var('AWS_REGION', None, True))
 
   # Setup inventory variables & config.
-  common_subnet_ipv4 = ssm_client.get_parameter('/homelab/subnet')
-  default_cidr = read_env_var('DEFAULT_CIDR', 24, False, int)
-  domain = read_env_var('DOMAIN', 'jmpa.lab')
+  common_subnet_ipv4  = ssm_client.require_parameter('/homelab/subnet')
+  default_cidr        = read_env_var('DEFAULT_CIDR', 24, False, int)
+  domain              = read_env_var('DOMAIN', 'jmpa.lab')
+
+  # Fetch shared secrets once — reused in both inventory_vars and k8s_services.
+  ssh_password        = ssm_client.require_parameter('/homelab/ssh-password')
+  github_token        = ssm_client.require_parameter('/homelab/github/token')
+  grafana_admin_pass  = ssm_client.require_parameter('/homelab/grafana/admin-password')
 
   inventory_vars = {
-    # 'ansible_ssh_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # Commented out - using SSH keys for most hosts
-    'ansible_become_pass': ssm_client.get_parameter('/homelab/ssh-password'),  # User 'me' password for sudo
+    'ansible_become_pass': ssh_password,
     'ansible_python_interpreter': read_env_var('ANSIBLE_PYTHON_INTERPRETER', '/usr/bin/python3'),
-    'ansible_ssh_pass_fallback': ssm_client.get_parameter('/homelab/ssh-password'),  # Fallback password for hosts that don't support SSH keys
+    # Fallback password for hosts that don't support SSH keys (e.g. NAS).
+    'ansible_ssh_pass_fallback': ssh_password,
     'common': {
       'internet_gateway': {
-        "ipv4": ssm_client.get_parameter('/homelab/internet-gateway')
+        'ipv4': ssm_client.require_parameter('/homelab/internet-gateway'),
       },
       'subnet': {
         'ipv4': common_subnet_ipv4,
@@ -41,23 +52,27 @@ def main():
       },
     },
     'proxmox': {
-      'api_token': ssm_client.get_parameter('/homelab/proxmox/api-token'),
+      'api_token': ssm_client.require_parameter('/homelab/proxmox/api-token'),
       'default_ui_port': read_env_var('PROXMOX_DEFAULT_UI_PORT', '8006'),
     },
     'tailscale': {
-      'auth_key': ssm_client.get_parameter('/homelab/tailscale/auth-key'),
+      'auth_key': ssm_client.require_parameter('/homelab/tailscale/auth-key'),
     },
     'ssl': {
-      'private_key': ssm_client.get_parameter('/homelab/ssl/private-key'),
-      'cert': ssm_client.get_parameter('/homelab/ssl/cert'),
+      'private_key': ssm_client.require_parameter('/homelab/ssl/private-key'),
+      'cert': ssm_client.require_parameter('/homelab/ssl/cert'),
     },
     'ssh': {
-      'public_key': ssm_client.get_parameter('/homelab/ssh/public-key'),
+      'public_key': ssm_client.require_parameter('/homelab/ssh/public-key'),
+      'private_key': ssm_client.require_parameter('/homelab/ssh/private-key'),
+    },
+    'github': {
+      'token': github_token,
     },
   }
 
   #
-  # Setup services.
+  # Setup LXC services.
   #
 
   nginx_reverse_proxy = LXCService(
@@ -83,6 +98,22 @@ def main():
     container_id=read_env_var('GRAFANA_CONTAINER_ID', '45'),
     default_port=read_env_var('GRAFANA_PORT', '3000'),
     protocol=Protocol.HTTP,
+  )
+
+  loki = LXCService(
+    name='loki',
+    container_id=read_env_var('LOKI_CONTAINER_ID', '50'),
+    default_port=read_env_var('LOKI_PORT', '3100'),
+    protocol=Protocol.HTTP,
+    add_to_proxy_static_records=False,
+  )
+
+  tempo = LXCService(
+    name='tempo',
+    container_id=read_env_var('TEMPO_CONTAINER_ID', '55'),
+    default_port=read_env_var('TEMPO_PORT', '3200'),
+    protocol=Protocol.HTTP,
+    add_to_proxy_static_records=False,
   )
 
   #
@@ -139,19 +170,18 @@ def main():
       port='5678',
       protocol=Protocol.HTTP,
     ),
-    # GitHub runner doesn't need DNS - it connects outbound to GitHub
-    # and has no web UI. Access via IP: 10.0.1.80
+    # GitHub runner: outbound-only connection to GitHub, no DNS record needed.
     CommunityScriptService(
       name='github_runner',
       vmid=read_env_var('GITHUB_RUNNER_VMID_BASE', 180, value_type=int),
       hostname=read_env_var('GITHUB_RUNNER_HOSTNAME', 'github-runner'),
       port='22',
-      protocol=Protocol.HTTP,
-      add_to_dns=False,  # No DNS needed - outbound connection only
+      protocol=Protocol.SSH,
+      add_to_dns=False,
     ),
   ]
 
-  # Add community services to inventory vars for DNS configuration
+  # Add community services to inventory vars for DNS configuration.
   inventory_vars['community_services'] = [
     {
       'name': svc.name,
@@ -179,10 +209,21 @@ def main():
   #
   # Setup host services.
   #
+
   collector = HostService(
     name='collector',
     metrics_port=read_env_var('HOST_OTELCOL_METRICS_PORT', '8889'),
   )
+
+  # LXC services shared across all Proxmox hosts.
+  shared_lxc_services = [
+    nginx_reverse_proxy,
+    tailscale_gateway,
+    prometheus,
+    grafana,
+    loki,
+    tempo,
+  ]
 
   #
   # Setup k3s config.
@@ -191,9 +232,10 @@ def main():
   kube_inventory = K8sInventory(
     version=read_env_var('K3S_VERSION', 'v1.30.2+k3s1'),
     ansible_user=read_env_var('K3S_ANSIBLE_USER', 'debian'),
-    ansible_ssh_private_key=inventory_vars['ssl']['private_key'],
+    ansible_ssh_private_key=inventory_vars['ssh']['private_key'],
     ansible_python_interpreter=inventory_vars['ansible_python_interpreter'],
-    token=inventory_vars['proxmox']['api_token'],
+    # Dedicated k3s cluster join token — stored separately from the Proxmox API token.
+    token=ssm_client.require_parameter('/homelab/k3s/token'),
     # Masters.
     masters_per_host=read_env_var('K3S_MASTERS_PER_HOST', 1, value_type=int),
     masters_ips_start_range=read_env_var('K3S_MASTERS_START_RANGE', 60, value_type=int),
@@ -210,91 +252,99 @@ def main():
 
   inventory = Inventory(vars=inventory_vars, kube_inventory=kube_inventory)
 
-  # Add Proxmox hosts.
-  inventory.add_instances(
-    ProxmoxHost(
-      ipv4=ssm_client.get_parameter('/homelab/jmpa-server-1/ipv4-address'),
+  # Add Proxmox hosts — all three share the same bridge, host services, and
+  # LXC services. Only the per-host SSM paths differ.
+  for server_name in ['jmpa-server-1', 'jmpa-server-2', 'jmpa-server-3']:
+    inventory.add_instances(ProxmoxHost(
+      ipv4=ssm_client.require_parameter(f'/homelab/{server_name}/ipv4-address'),
       ipv4_cidr=default_cidr,
-      device_name=ssm_client.get_parameter('/homelab/jmpa-server-1/device-name'),
+      device_name=ssm_client.require_parameter(f'/homelab/{server_name}/device-name'),
       bridge=bridge,
-      host_services=[
-        collector,
-      ],
-      lxc_services=[
-        nginx_reverse_proxy,
-        tailscale_gateway,
-        prometheus,
-        grafana,
-      ],
-    ),
-    ProxmoxHost(
-      ipv4=ssm_client.get_parameter('/homelab/jmpa-server-2/ipv4-address'),
-      ipv4_cidr=default_cidr,
-      device_name=ssm_client.get_parameter('/homelab/jmpa-server-2/device-name'),
-      bridge=bridge,
-      host_services=[
-        collector,
-      ],
-      lxc_services=[
-        nginx_reverse_proxy,
-        tailscale_gateway,
-        prometheus,
-        grafana,
-      ],
-    ),
-    ProxmoxHost(
-      ipv4=ssm_client.get_parameter('/homelab/jmpa-server-3/ipv4-address'),
-      ipv4_cidr=default_cidr,
-      device_name=ssm_client.get_parameter('/homelab/jmpa-server-3/device-name'),
-      bridge=bridge,
-      host_services=[
-        collector,
-      ],
-      lxc_services=[
-        nginx_reverse_proxy,
-        tailscale_gateway,
-        prometheus,
-        grafana,
-      ],
-    ),
-  )
+      host_services=[collector],
+      lxc_services=shared_lxc_services,
+    ))
 
   # Add NAS instance.
-  inventory.add_instances(
-    NAS(
-      ipv4=ssm_client.get_parameter('/homelab/jmpa-nas-1/ipv4-address'),
-      ipv4_cidr=default_cidr,
-      device_name=ssm_client.get_parameter('/homelab/jmpa-nas-1/device-name'),
-      ansible_port=read_env_var('NAS_SSH_PORT', '9222', value_type=int),
-      host_services=[
-        collector,
-      ],
-    )
+  nas = NAS(
+    ipv4=ssm_client.require_parameter('/homelab/jmpa-nas-1/ipv4-address'),
+    ipv4_cidr=default_cidr,
+    device_name=ssm_client.require_parameter('/homelab/jmpa-nas-1/device-name'),
+    ansible_port=read_env_var('NAS_SSH_PORT', '9222', value_type=int),
+    host_services=[collector],
   )
+  inventory.add_instances(nas)
 
   # Add DNS instance.
-  inventory.add_instances(
-    DNS(
-      ipv4=ssm_client.get_parameter('/homelab/jmpa-dns-1/ipv4-address'),
-      ipv4_cidr=default_cidr,
-      device_name=ssm_client.get_parameter('/homelab/jmpa-dns-1/device-name'),
-      host_services=[
-        collector,
-      ],
-    )
+  inventory.add_instances(DNS(
+    ipv4=ssm_client.require_parameter('/homelab/jmpa-dns-1/ipv4-address'),
+    ipv4_cidr=default_cidr,
+    device_name=ssm_client.require_parameter('/homelab/jmpa-dns-1/device-name'),
+    host_services=[collector],
+  ))
+
+  # Add VPS instance (uncomment when ready to use).
+  # inventory.add_instances(VPS(
+  #   ipv4=ssm_client.require_parameter('/homelab/jmpa-vps-1/ipv4-address'),
+  #   ipv4_cidr=default_cidr,
+  #   device_name=ssm_client.require_parameter('/homelab/jmpa-vps-1/device-name'),
+  #   host_services=[collector],
+  # ))
+
+  #
+  # Setup K8s services configuration.
+  #
+
+  # Homepage secrets — all sourced from SSM, will raise at inventory generation
+  # time if any are missing (via _require() in HomepageConfig.to_dict()).
+  homepage_config = HomepageConfig(
+    proxmox_user=read_env_var('PROXMOX_USER', 'root@pam'),
+    proxmox_pass=ssm_client.get_parameter('/homelab/proxmox/password'),
+    pihole_api_key=ssm_client.get_parameter('/homelab/pihole/api-key'),
+    nas_user=read_env_var('NAS_USER', 'admin'),
+    nas_pass=ssm_client.get_parameter('/homelab/nas/password'),
+    argocd_pass=ssm_client.get_parameter('/homelab/argocd/admin-password'),
+    grafana_pass=grafana_admin_pass,           # reuse — already fetched above
+    jellyfin_api_key=ssm_client.get_parameter('/homelab/jellyfin/api-key'),
+    jellyseerr_api_key=ssm_client.get_parameter('/homelab/jellyseerr/api-key'),
+    tautulli_api_key=ssm_client.get_parameter('/homelab/tautulli/api-key'),
+    prowlarr_api_key=ssm_client.get_parameter('/homelab/prowlarr/api-key'),
+    sonarr_api_key=ssm_client.get_parameter('/homelab/sonarr/api-key'),
+    radarr_api_key=ssm_client.get_parameter('/homelab/radarr/api-key'),
+    lidarr_api_key=ssm_client.get_parameter('/homelab/lidarr/api-key'),
+    readarr_api_key=ssm_client.get_parameter('/homelab/readarr/api-key'),
+    bazarr_api_key=ssm_client.get_parameter('/homelab/bazarr/api-key'),
+    deluge_pass=ssm_client.get_parameter('/homelab/deluge/password'),
+    n8n_api_key=ssm_client.get_parameter('/homelab/n8n/api-key'),
+    github_token=github_token,                 # reuse — already fetched above
+    tailscale_api_key=ssm_client.get_parameter('/homelab/tailscale/api-key'),
   )
 
-  # Add VPS instance (example - uncomment when ready to use).
-  # inventory.add_instances(
-  #   VPS(
-  #     ipv4=ssm_client.get_parameter('/homelab/jmpa-vps-1/ipv4-address'),
-  #     ipv4_cidr=default_cidr,
-  #     device_name=ssm_client.get_parameter('/homelab/jmpa-vps-1/device-name'),
-  #     host_services=[
-  #       collector,
-  #     ],
-  #   )
-  # )
+  # Jellyfin host is derived from the NAS instance name + domain so it stays
+  # consistent with the rest of the inventory rather than being hardcoded.
+  jellyfin_host = f'{nas.name}.{domain}'
+
+  k8s_services = K8sServices(
+    argocd=ArgoCDConfig(),
+    kubernetes_dashboard=KubernetesDashboardConfig(),
+    metallb=MetalLBConfig(
+      ip_range=read_env_var('K3S_METALLB_IP_RANGE', '10.0.0.200-10.0.0.250'),
+    ),
+    nfs_storage=NFSStorageConfig(
+      server=ssm_client.require_parameter('/homelab/jmpa-nas-1/ipv4-address'),
+    ),
+    github_runner=GitHubRunnerConfig(),
+    observability=ObservabilityConfig(
+      grafana_pass=grafana_admin_pass,         # reuse — already fetched above
+    ),
+    media=MediaSuite(
+      jellyfin_host=jellyfin_host,
+      jellyfin_port=8096,
+    ),
+    homepage=homepage_config,
+  )
+
+  # Add K8s services to inventory vars.
+  inventory_vars['k8s_services'] = k8s_services.to_dict()
 
   # Print inventory as JSON.
   print(json.dumps(inventory.to_dict(), indent=2))

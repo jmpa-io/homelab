@@ -1,0 +1,66 @@
+---
+# ExternalName service to connect to Jellyfin running outside K3s cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin
+  namespace: media
+  labels:
+    app: jellyfin
+    external: "true"
+spec:
+  type: ExternalName
+  externalName: "{{ jellyfin_host }}"
+  ports:
+  - port: 8096
+    targetPort: 8096
+    protocol: TCP
+    name: http
+---
+# Endpoints for direct IP access (alternative to ExternalName)
+# Uncomment and configure if you prefer direct IP access
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: jellyfin
+#   namespace: media
+#   labels:
+#     app: jellyfin
+#     external: "true"
+# spec:
+#   type: ClusterIP
+#   ports:
+#   - port: 8096
+#     targetPort: 8096
+#     protocol: TCP
+#     name: http
+# ---
+# apiVersion: v1
+# kind: Endpoints
+# metadata:
+#   name: jellyfin
+#   namespace: media
+# subsets:
+# - addresses:
+#   - ip: 192.168.1.100  # Replace with actual Jellyfin IP
+#   ports:
+#   - port: 8096
+#     name: http
+---
+# ServiceMonitor for Jellyfin (external)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jellyfin
+  namespace: media
+  labels:
+    app: jellyfin
+    external: "true"
+spec:
+  selector:
+    matchLabels:
+      app: jellyfin
+  endpoints:
+  - port: http
+    path: /health
+    interval: 30s

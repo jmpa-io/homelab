@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Dict, Any, Optional, Union
 from copy import deepcopy
-import random
 
 from instances.proxmox_host import ProxmoxHost
 from instances.nas import NAS
@@ -127,22 +126,25 @@ class Inventory:
     if not self.kube_inventory:
       return
 
-    for i, (name, instance) in enumerate(self.instances.items(), start=1):
+    for name, instance in self.instances.items():
       if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
         masters = []
         nodes = []
-        prefix = f'{instance.bridge.ipv4_prefix}.{i}'
+        # Derive the host's numeric ID from its name (e.g. 'jmpa_server_1' -> 1).
+        # This is stable regardless of what other instance types are in the inventory.
+        host_id = int(name.split('_')[-1])
+        prefix = f'{instance.bridge.ipv4_prefix}.{host_id}'
         for j in range(self.kube_inventory.masters_per_host):
-          id = self.kube_inventory.masters_ips_start_range + j
-          if id > self.kube_inventory.masters_ips_end_range:
+          ip_suffix = self.kube_inventory.masters_ips_start_range + j
+          if ip_suffix > self.kube_inventory.masters_ips_end_range:
             break
-          masters.append(f'{prefix}.{id}')
+          masters.append(f'{prefix}.{ip_suffix}')
 
         for j in range(self.kube_inventory.nodes_per_host):
-          id = self.kube_inventory.nodes_ips_start_range + j
-          if id > self.kube_inventory.nodes_ips_end_range:
+          ip_suffix = self.kube_inventory.nodes_ips_start_range + j
+          if ip_suffix > self.kube_inventory.nodes_ips_end_range:
             break
-          nodes.append(f'{prefix}.{id}')
+          nodes.append(f'{prefix}.{ip_suffix}')
 
         instance.k8s_masters = masters
         instance.k8s_nodes = nodes
@@ -185,7 +187,8 @@ class Inventory:
       return out
 
     # Setup masters & nodes.
-    master_ips = []; node_ips = []
+    master_ips = []
+    node_ips = []
     for instance in self.instances.values():
       if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
         master_ips.extend(instance.k8s_masters)
@@ -193,6 +196,7 @@ class Inventory:
 
     # Add k3s values to the default inventory.
     out['all']['vars']['common']['k3s'] = {
+      'version': self.kube_inventory.version,
       'masters_ips_start_range': self.kube_inventory.masters_ips_start_range,
       'nodes_ips_start_range': self.kube_inventory.nodes_ips_start_range,
     }
@@ -202,26 +206,26 @@ class Inventory:
       'vars': {
         'k3s_version': self.kube_inventory.version,
         'ansible_user': self.kube_inventory.ansible_user,
-        # 'ansible_ssh_private_key': self.kube_inventory.ansible_ssh_private_key.
+        'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
         'token': self.kube_inventory.token,
       },
       'children': {},
     }
 
-    # Decide api_endpoint.
+    # Decide api_endpoint — always use the first master for determinism.
     if master_ips:
-      out['k3s_cluster']['vars']['api_endpoint'] = random.choice(master_ips)
+      out['k3s_cluster']['vars']['api_endpoint'] = master_ips[0]
 
     # Add masters.
     if master_ips:
-      out['k3s_cluster']['children']['server'] = {
+      out['k3s_cluster']['children']['k3s_masters'] = {
         'hosts': {ip: {} for ip in master_ips},
       }
 
     # Add nodes.
     if node_ips:
-      out['k3s_cluster']['children']['agent'] = {
+      out['k3s_cluster']['children']['k3s_nodes'] = {
         'hosts': {ip: {} for ip in node_ips},
       }
 

@@ -7,4 +7,3 @@ execute_script_in_lxc__copy_to_node_show_difference: false
 execute_script_in_lxc__copy_to_lxc_no_log: false
 # ---
 execute_script_in_lxc__execute_script_no_log: false
-

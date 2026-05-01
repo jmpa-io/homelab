@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class K8sInventory:
+  """Cluster-level K3s configuration — connection/auth details for Ansible to reach the VMs."""
   version: str
   ansible_user: str
   ansible_ssh_private_key: str

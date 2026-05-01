@@ -1,0 +1,160 @@
+---
+# Ansible tasks for configuring Proxmox High Availability
+# This role sets up HA for a Proxmox cluster with shared storage
+
+- name: Verify cluster is configured
+  ansible.builtin.command: pvecm status
+  register: cluster_status
+  changed_when: false
+  failed_when: cluster_status.rc != 0
+
+- name: Display cluster status
+  ansible.builtin.debug:
+    msg: "{{ cluster_status.stdout_lines }}"
+
+- name: Check if node is part of cluster
+  ansible.builtin.assert:
+    that:
+      - "'Quorum information' in cluster_status.stdout"
+      - "'Nodes:' in cluster_status.stdout"
+    fail_msg: "Node is not part of a Proxmox cluster. Please join the cluster first."
+    success_msg: "Node is part of Proxmox cluster"
+
+- name: Ensure HA services are installed
+  ansible.builtin.apt:
+    name:
+      - pve-ha-manager
+      - corosync
+      - pacemaker
+    state: present
+    update_cache: true
+  become: true
+
+- name: Check if watchdog module is loaded
+  ansible.builtin.command: lsmod
+  register: lsmod_output
+  changed_when: false
+
+- name: Load softdog watchdog module
+  ansible.builtin.modprobe:
+    name: softdog
+    state: present
+  become: true
+  when: "'softdog' not in lsmod_output.stdout"
+
+- name: Ensure softdog module loads on boot
+  ansible.builtin.lineinfile:
+    path: /etc/modules
+    line: softdog
+    create: true
+    mode: '0644'
+  become: true
+
+- name: Check HA Local Resource Manager status
+  ansible.builtin.systemd:
+    name: pve-ha-lrm
+    state: started
+    enabled: true
+  become: true
+
+- name: Check HA Cluster Resource Manager status
+  ansible.builtin.systemd:
+    name: pve-ha-crm
+    state: started
+    enabled: true
+  become: true
+  run_once: true
+
+- name: Check corosync status
+  ansible.builtin.systemd:
+    name: corosync
+    state: started
+    enabled: true
+  become: true
+
+- name: Verify NFS storage is configured
+  ansible.builtin.shell: |
+    pvesm status | grep -E 'nfs|ceph|iscsi' || echo "NO_SHARED_STORAGE"
+  register: storage_check
+  changed_when: false
+  failed_when: false
+
+- name: Display storage configuration
+  ansible.builtin.debug:
+    msg: "{{ storage_check.stdout_lines }}"
+
+- name: Warn if no shared storage detected
+  ansible.builtin.debug:
+    msg: |
+      WARNING: No shared storage detected!
+      HA requires shared storage (NFS, Ceph, or iSCSI) for VM/CT migration.
+      Please configure shared storage before adding resources to HA.
+  when: "'NO_SHARED_STORAGE' in storage_check.stdout"
+
+- name: Create HA groups (if defined)
+  ansible.builtin.command: >
+    ha-manager groupadd {{ item.name }}
+    --nodes "{{ item.nodes }}"
+    {% if item.comment is defined %}--comment "{{ item.comment }}"{% endif %}
+  loop: "{{ ha_groups | default([]) }}"
+  register: ha_group_result
+  changed_when: "'already exists' not in ha_group_result.stderr"
+  failed_when:
+    - ha_group_result.rc != 0
+    - "'already exists' not in ha_group_result.stderr"
+  run_once: true
+  become: true
+
+- name: Add VMs to HA (if defined)
+  ansible.builtin.command: >
+    ha-manager add vm:{{ item.vmid }}
+    --state {{ item.state | default('started') }}
+    {% if item.group is defined %}--group {{ item.group }}{% endif %}
+    {% if item.max_restart is defined %}--max_restart {{ item.max_restart }}{% endif %}
+    {% if item.max_relocate is defined %}--max_relocate {{ item.max_relocate }}{% endif %}
+  loop: "{{ ha_vms | default([]) }}"
+  register: ha_vm_result
+  changed_when: "'already exists' not in ha_vm_result.stderr"
+  failed_when:
+    - ha_vm_result.rc != 0
+    - "'already exists' not in ha_vm_result.stderr"
+  run_once: true
+  become: true
+
+- name: Add containers to HA (if defined)
+  ansible.builtin.command: >
+    ha-manager add ct:{{ item.ctid }}
+    --state {{ item.state | default('started') }}
+    {% if item.group is defined %}--group {{ item.group }}{% endif %}
+    {% if item.max_restart is defined %}--max_restart {{ item.max_restart }}{% endif %}
+    {% if item.max_relocate is defined %}--max_relocate {{ item.max_relocate }}{% endif %}
+  loop: "{{ ha_containers | default([]) }}"
+  register: ha_ct_result
+  changed_when: "'already exists' not in ha_ct_result.stderr"
+  failed_when:
+    - ha_ct_result.rc != 0
+    - "'already exists' not in ha_ct_result.stderr"
+  run_once: true
+  become: true
+
+- name: Get HA configuration
+  ansible.builtin.command: ha-manager config
+  register: ha_config
+  changed_when: false
+  run_once: true
+
+- name: Display HA configuration
+  ansible.builtin.debug:
+    msg: "{{ ha_config.stdout_lines }}"
+  run_once: true
+
+- name: Get HA status
+  ansible.builtin.command: ha-manager status
+  register: ha_status
+  changed_when: false
+  run_once: true
+
+- name: Display HA status
+  ansible.builtin.debug:
+    msg: "{{ ha_status.stdout_lines }}"
+  run_once: true

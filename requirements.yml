@@ -1,5 +1,5 @@
 ---
 collections:
   - name: ansible.posix
-  - name: k3s.orchestration
-
+  - name: community.general
+  - name: kubernetes.core

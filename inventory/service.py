@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict
 
 
-@dataclass
 class Protocol(Enum):
   HTTP = 'http'
   HTTPS = 'https'
+  SSH = 'ssh'
 
 
 @dataclass
@@ -35,7 +35,10 @@ class LXCService(Service):
   default_port: str = ''
   protocol: Protocol = field(default_factory=lambda: Protocol.HTTP)
   add_to_proxy_static_records: bool = True
+  # Set by Inventory.add_instance() after bridge assignment.
   ipv4: str = field(init=False, default='')
+  ipv4_cidr: str = field(init=False, default='')
+  ipv4_with_cidr: str = field(init=False, default='')
   static_records: List[Dict[str, str]] = field(default_factory=list, init=False)
 
   def __post_init__(self):
@@ -56,6 +59,8 @@ class LXCService(Service):
       'protocol': self.protocol.value,
       'add_to_proxy_static_records': self.add_to_proxy_static_records,
       'ipv4': self.ipv4,
+      'ipv4_cidr': self.ipv4_cidr,
+      'ipv4_with_cidr': self.ipv4_with_cidr,
       'static_records': self.static_records,
     }
 

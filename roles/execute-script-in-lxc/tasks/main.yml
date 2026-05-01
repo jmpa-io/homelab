@@ -1,7 +1,7 @@
 ---
 
 - name: Ensure required variables are set.
-  fail:
+  ansible.builtin.fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
@@ -13,7 +13,7 @@
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc__proxmox_node_ip }}/{{ execute_script_in_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ execute_script_in_lxc__proxmox_node_ip }}/{{ execute_script_in_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"  # noqa: yaml[line-length]
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -28,25 +28,27 @@
 
 - name: Copy file to Proxmox node.
   ansible.builtin.template:
-    src:  "{{ execute_script_in_lxc__script_source }}"
+    src: "{{ execute_script_in_lxc__script_source }}"
     dest: "{{ temporary_directory_filepath }}"
     mode: "{{ execute_script_in_lxc__script_mode }}"
   delegate_to: "{{ execute_script_in_lxc__proxmox_node_ip }}"
   diff: "{{ execute_script_in_lxc__copy_to_node_show_difference }}"
   no_log: "{{ execute_script_in_lxc__copy_to_node_no_log }}"
 
-- name: Copy file into LXC, via pct.
+- name: Copy file into LXC, via pct push.
   ansible.builtin.shell: |
     pct push "{{ execute_script_in_lxc__lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ execute_script_in_lxc__script_destination }}"
   delegate_to: "{{ execute_script_in_lxc__proxmox_node_ip }}"
   no_log: "{{ execute_script_in_lxc__copy_to_lxc_no_log }}"
+  changed_when: true
 
-- name: Execute script inside LXC.
+- name: Execute script inside LXC, via pct exec.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- chmod +x "{{ execute_script_in_lxc__script_destination }}"
-    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- "{{ execute_script_in_lxc__script_destination }}"
+    pct exec "{{ execute_script_in_lxc__lxc_vmid }}" -- chmod +x "{{ execute_script_in_lxc__script_destination }}"
+    pct exec "{{ execute_script_in_lxc__lxc_vmid }}" -- "{{ execute_script_in_lxc__script_destination }}"
   delegate_to: "{{ execute_script_in_lxc__proxmox_node_ip }}"
   no_log: "{{ execute_script_in_lxc__execute_script_no_log }}"
+  changed_when: true
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:
@@ -54,8 +56,8 @@
     state: absent
   delegate_to: "{{ execute_script_in_lxc__proxmox_node_ip }}"
 
-- name: Clean up script inside LXC.
+- name: Clean up script inside LXC, via pct exec.
   ansible.builtin.shell: |
-    lxc-attach -n "{{ execute_script_in_lxc__lxc_vmid }}" -- rm -f "{{ execute_script_in_lxc__script_destination }}"
+    pct exec "{{ execute_script_in_lxc__lxc_vmid }}" -- rm -f "{{ execute_script_in_lxc__script_destination }}"
   delegate_to: "{{ execute_script_in_lxc__proxmox_node_ip }}"
-
+  changed_when: false

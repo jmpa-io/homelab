@@ -1,0 +1,170 @@
+---
+# Deploy GitOps components (ArgoCD + GitHub Runners)
+
+- name: Deploy ArgoCD
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  tasks:
+    - name: Include common K3s tasks
+      ansible.builtin.include_tasks: tasks/common.yml
+
+    - name: Create ArgoCD namespace
+      kubernetes.core.k8s:
+        name: "{{ k8s_services.argocd.namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Install ArgoCD
+      kubernetes.core.k8s:
+        state: present
+        src: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ k8s_services.argocd.version }}/manifests/install.yaml"
+        namespace: "{{ k8s_services.argocd.namespace }}"
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+
+    - name: Wait for ArgoCD to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ k8s_services.argocd.namespace }}"
+        name: argocd-server
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: argocd_deployment
+      until: >
+        argocd_deployment.resources | length > 0 and
+        argocd_deployment.resources[0].status.readyReplicas | default(0) > 0
+      retries: 30
+      delay: 10
+
+    - name: Patch ArgoCD server for LoadBalancer
+      kubernetes.core.k8s:
+        state: patched
+        kind: Service
+        namespace: "{{ k8s_services.argocd.namespace }}"
+        name: argocd-server
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          spec:
+            type: LoadBalancer
+
+    - name: Get ArgoCD admin password
+      kubernetes.core.k8s_info:
+        kind: Secret
+        namespace: "{{ k8s_services.argocd.namespace }}"
+        name: argocd-initial-admin-secret
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: argocd_secret
+
+    - name: Decode ArgoCD password
+      ansible.builtin.set_fact:
+        argocd_password: "{{ argocd_secret.resources[0].data.password | b64decode }}"
+      when: argocd_secret.resources | length > 0
+
+    - name: Get ArgoCD LoadBalancer IP
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ k8s_services.argocd.namespace }}"
+        name: argocd-server
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      register: argocd_service
+      retries: 10
+      delay: 6
+      until: >
+        argocd_service.resources | length > 0 and
+        argocd_service.resources[0].status.loadBalancer.ingress is defined
+
+    - name: Save ArgoCD credentials to file
+      ansible.builtin.copy:
+        content: |
+          ArgoCD Access Information
+          =========================
+
+          URL: https://{{ argocd_service.resources[0].status.loadBalancer.ingress[0].ip | default('PENDING') }}
+          Username: admin
+          Password: {{ argocd_password | default('Check secret manually') }}
+
+          Alternative access via port-forward:
+          kubectl port-forward svc/argocd-server -n {{ k8s_services.argocd.namespace }} 8080:443
+          URL: https://localhost:8080
+        dest: "{{ playbook_dir }}/argocd-credentials.txt"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: Display ArgoCD access information
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "ArgoCD Deployed Successfully!"
+          - "=========================================="
+          - "  URL: https://{{ argocd_service.resources[0].status.loadBalancer.ingress[0].ip | default('PENDING') }}"
+          - "  Username: admin"
+          - "  Password: {{ argocd_password | default('Check secret manually') }}"
+          - "  Credentials saved to: {{ playbook_dir }}/argocd-credentials.txt"
+          - "=========================================="
+
+- name: Deploy GitHub Actions Runners
+  hosts: k3s_masters[0]
+  gather_facts: false
+  become: true
+
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
+
+  vars:
+    # Token sourced from the dynamic inventory (SSM: /homelab/github/token).
+    github_token: "{{ github.token }}"
+
+  tasks:
+    - name: Check if GitHub token is provided
+      ansible.builtin.debug:
+        msg: "GitHub token not found in inventory (SSM /homelab/github/token may be missing). Skipping runner deployment."
+      when: github_token is none or github_token == ''
+
+    - name: Create actions-runner-system namespace
+      kubernetes.core.k8s:
+        name: "{{ k8s_services.github_runner.namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+      when: github_token is not none and github_token != ''
+
+    - name: Create GitHub token secret
+      kubernetes.core.k8s:
+        state: present
+        kubeconfig: "{{ k3s_kubeconfig_path }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: controller-manager
+            namespace: "{{ k8s_services.github_runner.namespace }}"
+          type: Opaque
+          stringData:
+            github_token: "{{ github_token }}"
+      when: github_token is not none and github_token != ''
+      no_log: true
+
+    - name: Display GitHub runner setup instructions
+      ansible.builtin.debug:
+        msg:
+          - "=========================================="
+          - "GitHub Actions Runners Setup"
+          - "=========================================="
+          - "{% if github_token is not none and github_token != '' %}Secret created successfully!{% else %}GitHub token not found in inventory.{% endif %}"
+          - ""
+          - "To complete setup:"
+          - "  1. Install actions-runner-controller:"
+          - "     helm repo add actions-runner-controller https://actions-runner-controller.github.io/actions-runner-controller"
+          - "     helm install actions-runner-controller actions-runner-controller/actions-runner-controller \\"
+          - "       --namespace {{ k8s_services.github_runner.namespace }} \\"
+          - "       --set authSecret.create=false \\"
+          - "       --set authSecret.name=controller-manager"
+          - "  2. Apply runners: kubectl apply -f services/k8s/github-actions-runner/deployment.yml"
+          - "  3. Check: https://github.com/{{ k8s_services.github_runner.repository }}/settings/actions/runners"
+          - "=========================================="

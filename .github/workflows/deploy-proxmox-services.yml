@@ -1,0 +1,100 @@
+name: Deploy Proxmox Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - nginx-reverse-proxy
+          - tailscale-gateway
+          - prometheus
+          - grafana
+      force_recreate:
+        description: 'Force recreate containers'
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/lxc/**'
+      - 'services/proxmox-community-scripts/**'
+      - '.github/workflows/deploy-proxmox-services.yml'
+
+jobs:
+  deploy-services:
+    name: Deploy ${{ inputs.service || 'all' }} services
+    runs-on: [self-hosted, k3s, homelab]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r inventory/requirements.txt
+          pip install ansible
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Check Proxmox connectivity
+        run: |
+          ansible proxmox_hosts -m ping
+
+      - name: Deploy nginx-reverse-proxy
+        if: inputs.service == 'nginx-reverse-proxy' || inputs.service == 'all'
+        run: |
+          ansible-playbook services/lxc/nginx-reverse-proxy/main.yml \
+            ${{ inputs.force_recreate && '-e force_recreate=true' || '' }}
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Deploy tailscale-gateway
+        if: inputs.service == 'tailscale-gateway' || inputs.service == 'all'
+        run: |
+          ansible-playbook playbook.yml --tags tailscale \
+            ${{ inputs.force_recreate && '-e force_recreate=true' || '' }}
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Deploy prometheus
+        if: inputs.service == 'prometheus' || inputs.service == 'all'
+        run: |
+          ansible-playbook services/lxc/prometheus/main.yml \
+            ${{ inputs.force_recreate && '-e force_recreate=true' || '' }}
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Deploy grafana
+        if: inputs.service == 'grafana' || inputs.service == 'all'
+        run: |
+          ansible-playbook services/lxc/grafana/main.yml \
+            ${{ inputs.force_recreate && '-e force_recreate=true' || '' }}
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Verify services
+        run: |
+          echo "### Services Deployed Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Container Status:**" >> $GITHUB_STEP_SUMMARY
+          ansible proxmox_hosts -m shell -a "pct list" --limit jmpa-server-1 | grep -v "CHANGED" >> $GITHUB_STEP_SUMMARY || true
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Service deployment failed. Check logs for details."

@@ -1,199 +1,215 @@
 ---
-# Homepage Services Configuration
-# All services use DNS names (*.jmpa.lab) that resolve via Pi-hole
-# DNS records are auto-generated from inventory/main.py
+# Homepage services configuration
+# Auto-generated from inventory
 
-- Basics:
-  - Calendar:
-      widget:
-        type: calendar
-
-  - Daily Dad Joke:
-      widget:
-        type: customapi
-        url: https://icanhazdadjoke.com/
-        refreshInterval: 86400000
-        method: GET
-        headers:
-          Accept: application/json
-        mappings:
-          - field: joke
-            label: "Dad says..."
-            format: text
-
-  - Uptime Kuma:
-      icon: uptime-kuma.svg
-      description: Uptime monitoring for all homelab services
-      href: http://uptime-kuma.jmpa.lab:3001
-      siteMonitor: http://uptime-kuma.jmpa.lab:3001
-      widget:
-        type: uptimekuma
-        url: http://uptime-kuma.jmpa.lab:3001
-        slug: homelab
-
-- Homelab:
-  - Infrastructure:
-    - Proxmox:
-        icon: proxmox.svg
-        description: Hypervisor running all infrastructure
-        href: https://proxmox.jmpa.lab:8006
-        siteMonitor: https://proxmox.jmpa.lab:8006
+# Infrastructure
+- Infrastructure:
+    - Proxmox Cluster:
+        icon: proxmox.png
+        href: https://server-1.jmpa.lab:8006
+        description: Hypervisor cluster management
         widget:
           type: proxmox
-          url: https://proxmox.jmpa.lab:8006
-          username: root@pam
-          # password: set via HOMEPAGE_VAR_PROXMOX_PASSWORD
+          url: https://server-1.jmpa.lab:8006
+          username: {{HOMEPAGE_VAR_PROXMOX_USER}}
+          password: {{HOMEPAGE_VAR_PROXMOX_PASS}}
+          node: jmpa-server-1
+
+    - Pi-hole:
+        icon: pi-hole.png
+        href: http://dns-1.jmpa.lab/admin
+        description: Network-wide ad blocking
+        widget:
+          type: pihole
+          url: http://dns-1.jmpa.lab
+          key: {{HOMEPAGE_VAR_PIHOLE_API_KEY}}
+
+    - Terramaster NAS:
+        icon: nas.png
+        href: http://nas-1.jmpa.lab:8181
+        description: Network attached storage (Terramaster)
+        widget:
+          type: customapi
+          url: http://nas-1.jmpa.lab:8181
+          username: {{HOMEPAGE_VAR_NAS_USER}}
+          password: {{HOMEPAGE_VAR_NAS_PASS}}
+
+# Kubernetes
+- Kubernetes:
+    - Kubernetes Dashboard:
+        icon: kubernetes-dashboard.png
+        href: https://kubernetes-dashboard.jmpa.lab
+        description: K3s cluster management
+        widget:
+          type: kubernetes
+          cluster:
+            show: true
+            cpu: true
+            memory: true
+            showLabel: true
+
+    - ArgoCD:
+        icon: argocd.png
+        href: https://argocd.jmpa.lab
+        description: GitOps continuous delivery
+        widget:
+          type: argocd
+          url: https://argocd.jmpa.lab
+          username: admin
+          password: {{HOMEPAGE_VAR_ARGOCD_PASS}}
+
+    - Grafana:
+        icon: grafana.png
+        href: http://grafana.jmpa.lab
+        description: Metrics & logs visualization
+        widget:
+          type: grafana
+          url: http://grafana.jmpa.lab
+          username: admin
+          password: {{HOMEPAGE_VAR_GRAFANA_PASS}}
 
     - Prometheus:
-        icon: prometheus.svg
-        description: Metrics collection and monitoring
+        icon: prometheus.png
         href: http://prometheus.jmpa.lab:9090
-        siteMonitor: http://prometheus.jmpa.lab:9090
+        description: Metrics collection & alerting
         widget:
           type: prometheus
           url: http://prometheus.jmpa.lab:9090
 
-    - Grafana:
-        icon: grafana.svg
-        description: Metrics visualization and dashboards
-        href: http://grafana.jmpa.lab:3000
-        siteMonitor: http://grafana.jmpa.lab:3000
-        widget:
-          type: grafana
-          url: http://grafana.jmpa.lab:3000
-          username: admin
-          # password: set via HOMEPAGE_VAR_GRAFANA_PASSWORD
-
-    - Proxmox Backup Server:
-        icon: proxmox.svg
-        description: Backup server storing to NAS Volume 3
-        href: https://pbs.jmpa.lab:8007
-        siteMonitor: https://pbs.jmpa.lab:8007
-
-    - Pi-hole:
-        icon: pi-hole.svg
-        description: Network-wide ad blocking and DNS
-        href: http://pihole.jmpa.lab/admin
-        siteMonitor: http://pihole.jmpa.lab/admin
-        widget:
-          type: pihole
-          url: http://pihole.jmpa.lab
-          # key: set via HOMEPAGE_VAR_PIHOLE_KEY
-
-    - NAS:
-        icon: synology.svg
-        description: Network attached storage (Volume 3 for backups)
-        href: http://nas.jmpa.lab:5000
-        siteMonitor: http://nas.jmpa.lab:5000
-
-    - AWS:
-        icon: aws.svg
-        description: Cloud provider for secrets and DNS
-        href: https://console.aws.amazon.com
-        ping: https://aws.amazon.com
-
-  - Internet:
-    - MySpeed:
-        icon: myspeed.svg
-        description: The speed of my internet.
-        href: https://myspeed.jmpa.io
-        siteMonitor: https://myspeed.jmpa.io
-        widget:
-          type: myspeed
-          url: https://myspeed.jmpa.io
-
-    - Speedtest:
-        icon: librespeed.svg
-        description: Local network speed testing
-        href: http://speedtest.jmpa.lab
-        siteMonitor: http://speedtest.jmpa.lab
-
-    - Tailscale:
-        icon: tailscale.svg
-        description: My VPN.
-        href: https://tailscale.com
-        siteMonitor: https://tailscale.com
-        widget:
-          type: tailscale
-
-  - AI & Development:
-    - Ollama:
-        icon: ollama.svg
-        description: Self-hosted AI models
-        href: http://ollama.jmpa.lab:11434
-        siteMonitor: http://ollama.jmpa.lab:11434
-
-    - n8n:
-        icon: n8n.svg
-        description: Workflow automation platform
-        href: http://n8n.jmpa.lab:5678
-        siteMonitor: http://n8n.jmpa.lab:5678
-
-    - GitHub Runner:
-        icon: github.svg
-        description: Self-hosted CI/CD runner
-        href: https://github.com/settings/actions/runners
-        siteMonitor: http://github-runner.jmpa.lab:22
-
-    - VS Code:
-        icon: vscode.svg
-        description: IDE in the browser
-        href: https://code.jmpa.io
-        siteMonitor: https://code.jmpa.io
-
-    - GitHub:
-        icon: github.svg
-        description: GitHub organization
-        href: https://github.com/jmpa-io
-        siteMonitor: https://github.com/jmpa-io
-
-    - GitHub (Personal):
-        icon: github.svg
-        description: Personal GitHub
-        href: https://github.com/jcleal
-        siteMonitor: https://github.com/jcleal
-
-    - Draw.io:
-        icon: https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Diagrams.net_Logo.svg/2048px-Diagrams.net_Logo.svg.png
-        description: Architecture diagrams
-        href: https://app.diagrams.net
-        siteMonitor: https://app.diagrams.net
-
-    - Slack:
-        icon: slack.svg
-        description: Personal Slack workspace
-        href: https://jmpa-io.slack.com
-        siteMonitor: https://jmpa-io.slack.com
-
-- Personal:
-  - Media:
+# Media Management
+- Media Management:
     - Jellyfin:
-        icon: jellyfin.svg
-        description: Self-hosted media server
-        href: http://jellyfin.jmpa.lab:8096
-        siteMonitor: http://jellyfin.jmpa.lab:8096
+        icon: jellyfin.png
+        href: http://nas-1.jmpa.lab:8096
+        description: Media server
         widget:
           type: jellyfin
-          url: http://jellyfin.jmpa.lab:8096
-          # key: set via HOMEPAGE_VAR_JELLYFIN_KEY
+          url: http://nas-1.jmpa.lab:8096
+          key: {{HOMEPAGE_VAR_JELLYFIN_API_KEY}}
 
-  - Music:
-    - Youtube Music:
-        icon: youtube-music.svg
-        description: My music.
-        href: https://music.youtube.com
-        siteMonitor: https://music.youtube.com
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: http://jellyseerr.media.svc.cluster.local:5055
+        description: Media request management
+        widget:
+          type: jellyseerr
+          url: http://jellyseerr.media.svc.cluster.local:5055
+          key: {{HOMEPAGE_VAR_JELLYSEERR_API_KEY}}
 
-    - Spotify:
-        icon: spotify.svg
-        description: My backup music.
-        href: https://open.spotify.com
-        siteMonitor: https://open.spotify.com
+    - Tautulli:
+        icon: tautulli.png
+        href: http://tautulli.media.svc.cluster.local:8181
+        description: Jellyfin statistics
+        widget:
+          type: tautulli
+          url: http://tautulli.media.svc.cluster.local:8181
+          key: {{HOMEPAGE_VAR_TAUTULLI_API_KEY}}
 
-  - Finances:
-    - Pocketsmith:
-        icon: https://play-lh.googleusercontent.com/zyMIPDy4MB_sx7lRpNnNayctyaozKj5IFl2fW017CZ1JKTSX>
-        description: My finances.
-        href: https://pocketsmith.com/dashboard
-        siteMonitor: https://pocketsmith.com/
+# Media Automation (*arr Suite)
+- Media Automation:
+    - Prowlarr:
+        icon: prowlarr.png
+        href: http://prowlarr.media.svc.cluster.local:9696
+        description: Indexer manager
+        widget:
+          type: prowlarr
+          url: http://prowlarr.media.svc.cluster.local:9696
+          key: {{HOMEPAGE_VAR_PROWLARR_API_KEY}}
 
+    - Sonarr:
+        icon: sonarr.png
+        href: http://sonarr.media.svc.cluster.local:8989
+        description: TV show management
+        widget:
+          type: sonarr
+          url: http://sonarr.media.svc.cluster.local:8989
+          key: {{HOMEPAGE_VAR_SONARR_API_KEY}}
+
+    - Radarr:
+        icon: radarr.png
+        href: http://radarr.media.svc.cluster.local:7878
+        description: Movie management
+        widget:
+          type: radarr
+          url: http://radarr.media.svc.cluster.local:7878
+          key: {{HOMEPAGE_VAR_RADARR_API_KEY}}
+
+    - Lidarr:
+        icon: lidarr.png
+        href: http://lidarr.media.svc.cluster.local:8686
+        description: Music management
+        widget:
+          type: lidarr
+          url: http://lidarr.media.svc.cluster.local:8686
+          key: {{HOMEPAGE_VAR_LIDARR_API_KEY}}
+
+    - Readarr:
+        icon: readarr.png
+        href: http://readarr.media.svc.cluster.local:8787
+        description: Book management
+        widget:
+          type: readarr
+          url: http://readarr.media.svc.cluster.local:8787
+          key: {{HOMEPAGE_VAR_READARR_API_KEY}}
+
+    - Bazarr:
+        icon: bazarr.png
+        href: http://bazarr.media.svc.cluster.local:6767
+        description: Subtitle management
+        widget:
+          type: bazarr
+          url: http://bazarr.media.svc.cluster.local:6767
+          key: {{HOMEPAGE_VAR_BAZARR_API_KEY}}
+
+# Download Clients
+- Download Clients:
+    - Deluge:
+        icon: deluge.png
+        href: http://deluge.media.svc.cluster.local:8112
+        description: Torrent client
+        widget:
+          type: deluge
+          url: http://deluge.media.svc.cluster.local:8112
+          password: {{HOMEPAGE_VAR_DELUGE_PASS}}
+
+# Monitoring & Observability
+- Monitoring:
+    - Uptime Kuma:
+        icon: uptime-kuma.png
+        href: http://server-1.jmpa.lab:3001
+        description: Uptime monitoring
+        widget:
+          type: uptimekuma
+          url: http://server-1.jmpa.lab:3001
+          slug: default
+
+    - Loki:
+        icon: loki.png
+        href: http://loki.observability.svc.cluster.local:3100
+        description: Log aggregation
+
+    - Tempo:
+        icon: tempo.png
+        href: http://tempo.observability.svc.cluster.local:3100
+        description: Distributed tracing
+
+    - OpenTelemetry:
+        icon: opentelemetry.png
+        href: http://otel-collector.observability.svc.cluster.local:4318
+        description: Telemetry collection
+
+# Automation & CI/CD
+- Automation:
+    - GitHub Actions:
+        icon: github.png
+        href: https://github.com/jmpa-io/homelab/actions
+        description: CI/CD workflows
+
+    - n8n:
+        icon: n8n.png
+        href: http://server-1.jmpa.lab:5678
+        description: Workflow automation
+        widget:
+          type: n8n
+          url: http://server-1.jmpa.lab:5678
+          key: {{HOMEPAGE_VAR_N8N_API_KEY}}

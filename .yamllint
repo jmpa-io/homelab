@@ -1,0 +1,27 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 160
+    level: warning
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false   # required by ansible-lint
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+  document-start: disable
+  octal-values:
+    forbid-implicit-octal: true   # required by ansible-lint
+    forbid-explicit-octal: true   # required by ansible-lint

@@ -1,0 +1,27 @@
+[Unit]
+Description=Loki Log Aggregation System
+Documentation=https://grafana.com/docs/loki/latest/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ loki_user }}
+Group={{ loki_group }}
+ExecStart=/usr/local/bin/loki -config.file={{ loki_config_dir }}/loki.yml
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ loki_data_dir }}
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

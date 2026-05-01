@@ -1,0 +1,23 @@
+---
+# Shared Proxmox node connection variables.
+# Include this file via vars_files in any LXC service play to avoid
+# repeating the same 7-line block in every playbook.
+#
+# Usage in a play:
+#   vars_files:
+#     - "{{ root_playbook_directory }}/services/lxc/vars/proxmox-node.yml"
+
+proxmox_node_name: "{{ host.name }}"
+proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+proxmox_node_ip: "{{ host.ipv4 }}"
+proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
+proxmox_node_bridge_name: "{{ host.bridge.name }}"
+# proxmox_api_ip is the same as proxmox_node_ip — referenced directly from
+# host.ipv4 to avoid a same-file cross-reference which Ansible does not evaluate.
+proxmox_api_ip: "{{ host.ipv4 }}"
+proxmox_api_token_secret: "{{ proxmox.api_token }}"
+
+# VMID for an LXC container: <host_id><zero-padded-container_id>
+# Requires lxc_id to already be set in the play vars before including this file.
+# Example: host_id=1, lxc_id=40 -> lxc_vmid=140
+lxc_vmid: "{{ '%d%02d' | format(proxmox_node_id | int, lxc_id | int) }}"

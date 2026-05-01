@@ -1,0 +1,108 @@
+name: Deploy K3s Cluster with GitOps
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_vm_creation:
+        description: 'Skip VM creation (VMs already exist)'
+        required: false
+        default: false
+        type: boolean
+      deploy_argocd:
+        description: 'Deploy ArgoCD'
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/vms/k3s/**'
+      - 'playbooks/deploy-k3s-gitops.yml'
+      - '.github/workflows/deploy-k3s-cluster.yml'
+
+jobs:
+  deploy-k3s:
+    name: Deploy K3s Cluster
+    runs-on: [self-hosted, k3s, homelab]
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r inventory/requirements.txt
+          pip install ansible
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Check Proxmox connectivity
+        run: |
+          ansible proxmox_hosts -m ping
+
+      - name: Deploy K3s cluster
+        run: |
+          ansible-playbook playbooks/deploy-k3s-gitops.yml \
+            ${{ inputs.skip_vm_creation && '--skip-tags vm_creation' || '' }}
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+        timeout-minutes: 45
+
+      - name: Wait for K3s cluster to be ready
+        run: |
+          echo "Waiting for K3s cluster to stabilize..."
+          sleep 30
+
+      - name: Verify K3s cluster
+        run: |
+          ansible k3s_masters -m shell -a "kubectl get nodes" --limit jmpa-server-1-k3s-master-1
+
+      - name: Get ArgoCD admin password
+        if: inputs.deploy_argocd != false
+        id: argocd_password
+        run: |
+          PASSWORD=$(ansible k3s_masters -m shell \
+            -a "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d" \
+            --limit jmpa-server-1-k3s-master-1 | grep -v "CHANGED" | tail -1)
+          echo "::add-mask::$PASSWORD"
+          echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: Get ArgoCD URL
+        if: inputs.deploy_argocd != false
+        id: argocd_url
+        run: |
+          URL=$(ansible k3s_masters -m shell \
+            -a "kubectl -n argocd get svc argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}'" \
+            --limit jmpa-server-1-k3s-master-1 | grep -v "CHANGED" | tail -1)
+          echo "url=https://$URL" >> $GITHUB_OUTPUT
+
+      - name: Display cluster information
+        run: |
+          echo "### K3s Cluster Deployed Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Cluster Nodes:**" >> $GITHUB_STEP_SUMMARY
+          ansible k3s_masters -m shell -a "kubectl get nodes -o wide" --limit jmpa-server-1-k3s-master-1 | grep -v "CHANGED" >> $GITHUB_STEP_SUMMARY || true
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ inputs.deploy_argocd }}" != "false" ]; then
+            echo "**ArgoCD Access:**" >> $GITHUB_STEP_SUMMARY
+            echo "- URL: ${{ steps.argocd_url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+            echo "- Username: \`admin\`" >> $GITHUB_STEP_SUMMARY
+            echo "- Password: (stored in GitHub Actions secret output)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::K3s deployment failed. Check logs for details."

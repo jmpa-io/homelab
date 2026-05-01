@@ -1,0 +1,37 @@
+# NOTE: Kubernetes Dashboard is deployed via Ansible, not ArgoCD
+# This is because it requires LoadBalancer configuration during initial deployment
+# See: services/vms/k3s/deploy-dashboard.yml
+#
+# If you want to manage it via ArgoCD after initial deployment, uncomment below:
+
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: kubernetes-dashboard
+#   namespace: argocd
+#   finalizers:
+#     - resources-finalizer.argocd.argoproj.io
+# spec:
+#   project: default
+#
+#   source:
+#     repoURL: https://github.com/jmpa-io/homelab.git
+#     targetRevision: HEAD
+#     path: services/k8s/kubernetes-dashboard
+#
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: kubernetes-dashboard
+#
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true
+#     retry:
+#       limit: 5
+#       backoff:
+#         duration: 5s
+#         factor: 2
+#         maxDuration: 3m

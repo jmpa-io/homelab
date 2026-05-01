@@ -1,7 +1,7 @@
 ---
 
 - name: Ensure required variables are set.
-  fail:
+  ansible.builtin.fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
@@ -14,7 +14,7 @@
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc__proxmox_node_ip }}/{{ copy_file_to_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"
+    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc__proxmox_node_ip }}/{{ copy_file_to_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"  # noqa: yaml[line-length]
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:
@@ -42,10 +42,10 @@
     pct push "{{ copy_file_to_lxc__lxc_vmid }}" "{{ temporary_directory_filepath }}" "{{ copy_file_to_lxc__file_destination }}"
   delegate_to: "{{ copy_file_to_lxc__proxmox_node_ip }}"
   no_log: "{{ copy_file_to_lxc__copy_to_lxc_no_log }}"
+  changed_when: true
 
 - name: Clean up file from Proxmox node.
   ansible.builtin.file:
     path: "{{ temporary_directory }}"
     state: absent
   delegate_to: "{{ copy_file_to_lxc__proxmox_node_ip }}"
-

@@ -1,0 +1,18 @@
+---
+# Common tasks included at the start of every k3s service playbook.
+
+- name: Wait for k3s kubeconfig to be present.
+  ansible.builtin.wait_for:
+    path: "{{ k3s_kubeconfig_path }}"
+    state: present
+    timeout: 120
+
+- name: Verify k3s cluster is responsive.
+  ansible.builtin.command: kubectl get nodes
+  environment:
+    KUBECONFIG: "{{ k3s_kubeconfig_path }}"
+  register: k3s_nodes
+  retries: 10
+  delay: 6
+  until: k3s_nodes.rc == 0
+  changed_when: false

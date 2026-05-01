@@ -1,7 +1,6 @@
 ---
-
 - name: Ensure required variables are set.
-  fail:
+  ansible.builtin.fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
@@ -9,46 +8,42 @@
     - create_lxc__proxmox_node_name
     - create_lxc__proxmox_node_bridge_ip
     - create_lxc__proxmox_node_bridge_name
-    # ---
     - create_lxc__proxmox_api_ip
     - create_lxc__proxmox_api_token_secret
-    # ---
     - create_lxc__lxc_vmid
     - create_lxc__lxc_hostname
     - create_lxc__lxc_root_password
     - create_lxc__lxc_subnet
     - create_lxc__lxc_tags
 
-- name: Create LXC, refreshed if needed.
+# Set Proxmox API credentials once for every community.general.proxmox
+# call in this task file.
+- name: Create LXC container.
+  module_defaults:
+    community.general.proxmox:
+      api_host: "{{ create_lxc__proxmox_api_ip }}"
+      api_user: "{{ create_lxc__proxmox_api_user }}"
+      api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
+      api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
+      node: "{{ create_lxc__proxmox_node_name }}"
   block:
-    - name: Stop and / or remove existing LXC.
+    - name: Stop and remove existing LXC (if present).
       community.general.proxmox:
-        api_host: "{{ create_lxc__proxmox_api_ip }}"
-        api_user: "{{ create_lxc__proxmox_api_user }}"
-        api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true
       loop:
         - stopped
         - absent
-      ignore_errors: true
+      ignore_errors: true  # noqa: ignore-errors
 
     - name: Create LXC.
       community.general.proxmox:
-        api_host: "{{ create_lxc__proxmox_api_ip }}"
-        api_user: "{{ create_lxc__proxmox_api_user }}"
-        api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         hostname: "{{ create_lxc__lxc_hostname }}"
         ostemplate: "{{ create_lxc__lxc_ostemplate }}"
         cores: "{{ create_lxc__lxc_cores }}"
         memory: "{{ create_lxc__lxc_memory }}"
-        # disk: "{{ create_lxc__lxc_disk }}"
         tags: "{{ create_lxc__lxc_tags }}"
         password: "{{ create_lxc__lxc_root_password }}"
         netif:
@@ -64,17 +59,12 @@
 
     - name: Start LXC.
       community.general.proxmox:
-        api_host: "{{ create_lxc__proxmox_api_ip }}"
-        api_user: "{{ create_lxc__proxmox_api_user }}"
-        api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         hostname: "{{ create_lxc__lxc_hostname }}"
         state: started
 
     - name: Wait for SSH to become available.
-      wait_for:
+      ansible.builtin.wait_for:
         host: "{{ create_lxc__lxc_subnet | split('/') | first }}"
         port: 22
         delay: 10
@@ -90,18 +80,12 @@
         execute_script_in_lxc__script_destination: /tmp/install_deps.sh
 
   rescue:
-    - name: Error encountered, clean up LXC if able.
+    - name: Clean up LXC after failed creation.
       community.general.proxmox:
-        api_host: "{{ create_lxc__proxmox_api_ip }}"
-        api_user: "{{ create_lxc__proxmox_api_user }}"
-        api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
-        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true
       loop:
         - stopped
         - absent
-      ignore_errors: true
-
+      ignore_errors: true  # noqa: ignore-errors

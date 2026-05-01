@@ -1,0 +1,127 @@
+---
+# Extended NFS media volumes for complete *arr suite
+# Music volume for Lidarr
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-music
+  labels:
+    type: nfs
+    media-type: music
+spec:
+  capacity:
+    storage: 2Ti
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: "{{ nfs_server_ip }}"  # Replace with jmpa-nas-1 IP
+    path: "/volume1/media/music"
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - timeo=600
+    - retrans=2
+    - rsize=1048576
+    - wsize=1048576
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-music
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 2Ti
+  selector:
+    matchLabels:
+      media-type: music
+---
+# Books volume for Readarr
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-media-books
+  labels:
+    type: nfs
+    media-type: books
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: "{{ nfs_server_ip }}"  # Replace with jmpa-nas-1 IP
+    path: "/volume1/media/books"
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - timeo=600
+    - retrans=2
+    - rsize=1048576
+    - wsize=1048576
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-books
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 500Gi
+  selector:
+    matchLabels:
+      media-type: books
+---
+# Volume2 mount (if needed for additional storage)
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-volume2
+  labels:
+    type: nfs
+    volume: volume2
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: "{{ nfs_server_ip }}"  # Replace with jmpa-nas-1 IP
+    path: "/volume2"
+  mountOptions:
+    - nfsvers=4.1
+    - hard
+    - timeo=600
+    - retrans=2
+    - rsize=1048576
+    - wsize=1048576
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs-media
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: volume2
+  namespace: media
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-media
+  resources:
+    requests:
+      storage: 10Ti
+  selector:
+    matchLabels:
+      volume: volume2

@@ -1,0 +1,83 @@
+name: Deploy Proxmox HA Configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches:
+      - main
+    paths:
+      - 'instances/proxmox-hosts/ha/**'
+      - 'playbooks/setup-ha.yml'
+      - '.github/workflows/deploy-proxmox-ha.yml'
+
+jobs:
+  deploy-ha:
+    name: Deploy HA Configuration
+    runs-on: [self-hosted, k3s, homelab]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r inventory/requirements.txt
+          pip install ansible
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install -r requirements.yml
+
+      - name: Verify Ansible configuration
+        run: |
+          ansible --version
+          ansible-config dump --only-changed
+
+      - name: Check Proxmox cluster connectivity
+        run: |
+          ansible proxmox_hosts -m ping
+
+      - name: Verify cluster status
+        run: |
+          ansible proxmox_hosts -m shell -a "pvecm status" --limit jmpa-server-1
+
+      - name: Deploy HA configuration (Check Mode)
+        run: |
+          ansible-playbook playbooks/setup-ha.yml --check --diff
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Deploy HA configuration
+        run: |
+          ansible-playbook playbooks/setup-ha.yml
+        env:
+          ANSIBLE_FORCE_COLOR: 'true'
+
+      - name: Verify HA status
+        run: |
+          ansible proxmox_hosts -m shell -a "ha-manager status" --limit jmpa-server-1
+
+      - name: Display HA configuration
+        run: |
+          ansible proxmox_hosts -m shell -a "ha-manager config" --limit jmpa-server-1
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::HA deployment failed. Check logs for details."

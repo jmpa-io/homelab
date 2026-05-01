@@ -11,6 +11,12 @@ endif
 DOMAIN ?= jmpa.lab
 INVENTORY ?= inventory/main.py
 
+# Dashboard token settings.
+DASHBOARD_NAMESPACE       ?= kubernetes-dashboard
+DASHBOARD_TOKEN_DURATION  ?= 24h
+DASHBOARD_SSM_PATH        ?= /homelab/k3s/dashboard-token
+KUBECONFIG_PATH           ?= services/vms/k3s/kubeconfig.yaml
+
 #
 # Targets.
 #
@@ -60,7 +66,7 @@ dist/k3s-inventory.json: inventory/main.py
 
 ping-k3s-inventory: ## Pings the k3s inventory.
 ping-k3s-inventory: dist/k3s-inventory.json
-	@ansible server:agent -i $< -m ping
+	@ansible k3s_masters:k3s_nodes -i $< -m ping
 
 print-k3s-inventory: ## Prints the k3s inventory.
 print-k3s-inventory: inventory/main.py
@@ -70,12 +76,39 @@ print-k3s-inventory-no-jq: # Prints the k3s inventory, without jq formatting.
 print-k3s-inventory-no-jq: inventory/main.py
 	@python $<
 
-deploy-k3s: ## TODO
-	ansible-playbook k3s.orchestration.site -i dist/k3s-inventory.json
-#deploy-k3s: dist/k3s-inventory.json
-#	ansible-playbook k3s.orchestration.site -i $<
+deploy-k3s: ## Deploys the k3s cluster.
+deploy-k3s: dist/k3s-inventory.json
+	ansible-playbook services/vms/k3s/main.yml \
+		-i $< \
+		--extra-vars "root_playbook_directory=$$PWD"
 
-PHONY += create-k3s-inventory dist/k3s-inventory.json
+.PHONY += create-k3s-inventory dist/k3s-inventory.json
+
+#
+# Dashboard token rotation.
+#
+
+rotate-dashboard-token: ## Rotate the Kubernetes Dashboard token and store it in AWS SSM.
+rotate-dashboard-token: ## Duration can be overridden: make rotate-dashboard-token DASHBOARD_TOKEN_DURATION=8h
+	@echo "Rotating Kubernetes Dashboard token (duration: $(DASHBOARD_TOKEN_DURATION))..."
+	@TOKEN=$$(kubectl --kubeconfig $(KUBECONFIG_PATH) \
+		-n $(DASHBOARD_NAMESPACE) \
+		create token admin-user --duration=$(DASHBOARD_TOKEN_DURATION)); \
+	aws ssm put-parameter \
+		--name "$(DASHBOARD_SSM_PATH)" \
+		--value "$$TOKEN" \
+		--type SecureString \
+		--overwrite \
+		--region "$$AWS_REGION"; \
+	echo ""; \
+	echo "Token rotated successfully."; \
+	echo "  Duration : $(DASHBOARD_TOKEN_DURATION)"; \
+	echo "  SSM path : $(DASHBOARD_SSM_PATH)"; \
+	echo ""; \
+	echo "Retrieve it at any time with:"; \
+	echo "  aws ssm get-parameter --name $(DASHBOARD_SSM_PATH) --with-decryption --query Parameter.Value --output text"
+
+.PHONY += rotate-dashboard-token
 
 #
 # SSH.
@@ -89,6 +122,13 @@ PHONY += $(SSH_PUBLIC_KEY)
 upload-ssh-public-key: ## Uploads your local SSH public key to AWS SSM Parameter Store.
 upload-ssh-public-key: $$HOME/.ssh/id_ed25519.pub
 	aws ssm put-parameter --name "/homelab/ssh/public-key" --value "file://$<" --type String --overwrite
+
+upload-ssh-private-key: ## Uploads your local SSH private key to AWS SSM Parameter Store.
+upload-ssh-private-key: $$HOME/.ssh/id_ed25519
+	aws ssm put-parameter --name "/homelab/ssh/private-key" --value "file://$<" --type SecureString --overwrite
+
+upload-ssh-keys: ## Uploads both SSH public and private keys to AWS SSM Parameter Store.
+upload-ssh-keys: upload-ssh-public-key upload-ssh-private-key
 
 #
 # Cert.

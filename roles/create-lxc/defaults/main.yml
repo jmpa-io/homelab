@@ -7,4 +7,3 @@ create_lxc__lxc_cores: 4
 create_lxc__lxc_memory: 2048
 # create_lxc__lxc_disk: 2G
 create_lxc__lxc_ssh_pubkey: "{{ lookup('env', 'HOME') + '/.ssh/id_ed25519.pub' }}"
-

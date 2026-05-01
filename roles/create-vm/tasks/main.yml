@@ -1,6 +1,6 @@
 ---
-- name: Ensure required variables are set
-  fail:
+- name: Ensure required variables are set.
+  ansible.builtin.fail:
     msg: "Required variable {{ item }} is missing!"
   when: vars[item] is not defined
   loop:
@@ -15,116 +15,113 @@
     - create_vm__vm_gateway
     - create_vm__vm_tags
 
-- name: Check if VM exists
-  community.general.proxmox_kvm:
-    api_host: "{{ create_vm__proxmox_api_ip }}"
-    api_user: "{{ create_vm__proxmox_api_user }}"
-    api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-    api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-    node: "{{ create_vm__proxmox_node_name }}"
-    vmid: "{{ create_vm__vm_vmid }}"
-    state: current
-  register: vm_check
-  ignore_errors: true
-
-- name: Stop old VM asynchronously (if running)
-  community.general.proxmox_kvm:
-    api_host: "{{ create_vm__proxmox_api_ip }}"
-    api_user: "{{ create_vm__proxmox_api_user }}"
-    api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-    api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-    node: "{{ create_vm__proxmox_node_name }}"
-    vmid: "{{ create_vm__vm_vmid }}"
-    state: stopped
-  async: 300
-  poll: 0
-  register: stop_job
-  when: not vm_check.failed
-  ignore_errors: true
-
-- name: Wait for stop to complete
-  async_status:
-    jid: "{{ stop_job.ansible_job_id }}"
-  register: stop_result
-  until: stop_result.finished
-  retries: 20
-  delay: 5
-  when: stop_job is defined and not vm_check.failed
-
-- name: Remove VM (synchronous)
-  community.general.proxmox_kvm:
-    api_host: "{{ create_vm__proxmox_api_ip }}"
-    api_user: "{{ create_vm__proxmox_api_user }}"
-    api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-    api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-    node: "{{ create_vm__proxmox_node_name }}"
-    vmid: "{{ create_vm__vm_vmid }}"
-    state: absent
-  ignore_errors: true
-
-- name: Remove old VM disks
-  become: true
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-disk-0.qcow2"
-    - "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-cloudinit.qcow2"
-
-- name: Create VM (cloned from template)
-  community.general.proxmox_kvm:
-    api_host: "{{ create_vm__proxmox_api_ip }}"
-    api_user: "{{ create_vm__proxmox_api_user }}"
-    api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-    api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-    node: "{{ create_vm__proxmox_node_name }}"
-    name: "{{ create_vm__vm_hostname }}"
-    clone: "{{ create_vm__vm_clone_from_name }}"
-    vmid: "{{ create_vm__vm_clone_from_vmid }}"
-    newid: "{{ create_vm__vm_vmid }}"
-    ciuser: "{{ create_vm__vm_username }}"
-    cipassword: "{{ create_vm__vm_password }}"
-    full: true
-    state: present
-    timeout: 600
-
-- name: Set IP configuration
-  become: true
-  shell: |
-    set -e
-    qm set {{ create_vm__vm_vmid }} --ipconfig0 'ip={{ create_vm__vm_ip_with_cidr }},gw={{ create_vm__vm_gateway}}'
-
-- name: Update VM configuration (tags, onboot)
-  community.general.proxmox_kvm:
-    api_host: "{{ create_vm__proxmox_api_ip }}"
-    api_user: "{{ create_vm__proxmox_api_user }}"
-    api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-    api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-    node: "{{ create_vm__proxmox_node_name }}"
-    vmid: "{{ create_vm__vm_vmid }}"
-    tags: "{{ create_vm__vm_tags }}"
-    onboot: true
-    state: started
-    update: true
-
-- name: Wait for SSH to become available
-  wait_for:
-    host: "{{ create_vm__vm_ip_with_cidr.split('/')[0] }}"
-    port: 22
-    delay: 5
-    timeout: 120
-
-- name: Cleanup VM if creation fails
+# Set Proxmox API credentials once for every community.general.proxmox_kvm
+# call in this task file, eliminating the 5-param repetition per task.
+- name: Create and manage VM.
+  module_defaults:
+    community.general.proxmox_kvm:
+      api_host: "{{ create_vm__proxmox_api_ip }}"
+      api_user: "{{ create_vm__proxmox_api_user }}"
+      api_token_id: "{{ create_vm__proxmox_api_token_id }}"
+      api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
+      node: "{{ create_vm__proxmox_node_name }}"
   block:
-    - name: Remove VM on failure
+
+    - name: Check if VM exists.
       community.general.proxmox_kvm:
-        api_host: "{{ create_vm__proxmox_api_ip }}"
-        api_user: "{{ create_vm__proxmox_api_user }}"
-        api_token_id: "{{ create_vm__proxmox_api_token_id }}"
-        api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
-        node: "{{ create_vm__proxmox_node_name }}"
+        vmid: "{{ create_vm__vm_vmid }}"
+        state: current
+      register: vm_check
+      ignore_errors: true  # noqa: ignore-errors
+
+    - name: Skip VM creation (VM exists and create_vm__skip_delete is true).
+      ansible.builtin.debug:
+        msg: "VM {{ create_vm__vm_vmid }} already exists and create_vm__skip_delete=true — skipping."
+      when: not vm_check.failed and create_vm__skip_delete | bool
+
+    - name: Stop old VM asynchronously (if running).
+      community.general.proxmox_kvm:
+        vmid: "{{ create_vm__vm_vmid }}"
+        state: stopped
+      async: 300
+      poll: 0
+      register: stop_job
+      when: not vm_check.failed and not (create_vm__skip_delete | bool)
+      ignore_errors: true  # noqa: ignore-errors
+
+    - name: Wait for stop to complete.
+      ansible.builtin.async_status:
+        jid: "{{ stop_job.ansible_job_id }}"
+      register: stop_result
+      until: stop_result.finished
+      retries: 20
+      delay: 5
+      when: stop_job is defined and stop_job.ansible_job_id is defined and not (create_vm__skip_delete | bool)
+
+    - name: Remove VM.
+      community.general.proxmox_kvm:
         vmid: "{{ create_vm__vm_vmid }}"
         state: absent
-      ignore_errors: true
-  rescue: []
+      ignore_errors: true  # noqa: ignore-errors
+      when: not (create_vm__skip_delete | bool)
 
+    - name: Remove old VM disks.
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-disk-0.qcow2"
+        - "/var/lib/vz/images/{{ create_vm__vm_vmid }}/vm-{{ create_vm__vm_vmid }}-cloudinit.qcow2"
+      when: not (create_vm__skip_delete | bool)
+
+    # Clone and configure the VM. On any failure the rescue block removes the
+    # partially-created VM so the next run starts from a clean state.
+    - name: Create and configure VM.  # noqa: name[casing]
+      when: not (create_vm__skip_delete | bool) or vm_check.failed
+      block:
+        - name: Clone VM from template.
+          community.general.proxmox_kvm:
+            name: "{{ create_vm__vm_hostname }}"
+            clone: "{{ create_vm__vm_clone_from_name }}"
+            vmid: "{{ create_vm__vm_clone_from_vmid }}"
+            newid: "{{ create_vm__vm_vmid }}"
+            ciuser: "{{ create_vm__vm_username }}"
+            cipassword: "{{ create_vm__vm_password }}"
+            full: true
+            state: present
+            timeout: 600
+
+        - name: Set IP configuration.
+          become: true
+          ansible.builtin.shell: |
+            set -e
+            qm set {{ create_vm__vm_vmid }} \
+              --ipconfig0 'ip={{ create_vm__vm_ip_with_cidr }},gw={{ create_vm__vm_gateway }}'
+          changed_when: true
+
+        - name: Update VM configuration (tags, onboot, start).
+          community.general.proxmox_kvm:
+            vmid: "{{ create_vm__vm_vmid }}"
+            tags: "{{ create_vm__vm_tags }}"
+            onboot: true
+            state: started
+            update: true
+
+        - name: Wait for SSH to become available.
+          ansible.builtin.wait_for:
+            host: "{{ create_vm__vm_ip_with_cidr.split('/')[0] }}"
+            port: 22
+            delay: 5
+            timeout: 120
+
+      rescue:
+        - name: Remove VM after failed creation.
+          community.general.proxmox_kvm:
+            vmid: "{{ create_vm__vm_vmid }}"
+            state: absent
+          ignore_errors: true  # noqa: ignore-errors
+
+        - name: Fail after cleanup.
+          ansible.builtin.fail:
+            msg: "VM {{ create_vm__vm_vmid }} ({{ create_vm__vm_hostname }}) creation failed and has been removed. Check errors above."

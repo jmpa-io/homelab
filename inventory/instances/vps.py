@@ -1,6 +1,4 @@
-from dataclasses import dataclass, field
-from typing import List
-
+from dataclasses import dataclass
 from .container_instance import ContainerInstance
 
 
@@ -9,24 +7,12 @@ class VPS(ContainerInstance):
   """Virtual Private Server instance."""
 
   name: str = 'jmpa-vps-{id}'
+
   def to_dict(self) -> dict:
     """Convert VPS instance to dictionary for Ansible consumption."""
-    vps = {
-      'name': self.name,
-      'ipv4': self.ipv4,
-      'ipv4_cidr': self.ipv4_cidr,
-      'ipv4_with_cidr': self.ipv4_with_cidr,
-      'device_name': self.device_name,
-    }
-
-    # Add host services.
-    vps.update(self.get_host_services())
-
-    # Add container services.
-    services = self.get_container_services()
-
-    return {
-      'ansible_host': self.ansible_host,
-      'vps': vps,
-      'services': services,
-    }
+    base = self._base_dict()
+    vps_data = base.pop('instance')
+    base['vps'] = vps_data
+    # Include container services (LXC services running on this VPS).
+    base['services'] = self.get_container_services()
+    return base
