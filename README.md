@@ -94,6 +94,11 @@ Verify everything is in place:
 make print-inventory   # should output valid JSON with no errors
 ```
 
+> **Homepage widget secrets** (Pi-hole API key, Jellyfin API key, arr stack keys, etc.)
+> are **not required** for any of this. Add them as you bring each service online —
+> a missing key just shows a widget error on the Homepage dashboard, nothing else breaks.
+> See [docs/ssm-parameters.md](docs/ssm-parameters.md) for the full optional list.
+
 ### 1. Build the VM template (prerequisite for k3s)
 
 k3s VMs are cloned from a Debian 12 cloud-init template. Run this once per Proxmox host:

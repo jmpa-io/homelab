@@ -2,16 +2,20 @@
 from dataclasses import dataclass
 from typing import Optional, Dict
 
-from k8s_services import _require
-
 
 @dataclass
 class HomepageConfig:
-    """Homepage dashboard configuration."""
+    """Homepage dashboard configuration.
+
+    All secrets are optional at inventory generation time — missing values
+    mean that Homepage widget will show an error, but nothing else breaks.
+    The Homepage deployment playbook will fail if the secrets it needs are
+    not populated, which is the right time to surface that.
+    """
 
     namespace: str = "homepage"
 
-    # Secrets (from SSM/environment)
+    # Secrets (from SSM/environment) — all optional
     proxmox_user: str = "root@pam"
     proxmox_pass: Optional[str] = None
 
@@ -42,27 +46,32 @@ class HomepageConfig:
     def to_dict(self) -> Dict[str, str]:
         """Convert to dictionary for Ansible secret creation.
 
-        Raises ValueError if any required secret is missing from SSM.
+        Missing values are emitted as empty strings — Homepage will show a
+        widget error for that service but everything else keeps working.
+        Add the SSM parameter to populate it at any time and redeploy.
         """
+        def val(v: Optional[str]) -> str:
+            return v or ''
+
         return {
-            'HOMEPAGE_VAR_PROXMOX_USER': self.proxmox_user,
-            'HOMEPAGE_VAR_PROXMOX_PASS':        _require(self.proxmox_pass,        '/homelab/proxmox/password'),
-            'HOMEPAGE_VAR_PIHOLE_API_KEY':       _require(self.pihole_api_key,      '/homelab/pihole/api-key'),
-            'HOMEPAGE_VAR_NAS_USER': self.nas_user,
-            'HOMEPAGE_VAR_NAS_PASS':             _require(self.nas_pass,            '/homelab/nas/password'),
-            'HOMEPAGE_VAR_ARGOCD_PASS':          _require(self.argocd_pass,         '/homelab/argocd/admin-password'),
-            'HOMEPAGE_VAR_GRAFANA_PASS':         _require(self.grafana_pass,        '/homelab/grafana/admin-password'),
-            'HOMEPAGE_VAR_JELLYFIN_API_KEY':     _require(self.jellyfin_api_key,    '/homelab/jellyfin/api-key'),
-            'HOMEPAGE_VAR_JELLYSEERR_API_KEY':   _require(self.jellyseerr_api_key,  '/homelab/jellyseerr/api-key'),
-            'HOMEPAGE_VAR_TAUTULLI_API_KEY':     _require(self.tautulli_api_key,    '/homelab/tautulli/api-key'),
-            'HOMEPAGE_VAR_PROWLARR_API_KEY':     _require(self.prowlarr_api_key,    '/homelab/prowlarr/api-key'),
-            'HOMEPAGE_VAR_SONARR_API_KEY':       _require(self.sonarr_api_key,      '/homelab/sonarr/api-key'),
-            'HOMEPAGE_VAR_RADARR_API_KEY':       _require(self.radarr_api_key,      '/homelab/radarr/api-key'),
-            'HOMEPAGE_VAR_LIDARR_API_KEY':       _require(self.lidarr_api_key,      '/homelab/lidarr/api-key'),
-            'HOMEPAGE_VAR_READARR_API_KEY':      _require(self.readarr_api_key,     '/homelab/readarr/api-key'),
-            'HOMEPAGE_VAR_BAZARR_API_KEY':       _require(self.bazarr_api_key,      '/homelab/bazarr/api-key'),
-            'HOMEPAGE_VAR_DELUGE_PASS':          _require(self.deluge_pass,         '/homelab/deluge/password'),
-            'HOMEPAGE_VAR_N8N_API_KEY':          _require(self.n8n_api_key,         '/homelab/n8n/api-key'),
-            'HOMEPAGE_VAR_GITHUB_TOKEN':         _require(self.github_token,        '/tokens/github'),
-            'HOMEPAGE_VAR_TAILSCALE_API_KEY':    _require(self.tailscale_api_key,   '/homelab/tailscale/api-key'),
+            'HOMEPAGE_VAR_PROXMOX_USER':       self.proxmox_user,
+            'HOMEPAGE_VAR_PROXMOX_PASS':        val(self.proxmox_pass),
+            'HOMEPAGE_VAR_PIHOLE_API_KEY':       val(self.pihole_api_key),
+            'HOMEPAGE_VAR_NAS_USER':             self.nas_user,
+            'HOMEPAGE_VAR_NAS_PASS':             val(self.nas_pass),
+            'HOMEPAGE_VAR_ARGOCD_PASS':          val(self.argocd_pass),
+            'HOMEPAGE_VAR_GRAFANA_PASS':         val(self.grafana_pass),
+            'HOMEPAGE_VAR_JELLYFIN_API_KEY':     val(self.jellyfin_api_key),
+            'HOMEPAGE_VAR_JELLYSEERR_API_KEY':   val(self.jellyseerr_api_key),
+            'HOMEPAGE_VAR_TAUTULLI_API_KEY':     val(self.tautulli_api_key),
+            'HOMEPAGE_VAR_PROWLARR_API_KEY':     val(self.prowlarr_api_key),
+            'HOMEPAGE_VAR_SONARR_API_KEY':       val(self.sonarr_api_key),
+            'HOMEPAGE_VAR_RADARR_API_KEY':       val(self.radarr_api_key),
+            'HOMEPAGE_VAR_LIDARR_API_KEY':       val(self.lidarr_api_key),
+            'HOMEPAGE_VAR_READARR_API_KEY':      val(self.readarr_api_key),
+            'HOMEPAGE_VAR_BAZARR_API_KEY':       val(self.bazarr_api_key),
+            'HOMEPAGE_VAR_DELUGE_PASS':          val(self.deluge_pass),
+            'HOMEPAGE_VAR_N8N_API_KEY':          val(self.n8n_api_key),
+            'HOMEPAGE_VAR_GITHUB_TOKEN':         val(self.github_token),
+            'HOMEPAGE_VAR_TAILSCALE_API_KEY':    val(self.tailscale_api_key),
         }

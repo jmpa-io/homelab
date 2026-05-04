@@ -94,10 +94,17 @@ which path to create.
 /homelab/grafana/admin-password        # Grafana admin password
 ```
 
-### Media Services (for Homepage dashboard)
+### Media Services (optional — only needed for Homepage dashboard widgets)
+
+These are only read when deploying `deploy-homepage.yml`. Missing values
+cause that widget to show an error on the dashboard — nothing else breaks.
+Add them as you bring each service online.
 
 ```bash
-/homelab/argocd/admin-password
+/homelab/argocd/admin-password         # populated automatically by deploy-gitops.yml
+/homelab/proxmox/password
+/homelab/pihole/api-key                # Settings → API in Pi-hole UI
+/homelab/nas/password
 /homelab/jellyfin/api-key              # Settings → API Keys
 /homelab/jellyseerr/api-key            # Settings → General
 /homelab/tautulli/api-key              # Settings → Web Interface
@@ -109,6 +116,7 @@ which path to create.
 /homelab/bazarr/api-key                # Settings → General
 /homelab/deluge/password               # Deluge web UI password
 /homelab/n8n/api-key                   # n8n API key
+/homelab/tailscale/api-key             # Tailscale API key (for Homepage widget)
 ```
 
 ### VPS (optional — only needed after `make provision-vps`)
