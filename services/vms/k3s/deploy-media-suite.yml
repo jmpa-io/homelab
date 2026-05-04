@@ -12,6 +12,9 @@
     manifest_staging_dir: "{{ playbook_dir }}/dist/manifests"
 
   tasks:
+    - name: Include common K3s tasks
+      ansible.builtin.include_tasks: tasks/common.yml
+
     - name: Ensure manifest staging directory exists
       ansible.builtin.file:
         path: "{{ manifest_staging_dir }}"
@@ -127,7 +130,9 @@
       register: media_deployments
       until: >
         media_deployments.resources | length > 0 and
-        media_deployments.resources | selectattr('status.readyReplicas', 'defined') | list | length == media_deployments.resources | length
+        media_deployments.resources | selectattr('status.readyReplicas', 'defined') |
+        selectattr('status.readyReplicas', 'ge', 1) | list | length ==
+        media_deployments.resources | length
       retries: 30
       delay: 10
 

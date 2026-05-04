@@ -87,7 +87,7 @@ print-k3s-inventory-no-jq: inventory/main.py
 	@python $<
 
 deploy-k3s: ## Deploys the k3s cluster.
-deploy-k3s: dist/k3s-inventory.json
+deploy-k3s: dist/inventory.json
 	ansible-playbook services/vms/k3s/main.yml \
 		-i $< \
 		--extra-vars "root_playbook_directory=$$PWD"
@@ -240,7 +240,19 @@ configure-ec2: dist/inventory.json
 		-i $< \
 		--extra-vars "root_playbook_directory=$$PWD"
 
-.PHONY += provision-ec2 destroy-ec2 configure-ec2
+configure-k3s-storage: ## Configures NFS storage class on the k3s cluster (requires full inventory).
+configure-k3s-storage: dist/inventory.json
+	ansible-playbook services/vms/k3s/configure-storage.yml \
+		-i $< \
+		--extra-vars "root_playbook_directory=$$PWD"
+
+deploy-k3s-media-volumes: ## Deploys NFS media volumes to k3s (requires full inventory for NAS group).
+deploy-k3s-media-volumes: dist/inventory.json
+	ansible-playbook services/vms/k3s/deploy-media-volumes.yml \
+		-i $< \
+		--extra-vars "root_playbook_directory=$$PWD"
+
+.PHONY += configure-k3s-storage deploy-k3s-media-volumes
 
 ---: ## ---
 

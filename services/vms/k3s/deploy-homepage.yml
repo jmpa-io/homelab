@@ -8,6 +8,14 @@
     - "{{ playbook_dir }}/vars/main.yml"
 
   tasks:
+    - name: Fail early if homepage secrets are not configured in inventory
+      ansible.builtin.fail:
+        msg: >
+          k8s_services.homepage is not set in the inventory.
+          Ensure homepage_config is passed to K8sServices in inventory/main.py
+          and that all required SSM parameters are populated.
+      when: k8s_services.homepage is not defined or k8s_services.homepage is none
+
     - name: Create Homepage namespace
       kubernetes.core.k8s:
         state: present

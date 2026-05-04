@@ -25,7 +25,7 @@ def main():
 
   # Setup inventory variables & config.
   common_subnet_ipv4  = ssm_client.require_parameter('/homelab/subnet')
-  default_cidr        = read_env_var('DEFAULT_CIDR', 24, False, int)
+  default_cidr        = read_env_var('DEFAULT_CIDR', '24')  # Keep as str — Instance.ipv4_cidr is typed str
   domain              = read_env_var('DOMAIN', 'jmpa.lab')
 
   # Fetch shared secrets once — reused in both inventory_vars and k8s_services.
@@ -77,17 +77,17 @@ def main():
 
   nginx_reverse_proxy = LXCService(
     name='nginx_reverse_proxy',
-    container_id=read_env_var('NGINX_REVERSE_PROXY_CONTAINER_ID', '5'),
+    container_id=read_env_var('NGINX_REVERSE_PROXY_CONTAINER_ID', 5, value_type=int),
   )
 
   tailscale_gateway = LXCService(
     name='tailscale_gateway',
-    container_id=read_env_var('TAILSCALE_GATEWAY_CONTAINER_ID', '15'),
+    container_id=read_env_var('TAILSCALE_GATEWAY_CONTAINER_ID', 15, value_type=int),
   )
 
   prometheus = LXCService(
     name='prometheus',
-    container_id=read_env_var('PROMETHEUS_CONTAINER_ID', '40'),
+    container_id=read_env_var('PROMETHEUS_CONTAINER_ID', 40, value_type=int),
     default_port=read_env_var('PROMETHEUS_PORT', '9090'),
     protocol=Protocol.HTTP,
     add_to_proxy_static_records=False,
@@ -95,14 +95,14 @@ def main():
 
   grafana = LXCService(
     name='grafana',
-    container_id=read_env_var('GRAFANA_CONTAINER_ID', '45'),
+    container_id=read_env_var('GRAFANA_CONTAINER_ID', 45, value_type=int),
     default_port=read_env_var('GRAFANA_PORT', '3000'),
     protocol=Protocol.HTTP,
   )
 
   loki = LXCService(
     name='loki',
-    container_id=read_env_var('LOKI_CONTAINER_ID', '50'),
+    container_id=read_env_var('LOKI_CONTAINER_ID', 50, value_type=int),
     default_port=read_env_var('LOKI_PORT', '3100'),
     protocol=Protocol.HTTP,
     add_to_proxy_static_records=False,
@@ -110,7 +110,7 @@ def main():
 
   tempo = LXCService(
     name='tempo',
-    container_id=read_env_var('TEMPO_CONTAINER_ID', '55'),
+    container_id=read_env_var('TEMPO_CONTAINER_ID', 55, value_type=int),
     default_port=read_env_var('TEMPO_PORT', '3200'),
     protocol=Protocol.HTTP,
     add_to_proxy_static_records=False,

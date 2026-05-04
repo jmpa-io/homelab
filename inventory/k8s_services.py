@@ -1,6 +1,11 @@
 """K8s service definitions for inventory."""
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+  from homepage_config import HomepageConfig
 
 
 def _require(value: Optional[str], ssm_path: str) -> str:
@@ -266,7 +271,7 @@ class K8sServices:
     github_runner:        GitHubRunnerConfig          = field(default_factory=GitHubRunnerConfig)
     observability:        Optional[ObservabilityConfig] = None
     media:                MediaSuite                  = field(default_factory=MediaSuite)
-    homepage:             Optional['HomepageConfig']  = None  # Populated from main.py
+    homepage:             Optional[HomepageConfig]          = None  # Populated from main.py
 
     def to_dict(self) -> dict:
         """Convert to dictionary for Ansible. Raises on any missing required secret."""

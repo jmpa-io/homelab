@@ -38,15 +38,18 @@
         path: "{{ item }}"
         state: directory
         mode: '0755'
-      delegate_to: "{{ groups['proxmox_hosts'][0] }}"
+      # Delegate to the NAS host — that's where the NFS paths must exist.
+      # The NAS SSH port is non-standard (9222 by default), handled via hostvars.
+      delegate_to: "{{ groups['nas'][0] }}"
       become: true
       loop:
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media"
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/movies"
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/tv"
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/music"
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/media/books"
-        - "/mnt/nfs/{{ nas_instance_name }}/volume1/downloads"
+        - "/volume1/media"
+        - "/volume1/media/movies"
+        - "/volume1/media/tv"
+        - "/volume1/media/music"
+        - "/volume1/media/books"
+        - "/volume1/downloads"
+        - "/volume2"
 
     - name: Template NFS media volumes manifest
       ansible.builtin.template:
@@ -77,7 +80,10 @@
         - nfs-media-movies
         - nfs-media-tv
         - nfs-media-downloads
+        - nfs-media-music
+        - nfs-media-books
         - nfs-media-root
+        - nfs-volume2
 
     - name: Get PersistentVolumes status
       ansible.builtin.shell: |

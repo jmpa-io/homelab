@@ -117,6 +117,7 @@ class ProxmoxHost(ContainerInstance):
             'ipv4_cidr': self.bridge.ipv4_cidr,
             'ipv4_with_cidr': self.bridge.ipv4_with_cidr,
             'subnet': self.bridge.subnet,
+            'subnet_with_cidr': self.bridge.subnet_with_cidr,
             'default_ipv4_prefix': self.bridge.ipv4_prefix,
             'default_ipv4_suffix': self.bridge.ipv4_suffix,
         }

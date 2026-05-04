@@ -20,7 +20,6 @@
       kubernetes.core.helm_repository:
         name: kubernetes-dashboard
         repo_url: https://kubernetes.github.io/dashboard/
-        kubeconfig: "{{ k3s_kubeconfig_path }}"
 
     - name: Install Kubernetes Dashboard via Helm
       kubernetes.core.helm:

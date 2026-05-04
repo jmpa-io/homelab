@@ -4,6 +4,7 @@
 
 - name: Configure NFS Storage Class for K3s
   hosts: k3s_masters[0]
+  gather_facts: false
   become: true
 
   vars:
@@ -14,12 +15,13 @@
     nfs_path: "{{ k8s_services.nfs_storage.dynamic.path }}"
 
   tasks:
-    - name: Create NFS storage mount point on Proxmox host.
+    - name: Ensure NFS dynamic storage path exists on NAS.
       ansible.builtin.file:
-        path: "/mnt/nfs/{{ nas_name }}{{ nfs_path }}"
+        path: "{{ nfs_path }}"
         state: directory
         mode: '0755'
-      delegate_to: "{{ groups['proxmox_hosts'][0] }}"
+      # Delegate to the NAS — that's where the NFS export must exist.
+      delegate_to: "{{ groups['nas'][0] }}"
       become: true
 
     - name: Create temporary manifest directory.

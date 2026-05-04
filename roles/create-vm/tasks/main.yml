@@ -104,9 +104,10 @@
           community.general.proxmox_kvm:
             vmid: "{{ create_vm__vm_vmid }}"
             tags: "{{ create_vm__vm_tags }}"
-            onboot: true
+            onboot: 1
             state: started
             update: true
+          changed_when: true
 
         - name: Wait for SSH to become available.
           ansible.builtin.wait_for:

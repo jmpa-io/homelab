@@ -1,6 +1,7 @@
 ---
 - name: Setup k3s VMs.
   hosts: proxmox_hosts
+  gather_facts: false
   vars:
     proxmox_node_name: "{{ host.name }}"
     proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
@@ -90,10 +91,12 @@
   vars_files:
     - "{{ playbook_dir }}/vars/main.yml"
   vars:
-    k3s_version: "{{ common.k3s.version }}"
-    k3s_cluster_init: true
+    # k3s_version comes from k3s_cluster group vars (inventory.py line 213).
+    # Prefer that over common.k3s.version so this play works with both the
+    # full inventory and the k3s-only filtered one.
+    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
     k3s_server_manifests_urls:
-      - url: https://raw.githubusercontent.com/metallb/metallb/{{ k8s_services.metallb.version }}/config/manifests/metallb-native.yaml
+      - url: "https://raw.githubusercontent.com/metallb/metallb/{{ k8s_services.metallb.version }}/config/manifests/metallb-native.yaml"
         filename: metallb.yaml
 
   tasks:
@@ -108,13 +111,25 @@
       register: k3s_install_result
       changed_when: k3s_install_result.rc == 0 and k3s_install_result.stdout != ''
 
-    - name: Wait for k3s to be ready.
+    - name: Wait for k3s to be ready (first master).
       ansible.builtin.wait_for:
         path: /etc/rancher/k3s/k3s.yaml
         state: present
         timeout: 120
 
-    - name: Get k3s token.
+    - name: Ensure k3s auto-deploy manifests directory exists.
+      ansible.builtin.file:
+        path: /var/lib/rancher/k3s/server/manifests
+        state: directory
+        mode: '0700'
+
+    - name: Download server manifests (MetalLB etc.) to k3s auto-deploy dir.
+      ansible.builtin.get_url:
+        url: "{{ item.url }}"
+        dest: "/var/lib/rancher/k3s/server/manifests/{{ item.filename }}"
+        mode: '0644'
+      loop: "{{ k3s_server_manifests_urls }}"
+      when: k3s_server_manifests_urls | length > 0
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
       register: k3s_token_encoded
@@ -149,11 +164,21 @@
   vars_files:
     - "{{ playbook_dir }}/vars/main.yml"
   vars:
-    k3s_version: "{{ common.k3s.version }}"
-    k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] }}"
+    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
+    k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] | default('') }}"
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 
   tasks:
+    - name: Assert k3s cluster token is available.
+      ansible.builtin.assert:
+        that: k3s_token != ''
+        fail_msg: >
+          k3s_cluster_token is not set on localhost. This means the first-master
+          play was skipped (k3s already installed) and the token was not stored.
+          Re-run with: ansible-playbook services/vms/k3s/main.yml -i dist/inventory.json
+          --extra-vars "root_playbook_directory=$PWD" --tags token
+          Or manually set: hostvars['localhost']['k3s_cluster_token']
+
     - name: Install k3s on additional masters.  # noqa: command-instead-of-module risky-shell-pipe
       ansible.builtin.shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" K3S_TOKEN="{{ k3s_token }}" sh -s - server \
@@ -165,7 +190,7 @@
       register: k3s_install_result
       changed_when: k3s_install_result.rc == 0 and k3s_install_result.stdout != ''
 
-    - name: Wait for k3s to be ready.
+    - name: Wait for k3s to be ready (additional master).
       ansible.builtin.wait_for:
         path: /etc/rancher/k3s/k3s.yaml
         state: present
@@ -176,12 +201,23 @@
   hosts: k3s_nodes
   become: true
   serial: 2
+  vars_files:
+    - "{{ playbook_dir }}/vars/main.yml"
   vars:
-    k3s_version: "{{ common.k3s.version }}"
-    k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] }}"
+    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
+    k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] | default('') }}"
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 
   tasks:
+    - name: Assert k3s cluster token is available.
+      ansible.builtin.assert:
+        that: k3s_token != ''
+        fail_msg: >
+          k3s_cluster_token is not set on localhost. The first-master play was
+          skipped (k3s already installed) and the token was not stored in this run.
+          Re-run the full playbook or check /var/lib/rancher/k3s/server/node-token
+          on the first master and store it manually.
+
     - name: Install k3s agent on worker nodes.  # noqa: command-instead-of-module risky-shell-pipe
       ansible.builtin.shell: |
         curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="{{ k3s_version }}" K3S_TOKEN="{{ k3s_token }}" K3S_URL="{{ k3s_server_url }}" sh -
@@ -199,6 +235,7 @@
 # Configure k3s cluster
 - name: Configure k3s cluster.
   hosts: k3s_masters[0]
+  gather_facts: false
   become: true
 
   tasks:

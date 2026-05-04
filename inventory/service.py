@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Any
 
 
 class Protocol(Enum):
@@ -39,18 +39,13 @@ class LXCService(Service):
   ipv4: str = field(init=False, default='')
   ipv4_cidr: str = field(init=False, default='')
   ipv4_with_cidr: str = field(init=False, default='')
-  static_records: List[Dict[str, str]] = field(default_factory=list, init=False)
+  # Populated by Inventory._setup_proxy_static_records() for the nginx service.
+  # Schema: [{subdomain, forward_to_ipv4_with_port, protocol}, ...]
+  # Left empty here — the schema used by the proxy differs from per-service
+  # metadata, so we do not initialise it with a conflicting shape.
+  static_records: List[Dict[str, Any]] = field(default_factory=list, init=False)
 
-  def __post_init__(self):
-    self.static_records = [
-      {
-        'name': self.name,
-        'port': self.default_port,
-        'protocol': self.protocol.value,
-      }
-    ]
-
-  def to_dict(self) -> Dict[str, any]:
+  def to_dict(self) -> Dict[str, Any]:
     """Convert service to dictionary for Ansible inventory."""
     return {
       'name': self.name,
@@ -67,11 +62,7 @@ class LXCService(Service):
 
 @dataclass
 class CommunityScriptService(Service):
-  """Service deployed via Proxmox VE Community Script.
-
-  These services are LXC containers deployed using community scripts.
-  Their IPs are automatically calculated from VMID and bridge.
-  """
+  """Service deployed via Proxmox VE Community Script."""
   vmid: int
   hostname: str
   bridge: str = 'vmbr0'
@@ -82,28 +73,18 @@ class CommunityScriptService(Service):
 
   def __post_init__(self):
     """Calculate IP address from VMID and bridge."""
-    # Validate VMID range to prevent IP collisions
     if self.vmid > 999:
       raise ValueError(
         f"VMID {self.vmid} exceeds maximum of 999. "
         f"VMIDs above 999 cause IP address collisions in the last octet."
       )
-
-    # Extract bridge number (e.g., 'vmbr0' -> 0)
     bridge_num = int(self.bridge.replace('vmbr', ''))
-    # Calculate third octet (bridge_num + 1)
     third_octet = bridge_num + 1
-    # Get last 2 digits of VMID for fourth octet
     fourth_octet = str(self.vmid)[-2:].zfill(2)
-    # Build IP: 10.0.{third_octet}.{fourth_octet}
     self.ipv4 = f'10.0.{third_octet}.{fourth_octet}'
 
   def to_dns_record(self, domain: str = 'jmpa.lab') -> Dict[str, str]:
-    """Generate DNS record for Pi-hole custom.list format.
-
-    Returns:
-      Dict with 'ip' and 'hostname' keys for DNS record.
-    """
+    """Generate DNS record for Pi-hole custom.list format."""
     return {
       'ip': self.ipv4,
       'hostname': f'{self.hostname}.{domain}',

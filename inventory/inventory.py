@@ -28,7 +28,7 @@ class Inventory:
     'EC2': 1,
   }, init=False, repr=False)
 
-  def add_instance(self, instance: Union[ProxmoxHost, NAS, VPS, DNS]):
+  def add_instance(self, instance: Union[ProxmoxHost, NAS, VPS, DNS, EC2]):
     """Adds a single instance to the inventory."""
     instance_type = type(instance).__name__
     instance_id = self._next_id_per_type[instance_type]
@@ -69,7 +69,7 @@ class Inventory:
     self._next_id_per_type[instance_type] += 1
 
 
-  def add_instances(self, *instances: Union[ProxmoxHost, NAS, VPS, DNS]):
+  def add_instances(self, *instances: Union[ProxmoxHost, NAS, VPS, DNS, EC2]):
     """Adds multiple instances to the inventory."""
     for instance in instances:
       self.add_instance(instance)
@@ -214,7 +214,10 @@ class Inventory:
         'ansible_user': self.kube_inventory.ansible_user,
         'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
-        'token': self.kube_inventory.token,
+        # Emit github and k8s_services here so all k3s plays work with either
+        # the full inventory or the k3s-only filtered one.
+        'github': self.vars.get('github', {}),
+        'k8s_services': self.vars.get('k8s_services', {}),
       },
       'children': {},
     }
