@@ -11,8 +11,8 @@
         widget:
           type: proxmox
           url: https://server-1.jmpa.lab:8006
-          username: {{HOMEPAGE_VAR_PROXMOX_USER}}
-          password: {{HOMEPAGE_VAR_PROXMOX_PASS}}
+          username: "{{HOMEPAGE_VAR_PROXMOX_USER}}"
+          password: "{{HOMEPAGE_VAR_PROXMOX_PASS}}"
           node: jmpa-server-1
 
     - Pi-hole:
@@ -22,7 +22,7 @@
         widget:
           type: pihole
           url: http://dns-1.jmpa.lab
-          key: {{HOMEPAGE_VAR_PIHOLE_API_KEY}}
+          key: "{{HOMEPAGE_VAR_PIHOLE_API_KEY}}"
 
     - Terramaster NAS:
         icon: nas.png
@@ -31,8 +31,8 @@
         widget:
           type: customapi
           url: http://nas-1.jmpa.lab:8181
-          username: {{HOMEPAGE_VAR_NAS_USER}}
-          password: {{HOMEPAGE_VAR_NAS_PASS}}
+          username: "{{HOMEPAGE_VAR_NAS_USER}}"
+          password: "{{HOMEPAGE_VAR_NAS_PASS}}"
 
 # Kubernetes
 - Kubernetes:
@@ -56,7 +56,7 @@
           type: argocd
           url: https://argocd.jmpa.lab
           username: admin
-          password: {{HOMEPAGE_VAR_ARGOCD_PASS}}
+          password: "{{HOMEPAGE_VAR_ARGOCD_PASS}}"
 
     - Grafana:
         icon: grafana.png
@@ -66,7 +66,7 @@
           type: grafana
           url: http://grafana.jmpa.lab
           username: admin
-          password: {{HOMEPAGE_VAR_GRAFANA_PASS}}
+          password: "{{HOMEPAGE_VAR_GRAFANA_PASS}}"
 
     - Prometheus:
         icon: prometheus.png
@@ -85,7 +85,7 @@
         widget:
           type: jellyfin
           url: http://nas-1.jmpa.lab:8096
-          key: {{HOMEPAGE_VAR_JELLYFIN_API_KEY}}
+          key: "{{HOMEPAGE_VAR_JELLYFIN_API_KEY}}"
 
     - Jellyseerr:
         icon: jellyseerr.png
@@ -94,7 +94,7 @@
         widget:
           type: jellyseerr
           url: http://jellyseerr.media.svc.cluster.local:5055
-          key: {{HOMEPAGE_VAR_JELLYSEERR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_JELLYSEERR_API_KEY}}"
 
     - Tautulli:
         icon: tautulli.png
@@ -103,7 +103,7 @@
         widget:
           type: tautulli
           url: http://tautulli.media.svc.cluster.local:8181
-          key: {{HOMEPAGE_VAR_TAUTULLI_API_KEY}}
+          key: "{{HOMEPAGE_VAR_TAUTULLI_API_KEY}}"
 
 # Media Automation (*arr Suite)
 - Media Automation:
@@ -114,7 +114,7 @@
         widget:
           type: prowlarr
           url: http://prowlarr.media.svc.cluster.local:9696
-          key: {{HOMEPAGE_VAR_PROWLARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_PROWLARR_API_KEY}}"
 
     - Sonarr:
         icon: sonarr.png
@@ -123,7 +123,7 @@
         widget:
           type: sonarr
           url: http://sonarr.media.svc.cluster.local:8989
-          key: {{HOMEPAGE_VAR_SONARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_SONARR_API_KEY}}"
 
     - Radarr:
         icon: radarr.png
@@ -132,7 +132,7 @@
         widget:
           type: radarr
           url: http://radarr.media.svc.cluster.local:7878
-          key: {{HOMEPAGE_VAR_RADARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_RADARR_API_KEY}}"
 
     - Lidarr:
         icon: lidarr.png
@@ -141,7 +141,7 @@
         widget:
           type: lidarr
           url: http://lidarr.media.svc.cluster.local:8686
-          key: {{HOMEPAGE_VAR_LIDARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_LIDARR_API_KEY}}"
 
     - Readarr:
         icon: readarr.png
@@ -150,7 +150,7 @@
         widget:
           type: readarr
           url: http://readarr.media.svc.cluster.local:8787
-          key: {{HOMEPAGE_VAR_READARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_READARR_API_KEY}}"
 
     - Bazarr:
         icon: bazarr.png
@@ -159,7 +159,7 @@
         widget:
           type: bazarr
           url: http://bazarr.media.svc.cluster.local:6767
-          key: {{HOMEPAGE_VAR_BAZARR_API_KEY}}
+          key: "{{HOMEPAGE_VAR_BAZARR_API_KEY}}"
 
 # Download Clients
 - Download Clients:
@@ -170,7 +170,7 @@
         widget:
           type: deluge
           url: http://deluge.media.svc.cluster.local:8112
-          password: {{HOMEPAGE_VAR_DELUGE_PASS}}
+          password: "{{HOMEPAGE_VAR_DELUGE_PASS}}"
 
 # Monitoring & Observability
 - Monitoring:
@@ -212,4 +212,4 @@
         widget:
           type: n8n
           url: http://server-1.jmpa.lab:5678
-          key: {{HOMEPAGE_VAR_N8N_API_KEY}}
+          key: "{{HOMEPAGE_VAR_N8N_API_KEY}}"

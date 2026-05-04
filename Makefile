@@ -55,6 +55,12 @@ run-playbook: playbook.yml
 	ansible-playbook -vv $< -f 5 \
 		--extra-vars root_playbook_directory="$$PWD"
 
+validate: ## Run structural validation checks on the repository.
+validate:
+	@python3 scripts/validate.py
+
+.PHONY += validate
+
 #
 # k3s.
 #

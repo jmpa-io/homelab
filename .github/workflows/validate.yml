@@ -35,6 +35,10 @@ jobs:
           pip install ansible-lint yamllint
           ansible-galaxy install -r requirements.yml
 
+      - name: Run structural validation
+        run: |
+          python3 scripts/validate.py
+
       - name: Run YAML lint
         run: |
           yamllint -c .yamllint playbook.yml roles/ services/
