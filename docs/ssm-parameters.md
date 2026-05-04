@@ -1,207 +1,150 @@
 # AWS SSM Parameter Store Configuration
 
-This document lists all required AWS SSM Parameter Store parameters for the homelab infrastructure.
+All secrets are stored in AWS SSM Parameter Store and retrieved by the
+Python inventory script at `inventory/main.py`. Nothing sensitive is
+committed to Git.
 
-## Overview
-
-All secrets are stored in AWS SSM Parameter Store and retrieved by the Python inventory script. This provides:
-- Centralized secret management
-- Encryption at rest
-- Access control via IAM
-- Audit logging
-- No secrets in Git
+---
 
 ## Required Parameters
 
-### Infrastructure
+Run `make print-inventory` after setting these up. If any are missing,
+the inventory will fail immediately with a message telling you exactly
+which path to create.
+
+### Network
 
 ```bash
-# Proxmox
-/homelab/proxmox/password              # Proxmox root@pam password
-/homelab/proxmox/api-token             # Proxmox API token (format: user@realm!tokenid=secret)
+/homelab/subnet                        # LAN subnet base IP (e.g. 10.0.0.0)
+/homelab/internet-gateway              # Router IP (e.g. 10.0.0.1)
+```
 
-# Pi-hole
-/homelab/pihole/api-key                # Pi-hole API key (from Settings > API)
+### SSH & Auth
 
-# NAS (Terramaster)
-/homelab/nas/password                  # NAS admin password
+```bash
+/homelab/ssh-password                  # Password for the 'me' user (sudo)
+/homelab/ssh/public-key                # SSH public key  (run: make upload-ssh-keys)
+/homelab/ssh/private-key               # SSH private key (run: make upload-ssh-keys)
+```
 
-# Tailscale
-/homelab/tailscale/auth-key            # Tailscale auth key
+### SSL
 
-# SSH
-/homelab/ssh-password                  # User 'me' password for sudo
-/homelab/ssh/public-key                # SSH public key for key-based auth
+```bash
+/homelab/ssl/private-key               # Self-signed private key (run: make cert)
+/homelab/ssl/cert                      # Self-signed certificate  (run: make cert)
+```
 
-# SSL
-/homelab/ssl/private-key               # SSL private key
-/homelab/ssl/cert                      # SSL certificate
+### Proxmox
 
-# Network
-/homelab/subnet                        # Common subnet (e.g., 10.0.0.0)
-/homelab/internet-gateway              # Internet gateway IP
+```bash
+/homelab/proxmox/api-token             # Format: user@realm!tokenid=secret
+/homelab/proxmox/password              # Proxmox root@pam password (for Homepage widget)
 ```
 
 ### Proxmox Hosts
 
 ```bash
-# Server 1
-/homelab/jmpa-server-1/ipv4-address    # e.g., 10.0.0.10
-/homelab/jmpa-server-1/device-name     # e.g., jmpa-server-1
-
-# Server 2
-/homelab/jmpa-server-2/ipv4-address    # e.g., 10.0.0.11
-/homelab/jmpa-server-2/device-name     # e.g., jmpa-server-2
-
-# Server 3
-/homelab/jmpa-server-3/ipv4-address    # e.g., 10.0.0.12
-/homelab/jmpa-server-3/device-name     # e.g., jmpa-server-3
+/homelab/jmpa-server-1/ipv4-address    # e.g. 10.0.0.10
+/homelab/jmpa-server-1/device-name     # e.g. jmpa-server-1
+/homelab/jmpa-server-2/ipv4-address
+/homelab/jmpa-server-2/device-name
+/homelab/jmpa-server-3/ipv4-address
+/homelab/jmpa-server-3/device-name
 ```
 
-### NAS & DNS
+### NAS
 
 ```bash
-# NAS
-/homelab/jmpa-nas-1/ipv4-address       # NAS IP address
-/homelab/jmpa-nas-1/device-name        # e.g., jmpa-nas-1
-
-# DNS (Pi-hole)
-/homelab/jmpa-dns-1/ipv4-address       # Pi-hole IP address
-/homelab/jmpa-dns-1/device-name        # e.g., jmpa-dns-1
+/homelab/jmpa-nas-1/ipv4-address
+/homelab/jmpa-nas-1/device-name
+/homelab/nas/password                  # NAS admin password (for Homepage widget)
 ```
 
-### Kubernetes Services
+### DNS (Pi-hole)
 
 ```bash
-# ArgoCD
-/homelab/argocd/admin-password         # ArgoCD admin password
+/homelab/jmpa-dns-1/ipv4-address
+/homelab/jmpa-dns-1/device-name
+/homelab/pihole/api-key                # Settings → API in Pi-hole UI
+```
 
-# Grafana
+### Tailscale
+
+```bash
+/homelab/tailscale/auth-key            # Tailscale auth key (reusable, ephemeral)
+/homelab/tailscale/api-key             # Tailscale API key (for Homepage widget)
+```
+
+### GitHub
+
+```bash
+/homelab/github/token                  # GitHub Personal Access Token (repo scope)
+```
+
+### k3s
+
+```bash
+/homelab/k3s/token                     # Cluster join token — generate once:
+                                       # openssl rand -hex 32
+```
+
+### Observability
+
+```bash
 /homelab/grafana/admin-password        # Grafana admin password
+```
 
-# Jellyfin
-/homelab/jellyfin/api-key              # Jellyfin API key (Settings > API Keys)
+### Media Services (for Homepage dashboard)
 
-# Jellyseerr
-/homelab/jellyseerr/api-key            # Jellyseerr API key (Settings > General)
-
-# Tautulli
-/homelab/tautulli/api-key              # Tautulli API key (Settings > Web Interface)
-
-# Prowlarr
-/homelab/prowlarr/api-key              # Prowlarr API key (Settings > General)
-
-# Sonarr
-/homelab/sonarr/api-key                # Sonarr API key (Settings > General)
-
-# Radarr
-/homelab/radarr/api-key                # Radarr API key (Settings > General)
-
-# Lidarr
-/homelab/lidarr/api-key                # Lidarr API key (Settings > General)
-
-# Readarr
-/homelab/readarr/api-key               # Readarr API key (Settings > General)
-
-# Bazarr
-/homelab/bazarr/api-key                # Bazarr API key (Settings > General)
-
-# Deluge
+```bash
+/homelab/argocd/admin-password
+/homelab/jellyfin/api-key              # Settings → API Keys
+/homelab/jellyseerr/api-key            # Settings → General
+/homelab/tautulli/api-key              # Settings → Web Interface
+/homelab/prowlarr/api-key              # Settings → General
+/homelab/sonarr/api-key                # Settings → General
+/homelab/radarr/api-key                # Settings → General
+/homelab/lidarr/api-key                # Settings → General
+/homelab/readarr/api-key               # Settings → General
+/homelab/bazarr/api-key                # Settings → General
 /homelab/deluge/password               # Deluge web UI password
-
-# n8n
 /homelab/n8n/api-key                   # n8n API key
 ```
 
+### VPS (optional — only needed after `make provision-vps`)
+
+```bash
+/homelab/jmpa-vps-1/ipv4-address       # Written automatically by provision-vps.yml
+/homelab/jmpa-vps-1/device-name        # Written automatically by provision-vps.yml
+```
+
+---
+
 ## Creating Parameters
 
-### Using AWS CLI
-
 ```bash
-# Example: Create Proxmox password
-aws ssm put-parameter \
-  --name "/homelab/proxmox/password" \
-  --value "your-secure-password" \
-  --type "SecureString" \
-  --description "Proxmox root@pam password" \
-  --region us-east-1
+# Quickest way — use the Makefile targets where available:
+make upload-ssh-keys    # uploads ~/.ssh/id_ed25519 + .pub
+make cert               # generates and uploads self-signed cert + key
 
-# Example: Create API key
+# For everything else:
 aws ssm put-parameter \
-  --name "/homelab/sonarr/api-key" \
-  --value "abc123def456..." \
-  --type "SecureString" \
-  --description "Sonarr API key" \
-  --region us-east-1
+  --name "/homelab/<path>" \
+  --value "<value>" \
+  --type SecureString \
+  --overwrite \
+  --region "$AWS_REGION"
 ```
 
-### Using AWS Console
-
-1. Go to AWS Systems Manager > Parameter Store
-2. Click "Create parameter"
-3. Name: `/homelab/service/key`
-4. Type: `SecureString`
-5. KMS key: Use default or custom
-6. Value: Your secret
-7. Click "Create parameter"
-
-### Bulk Creation Script
-
-```bash
-#!/bin/bash
-# create-ssm-parameters.sh
-
-REGION="us-east-1"
-
-# Function to create parameter
-create_param() {
-  local name=$1
-  local value=$2
-  local desc=$3
-
-  aws ssm put-parameter \
-    --name "$name" \
-    --value "$value" \
-    --type "SecureString" \
-    --description "$desc" \
-    --region "$REGION" \
-    --overwrite
-}
-
-# Infrastructure
-create_param "/homelab/proxmox/password" "changeme" "Proxmox password"
-create_param "/homelab/pihole/api-key" "changeme" "Pi-hole API key"
-create_param "/homelab/nas/password" "changeme" "NAS password"
-
-# K8s Services
-create_param "/homelab/argocd/admin-password" "changeme" "ArgoCD admin password"
-create_param "/homelab/grafana/admin-password" "changeme" "Grafana admin password"
-create_param "/homelab/sonarr/api-key" "changeme" "Sonarr API key"
-create_param "/homelab/radarr/api-key" "changeme" "Radarr API key"
-# ... add all others
-
-echo "Parameters created. Update values in AWS Console."
-```
+---
 
 ## Retrieving Parameters
 
-### In Python (Inventory Script)
-
-```python
-from ssm import SSMClient
-
-ssm_client = SSMClient('us-east-1')
-password = ssm_client.get_parameter('/homelab/proxmox/password')
-```
-
-### Using AWS CLI
-
 ```bash
-# Get parameter value
+# Retrieve a single value
 aws ssm get-parameter \
-  --name "/homelab/proxmox/password" \
+  --name "/homelab/proxmox/api-token" \
   --with-decryption \
-  --region us-east-1 \
   --query "Parameter.Value" \
   --output text
 
@@ -209,12 +152,18 @@ aws ssm get-parameter \
 aws ssm get-parameters-by-path \
   --path "/homelab" \
   --recursive \
-  --region us-east-1
+  --with-decryption \
+  --query "Parameters[*].{Name:Name,Value:Value}"
+
+# Verify inventory generates correctly (best pre-flight check)
+make print-inventory
 ```
+
+---
 
 ## IAM Permissions
 
-The user/role running the inventory script needs these permissions:
+The AWS user or role running the inventory script needs:
 
 ```json
 {
@@ -225,112 +174,44 @@ The user/role running the inventory script needs these permissions:
       "Action": [
         "ssm:GetParameter",
         "ssm:GetParameters",
-        "ssm:GetParametersByPath"
+        "ssm:GetParametersByPath",
+        "ssm:PutParameter"
       ],
-      "Resource": "arn:aws:ssm:us-east-1:*:parameter/homelab/*"
+      "Resource": "arn:aws:ssm:*:*:parameter/homelab/*"
     },
     {
       "Effect": "Allow",
-      "Action": [
-        "kms:Decrypt"
-      ],
-      "Resource": "arn:aws:kms:us-east-1:*:key/*"
+      "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
+      "Resource": "*"
     }
   ]
 }
 ```
 
+---
+
 ## Environment Variables
 
-Set these before running the inventory:
-
 ```bash
-export AWS_REGION=us-east-1
-export AWS_ACCESS_KEY_ID=your-access-key
-export AWS_SECRET_ACCESS_KEY=your-secret-key
-
-# Or use AWS profiles
-export AWS_PROFILE=homelab
+export AWS_REGION=ap-southeast-2   # or your region
+export AWS_PROFILE=homelab         # recommended — use a named profile
 ```
 
-## Security Best Practices
+Or with explicit keys (less preferred):
+```bash
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+```
 
-1. **Use SecureString**: Always use `SecureString` type for sensitive data
-2. **KMS Encryption**: Use a custom KMS key for additional control
-3. **IAM Policies**: Grant least-privilege access
-4. **Rotation**: Rotate secrets regularly
-5. **Audit**: Enable CloudTrail for parameter access logging
-6. **Backup**: Export parameters for disaster recovery (encrypted)
+---
 
 ## Validation
 
-Test parameter retrieval:
-
 ```bash
-# Test inventory script
-cd inventory
-python3 main.py | jq '.all.vars.k8s_services.homepage.secrets'
+# Test that all required parameters are present
+make print-inventory
 
-# Should show all Homepage secrets populated from SSM
+# If any are missing you'll see:
+# ValueError: Required SSM parameter not found: /homelab/xxx
+# Run: aws ssm put-parameter --name "/homelab/xxx" ...
 ```
-
-## Troubleshooting
-
-### Parameter Not Found
-
-```bash
-# Check if parameter exists
-aws ssm describe-parameters \
-  --parameter-filters "Key=Name,Values=/homelab/proxmox/password" \
-  --region us-east-1
-```
-
-### Access Denied
-
-```bash
-# Check IAM permissions
-aws sts get-caller-identity
-aws iam get-user
-```
-
-### Wrong Region
-
-```bash
-# Ensure AWS_REGION is set
-echo $AWS_REGION
-
-# Or specify in command
-aws ssm get-parameter --name "/homelab/proxmox/password" --region us-east-1
-```
-
-## Migration from Other Secret Stores
-
-### From Ansible Vault
-
-```bash
-# Decrypt vault
-ansible-vault decrypt secrets.yml
-
-# Extract and create SSM parameters
-# (manual or scripted)
-```
-
-### From Environment Variables
-
-```bash
-# Convert .env to SSM
-while IFS='=' read -r key value; do
-  aws ssm put-parameter \
-    --name "/homelab/${key,,}" \
-    --value "$value" \
-    --type "SecureString"
-done < .env
-```
-
-## Next Steps
-
-1. Create all required parameters in SSM
-2. Set AWS credentials/profile
-3. Run inventory script: `cd inventory && python3 main.py`
-4. Deploy Homepage: `ansible-playbook services/vms/k3s/deploy-homepage.yml`
-5. Verify secrets in K8s: `kubectl get secret homepage -n homepage -o yaml`
