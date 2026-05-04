@@ -7,20 +7,20 @@
 # After this runs, the cloud VPS:
 #   - Runs Proxmox VE (full LXC + VM support, same as on-prem nodes)
 #   - Is connected to your homelab Tailnet (can reach 10.0.x.x LAN directly)
-#   - Appears in the inventory as jmpa-server-4 (host_id=4, subnet 10.0.4.x)
+#   - Appears in the inventory as jmpa-vps-1 (host_id=4, subnet 10.0.4.x)
 #   - Can run the same LXC services as on-prem nodes
-#   - Publishes its public IP to SSM at /homelab/jmpa-server-4/ipv4-address
+#   - Publishes its public IP to SSM at /homelab/jmpa-vps-1/ipv4-address
 #
 # Prerequisites:
 #   1. Provision a Debian 12 VPS at your cloud provider of choice
 #   2. Store its public IP in SSM:
-#        aws ssm put-parameter --name "/homelab/jmpa-server-4/ipv4-address" \
+#        aws ssm put-parameter --name "/homelab/jmpa-vps-1/ipv4-address" \
 #          --value "<PUBLIC_IP>" --type String
-#        aws ssm put-parameter --name "/homelab/jmpa-server-4/device-name" \
+#        aws ssm put-parameter --name "/homelab/jmpa-vps-1/device-name" \
 #          --value "eth0" --type String
 #   3. Ensure SSH access as root (or your ansible_user) works from your machine
 #   4. Run this playbook:
-#        make provision-cloud-proxmox
+#        make provision-vps
 #
 # Cost reference (2024):
 #   Hetzner CX22:  €3.92/month  — 2 vCPU, 4GB RAM, 40GB SSD, KVM
@@ -39,8 +39,8 @@
   gather_facts: true
 
   vars:
-    proxmox_hostname: "jmpa-server-4"
-    proxmox_fqdn: "jmpa-server-4.jmpa.lab"
+    proxmox_hostname: "jmpa-vps-1"
+    proxmox_fqdn: "jmpa-vps-1.jmpa.lab"
     # Bridge subnet for this node — host_id=4 → 10.0.4.x
     bridge_ip: "10.0.4.1"
     bridge_cidr: "24"
@@ -195,7 +195,7 @@
     - name: Store public IP in SSM.
       ansible.builtin.shell: |
         aws ssm put-parameter \
-          --name "/homelab/jmpa-server-4/ipv4-address" \
+          --name "/homelab/jmpa-vps-1/ipv4-address" \
           --value "{{ public_ip_result.content | trim }}" \
           --type String \
           --overwrite \
@@ -206,7 +206,7 @@
     - name: Store device name in SSM.
       ansible.builtin.shell: |
         aws ssm put-parameter \
-          --name "/homelab/jmpa-server-4/device-name" \
+          --name "/homelab/jmpa-vps-1/device-name" \
           --value "eth0" \
           --type String \
           --overwrite \
@@ -232,11 +232,11 @@
           - "  Proxmox UI  : https://{{ public_ip_result.content | trim }}:8006"
           - ""
           - "SSM parameters stored:"
-          - "  /homelab/jmpa-server-4/ipv4-address"
-          - "  /homelab/jmpa-server-4/device-name"
+          - "  /homelab/jmpa-vps-1/ipv4-address"
+          - "  /homelab/jmpa-vps-1/device-name"
           - ""
           - "Next steps:"
-          - "  1. Uncomment jmpa-server-4 block in inventory/main.py"
+          - "  1. Uncomment jmpa-vps-1 block in inventory/main.py"
           - "  2. Run: make print-inventory  (verify host appears)"
           - "  3. Run: ansible-playbook playbook.yml -i dist/inventory.json"
           - "     (deploys base config + LXC services to the new node)"

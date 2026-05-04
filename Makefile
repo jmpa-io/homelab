@@ -273,16 +273,16 @@ deploy-k3s-media-volumes: dist/inventory.json
 # Cloud Proxmox VPS.
 #
 
-provision-cloud-proxmox: ## Bootstrap Proxmox VE on a fresh Debian cloud VPS + connect via Tailscale.
-provision-cloud-proxmox: ## Usage: make provision-cloud-proxmox VPS_IP=<ip>
-provision-cloud-proxmox:
-	@test -n "$(VPS_IP)" || (echo "ERROR: VPS_IP is required. Usage: make provision-cloud-proxmox VPS_IP=1.2.3.4" && exit 1)
-	ansible-playbook services/vps/provision-cloud-proxmox.yml \
+provision-vps: ## Bootstrap Proxmox VE on a fresh Debian cloud VPS + connect via Tailscale.
+provision-vps: ## Usage: make provision-vps VPS_IP=<ip>
+provision-vps:
+	@test -n "$(VPS_IP)" || (echo "ERROR: VPS_IP is required. Usage: make provision-vps VPS_IP=1.2.3.4" && exit 1)
+	ansible-playbook services/vps/provision-vps.yml \
 		-i "$(VPS_IP)," \
 		--extra-vars "ansible_host=$(VPS_IP) target_host=$(VPS_IP)" \
 		--extra-vars "root_playbook_directory=$$PWD"
 
-.PHONY += provision-cloud-proxmox
+.PHONY += provision-vps
 
 ---: ## ---
 

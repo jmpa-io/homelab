@@ -4,7 +4,10 @@
   gather_facts: false
   vars:
     proxmox_node_name: "{{ host.name }}"
-    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    # Derive node_id from the bridge IP third octet (e.g. 10.0.4.1 → 4).
+    # This is consistent with inventory.py and works correctly for both
+    # on-prem servers (10.0.1.x → id=1) and VPS nodes (10.0.4.x → id=4).
+    proxmox_node_id: "{{ host.bridge.ipv4.split('.')[2] | int }}"
     proxmox_node_ip: "{{ host.ipv4 }}"
     proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
     proxmox_node_bridge_name: "{{ host.bridge.name }}"

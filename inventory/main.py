@@ -9,6 +9,7 @@ from env import read_env_var
 
 from instances import VPS, NAS, DNS, EC2
 from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
+from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
 from service import LXCService, HostService, Protocol, CommunityScriptService
 from inventory import Inventory
 
@@ -311,18 +312,24 @@ def main():
       lxc_services=shared_lxc_services,
     ))
 
-  # Add cloud Proxmox VPS (jmpa-server-4).
-  # This is a KVM VPS (e.g. Hetzner CX22 ~€4/month) running Proxmox VE,
-  # connected to the on-prem cluster via Tailscale.
-  # Uncomment after running: make provision-cloud-proxmox
-  # The provisioning playbook stores the VPS IP in SSM automatically.
+  # Add cloud Proxmox VPS (jmpa-vps-1).
+  # A KVM VPS (e.g. Hetzner CX22 ~€4/month) running Proxmox VE, connected
+  # to the on-prem cluster via Tailscale. Gets host_id=4, subnet 10.0.4.x.
+  # Runs the same LXC services as on-prem nodes.
   #
-  # cloud_vps_ip = ssm_client.get_parameter('/homelab/jmpa-server-4/ipv4-address')
-  # if cloud_vps_ip:
-  #   inventory.add_instances(ProxmoxHost(
-  #     ipv4=cloud_vps_ip,
-  #     ipv4_cidr='32',  # Single public IP — routing handled by Tailscale
-  #     device_name=ssm_client.get_parameter('/homelab/jmpa-server-4/device-name') or 'eth0',
+  # Setup steps:
+  #   1. Provision a Debian 12 KVM VPS at your cloud provider
+  #   2. Run: make provision-vps VPS_IP=<your_vps_ip>
+  #      (This bootstraps Proxmox, Tailscale, and stores the IP in SSM)
+  #   3. Uncomment the block below
+  #   4. Run: make print-inventory  (verify jmpa-vps-1 appears)
+  #
+  # vps_ip = ssm_client.get_parameter('/homelab/jmpa-vps-1/ipv4-address')
+  # if vps_ip:
+  #   inventory.add_instances(VPS(
+  #     ipv4=vps_ip,
+  #     ipv4_cidr='32',  # Single public IP — LAN routing via Tailscale
+  #     device_name=ssm_client.get_parameter('/homelab/jmpa-vps-1/device-name') or 'eth0',
   #     bridge=ProxmoxHostBridge(
   #       name='vmbr0',
   #       ipv4_prefix='10.0',
@@ -331,6 +338,7 @@ def main():
   #     ),
   #     host_services=[collector],
   #     lxc_services=shared_lxc_services,
+  #     provider='hetzner',  # or 'ovh', 'contabo', etc.
   #   ))
 
   # Add NAS instance.

@@ -10,6 +10,10 @@ from instances.ec2 import EC2
 from k8s_inventory import K8sInventory
 
 
+# Types that have a Proxmox bridge and can host LXC containers / k3s VMs.
+_PROXMOX_TYPES = (ProxmoxHost, VPS)
+
+
 @dataclass
 class Inventory:
   # Instance config - can be ProxmoxHost, NAS, VPS, DNS, EC2, etc.
@@ -33,27 +37,36 @@ class Inventory:
     instance_type = type(instance).__name__
     instance_id = self._next_id_per_type[instance_type]
 
-    # Setup name of instance.
+    # The bridge host_id determines which /24 subnet the host gets.
+    # ProxmoxHosts use host_id 1, 2, 3 (their instance counter directly).
+    # VPS nodes are offset by 3 so their subnets (10.0.4.x, 10.0.5.x...)
+    # never collide with on-prem server subnets (10.0.1.x, 10.0.2.x, 10.0.3.x).
+    if isinstance(instance, VPS):
+      bridge_host_id = instance_id + 3
+    else:
+      bridge_host_id = instance_id
+
+    # Setup name using the per-type counter (jmpa-vps-1, jmpa-vps-2 etc.).
     instance.name = instance.name.format(id=instance_id)
 
-    # Bridge setup (ProxmoxHost only).
-    if isinstance(instance, ProxmoxHost):
-        instance.bridge = deepcopy(instance.bridge)  # Ensure a unique bridge for a host.
+    # Bridge setup — both ProxmoxHost and VPS have a bridge.
+    # Bridge IPs use bridge_host_id so subnets are always unique.
+    if isinstance(instance, _PROXMOX_TYPES):
+        instance.bridge = deepcopy(instance.bridge)
         for attr in ('ipv4', 'ipv4_with_cidr', 'subnet', 'subnet_with_cidr'):
-            setattr(instance.bridge, attr, getattr(instance.bridge, attr).format(id=instance_id))
+            setattr(instance.bridge, attr, getattr(instance.bridge, attr).format(id=bridge_host_id))
 
-    # Container services setup (ProxmoxHost & VPS only).
+    # LXC service IP assignment — both ProxmoxHost and VPS run LXC.
     if hasattr(instance, 'lxc_services') and instance.lxc_services:
         instance.lxc_services = deepcopy(instance.lxc_services)
         for s in instance.lxc_services:
-            if isinstance(instance, ProxmoxHost):
-                # Use host bridge to assign IP.
-                s.ipv4 = f'{instance.bridge.ipv4_prefix}.{instance_id}.{s.container_id}'
+            if isinstance(instance, _PROXMOX_TYPES):
+                s.ipv4 = f'{instance.bridge.ipv4_prefix}.{bridge_host_id}.{s.container_id}'
                 s.ipv4_cidr = instance.bridge.ipv4_cidr
                 s.ipv4_with_cidr = f'{s.ipv4}/{instance.bridge.ipv4_cidr}'
 
-    # Proxy static records (ProxmoxHost only).
-    if isinstance(instance, ProxmoxHost) and hasattr(instance, 'lxc_services'):
+    # Proxy static records — both ProxmoxHost and VPS run nginx_reverse_proxy.
+    if isinstance(instance, _PROXMOX_TYPES) and hasattr(instance, 'lxc_services'):
         self._setup_proxy_static_records(instance)
 
     # Add instance, using an ansible-appropriate name.
@@ -63,6 +76,7 @@ class Inventory:
     self.build_global_service_map()
 
     # Build or update the global k8s configuration.
+    # Pass bridge_host_id so k3s IPs land on the correct subnet.
     self.build_global_kube_configuration()
 
     # Increment internal instance counter.
@@ -76,11 +90,8 @@ class Inventory:
 
   def _setup_proxy_static_records(self, instance):
     """Setup static records for proxy services on a host instance."""
-    # Find proxy services (services that should act as reverse proxies).
     proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
-
     for proxy in proxy_services:
-      # Create static records for this proxy.
       proxy.static_records = [
         {
           'subdomain': s.name,
@@ -93,49 +104,40 @@ class Inventory:
 
   def _is_proxy_service(self, service):
     """Determine if a service should act as a reverse proxy."""
-    # This is where you can define the logic for what makes a service a proxy.
-    # For now, we'll use the name-based approach, but this could be made more flexible.
     return service.name == 'nginx_reverse_proxy'
 
   def build_global_service_map(self):
     """Builds a global service map from all proxy services' static records."""
     service_map = {}
-
     for instance in self.instances.values():
-      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances have proxy services
+      if isinstance(instance, _PROXMOX_TYPES):
         proxy_services = [s for s in instance.lxc_services if self._is_proxy_service(s)]
         for proxy in proxy_services:
           self._add_proxy_records_to_service_map(proxy, service_map)
-
     self.vars['common']['global_service_map'] = service_map
 
   def _add_proxy_records_to_service_map(self, proxy_service, service_map):
     """Adds static records from a proxy service to the service map."""
     for record in proxy_service.static_records:
-      service_name = record['subdomain']
-      backend = record['forward_to_ipv4_with_port']
-      protocol = record['protocol']
-
-      # Use setdefault to avoid the if/not in pattern.
-      service_entry = service_map.setdefault(service_name, {
+      service_entry = service_map.setdefault(record['subdomain'], {
         'backends': [],
-        'protocol': protocol
+        'protocol': record['protocol'],
       })
-
-      service_entry['backends'].append(backend)
+      service_entry['backends'].append(record['forward_to_ipv4_with_port'])
 
   def build_global_kube_configuration(self):
     if not self.kube_inventory:
       return
 
     for name, instance in self.instances.items():
-      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
+      if isinstance(instance, _PROXMOX_TYPES):
         masters = []
         nodes = []
-        # Derive the host's numeric ID from its name (e.g. 'jmpa_server_1' -> 1).
-        # This is stable regardless of what other instance types are in the inventory.
-        host_id = int(name.split('_')[-1])
-        prefix = f'{instance.bridge.ipv4_prefix}.{host_id}'
+        # Derive the bridge host_id from the bridge IP (e.g. '10.0.4.1' → 4).
+        # This is reliable regardless of the instance name numbering scheme —
+        # VPS instances have name suffix '1' but bridge host_id '4'.
+        bridge_host_id = int(instance.bridge.ipv4.split('.')[2])
+        prefix = f'{instance.bridge.ipv4_prefix}.{bridge_host_id}'
         for j in range(self.kube_inventory.masters_per_host):
           ip_suffix = self.kube_inventory.masters_ips_start_range + j
           if ip_suffix > self.kube_inventory.masters_ips_end_range:
@@ -155,29 +157,38 @@ class Inventory:
     """
     Generates the Ansible dynamic inventory as a dictionary.
     """
-    # Separate instances by type.
-    host_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, (ProxmoxHost, VPS))}
-    nas_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
-    dns_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, DNS)}
-    ec2_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, EC2)}
+    proxmox_instances = {name: inst for name, inst in self.instances.items() if isinstance(inst, ProxmoxHost)}
+    vps_instances     = {name: inst for name, inst in self.instances.items() if isinstance(inst, VPS)}
+    nas_instances     = {name: inst for name, inst in self.instances.items() if isinstance(inst, NAS)}
+    dns_instances     = {name: inst for name, inst in self.instances.items() if isinstance(inst, DNS)}
+    ec2_instances     = {name: inst for name, inst in self.instances.items() if isinstance(inst, EC2)}
+
+    # All Proxmox-capable hosts (on-prem + VPS) — used by most playbooks.
+    all_proxmox_capable = {**proxmox_instances, **vps_instances}
 
     # Build hostvars for all instances.
     hostvars = {name: inst.to_dict() for name, inst in self.instances.items()}
 
-    # 'all' includes all instances.
     out = {
         '_meta': {'hostvars': hostvars},
         'all': {
             'hosts': list(self.instances.keys()),
             'vars': self.vars
         },
+        # proxmox_hosts includes BOTH on-prem ProxmoxHosts and VPS nodes
+        # so that all existing LXC/VM/k3s playbooks work unchanged.
         'proxmox_hosts': {
-            'hosts': list(host_instances.keys())
+            'hosts': list(all_proxmox_capable.keys())
+        },
+        # vps_hosts is the VPS-only subset — for VPS-specific plays
+        # (e.g. provision-cloud-proxmox, Tailscale management).
+        'vps_hosts': {
+            'hosts': list(vps_instances.keys())
         },
         'nas': {
             'hosts': list(nas_instances.keys()),
             'vars': {
-                'ansible_ssh_pass': self.vars.get('ansible_ssh_pass_fallback')  # NAS uses password auth fallback
+                'ansible_ssh_pass': self.vars.get('ansible_ssh_pass_fallback')
             }
         },
         'dns': {
@@ -192,11 +203,11 @@ class Inventory:
     if not self.kube_inventory:
       return out
 
-    # Setup masters & nodes.
+    # Collect k3s IPs from all Proxmox-capable hosts (on-prem + VPS).
     master_ips = []
     node_ips = []
     for instance in self.instances.values():
-      if isinstance(instance, ProxmoxHost):  # Only ProxmoxHost instances support K8s
+      if isinstance(instance, _PROXMOX_TYPES):
         master_ips.extend(instance.k8s_masters)
         node_ips.extend(instance.k8s_nodes)
 
@@ -214,25 +225,20 @@ class Inventory:
         'ansible_user': self.kube_inventory.ansible_user,
         'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key_file,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
-        # Emit github and k8s_services here so all k3s plays work with either
-        # the full inventory or the k3s-only filtered one.
         'github': self.vars.get('github', {}),
         'k8s_services': self.vars.get('k8s_services', {}),
       },
       'children': {},
     }
 
-    # Decide api_endpoint — always use the first master for determinism.
     if master_ips:
       out['k3s_cluster']['vars']['api_endpoint'] = master_ips[0]
 
-    # Add masters.
     if master_ips:
       out['k3s_cluster']['children']['k3s_masters'] = {
         'hosts': {ip: {} for ip in master_ips},
       }
 
-    # Add nodes.
     if node_ips:
       out['k3s_cluster']['children']['k3s_nodes'] = {
         'hosts': {ip: {} for ip in node_ips},

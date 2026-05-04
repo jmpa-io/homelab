@@ -29,15 +29,19 @@ appends `.200–.250`. Override with `K3S_METALLB_IP_RANGE` env var if needed.
 
 ## Proxmox Bridge Subnets
 
-Each Proxmox host has a `vmbr0` bridge with its own `/24`. All LXC containers
-and VMs on that host get IPs in that subnet.
+Each Proxmox host (on-prem or VPS) has a `vmbr0` bridge with its own `/24`.
+All LXC containers and VMs on that host get IPs in that subnet.
 
-| Host | host_id | Bridge IP | Subnet |
-|------|---------|-----------|--------|
-| jmpa-server-1 | 1 | `10.0.1.1` | `10.0.1.0/24` |
-| jmpa-server-2 | 2 | `10.0.2.1` | `10.0.2.0/24` |
-| jmpa-server-3 | 3 | `10.0.3.1` | `10.0.3.0/24` |
-| jmpa-server-4 (cloud) | 4 | `10.0.4.1` | `10.0.4.0/24` |
+VPS host IDs are offset by 3 from on-prem servers so their bridge subnets
+never collide (`jmpa-vps-1` gets host_id=4, `jmpa-vps-2` gets host_id=5...).
+
+| Host | Type | host_id | Bridge IP | Subnet |
+|------|------|---------|-----------|--------|
+| jmpa-server-1 | on-prem | 1 | `10.0.1.1` | `10.0.1.0/24` |
+| jmpa-server-2 | on-prem | 2 | `10.0.2.1` | `10.0.2.0/24` |
+| jmpa-server-3 | on-prem | 3 | `10.0.3.1` | `10.0.3.0/24` |
+| jmpa-vps-1 | cloud KVM VPS | 4 | `10.0.4.1` | `10.0.4.0/24` |
+| jmpa-vps-2 | cloud KVM VPS | 5 | `10.0.5.1` | `10.0.5.0/24` |
 
 ---
 
@@ -132,22 +136,45 @@ are in the dedicated `.100–.199` range to prevent collisions.
 
 ---
 
-## Cloud Proxmox VPS (jmpa-server-4)
+## Cloud VPS (jmpa-vps-1)
 
 A KVM VPS (e.g. Hetzner CX22, ~€4/month) running Proxmox VE, connected
-to the on-prem cluster via Tailscale. Gets host_id=4 and subnet `10.0.4.x`.
+to the on-prem cluster via Tailscale. Treated identically to an on-prem
+`ProxmoxHost` — runs the same LXC services, can join k3s, appears in the
+`proxmox_hosts` Ansible group.
 
-See `services/vps/provision-cloud-proxmox.yml` for setup.
-Run with: `make provision-cloud-proxmox VPS_IP=<your_vps_ip>`
+**Naming:** `jmpa-vps-1` (appears as `jmpa_vps_1` in Ansible inventory)
+**Subnet:** `10.0.4.0/24` (host_id=4, never collides with on-prem)
+**Groups:** `proxmox_hosts` (all playbooks work unchanged) + `vps_hosts` (VPS-specific plays)
 
-### Why not bare-metal cluster joining (corosync)?
+See `services/vps/provision-vps.yml` for setup.
+Run with: `make provision-vps VPS_IP=<your_vps_ip>`
 
-Proxmox cluster membership via corosync requires <2ms latency between nodes.
-Cloud-to-home latency is typically 20–200ms — this causes split-brain and
-cluster instability. Tailscale is used instead: the cloud node is an
-independent Proxmox installation that can see and be seen by on-prem nodes
-via the tailnet. LXC containers on the cloud node can reach on-prem services
-directly at `10.0.x.x` addresses through Tailscale routing.
+### Connection model
+
+```
+Internet ──► jmpa-vps-1 (public IP on eth0)
+                │
+                ├── Tailscale ──► on-prem homelab (10.0.x.x LAN reachable)
+                │
+                └── vmbr0 (10.0.4.1/24) ──► LXC containers (10.0.4.x)
+```
+
+LXC containers on the VPS can reach on-prem services at `10.0.1.x`,
+`10.0.2.x`, `10.0.3.x` directly via Tailscale subnet routing.
+
+### Cost reference
+
+| Provider | Plan | Price | vCPU | RAM | Storage | KVM | Nested VMs |
+|----------|------|-------|------|-----|---------|-----|------------|
+| Hetzner | CX22 | €3.92/mo | 2 | 4 GB | 40 GB SSD | ✓ | ✓ |
+| Hetzner | CX32 | €7.02/mo | 4 | 8 GB | 80 GB SSD | ✓ | ✓ |
+| Contabo | VPS S | €4.99/mo | 4 | 8 GB | 50 GB NVMe | ✓ | ✓ |
+| OVH | VPS Starter | €3.99/mo | 1 | 2 GB | 20 GB SSD | ✓ | ✗ |
+
+> **Note on $5/month bare metal:** Doesn't exist. €4/month KVM VPS is the
+> cheapest option that supports Proxmox LXC properly. For full VM support
+> (nested KVM), Hetzner CX22 or Contabo VPS S are the best value.
 
 ---
 

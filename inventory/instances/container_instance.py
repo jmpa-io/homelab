@@ -3,7 +3,8 @@
 Class Hierarchy:
 Instance
 └── ContainerInstance
-    └── ProxmoxHost
+    ├── ProxmoxHost  (on-prem bare metal)
+    └── VPS          (cloud KVM VPS running Proxmox)
 """
 
 from dataclasses import dataclass, field
