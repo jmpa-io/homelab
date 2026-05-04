@@ -130,6 +130,8 @@
         mode: '0644'
       loop: "{{ k3s_server_manifests_urls }}"
       when: k3s_server_manifests_urls | length > 0
+
+    - name: Get k3s token.
       ansible.builtin.slurp:
         src: /var/lib/rancher/k3s/server/node-token
       register: k3s_token_encoded
