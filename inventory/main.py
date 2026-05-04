@@ -58,7 +58,10 @@ def main():
 
   # Fetch shared secrets once — reused in both inventory_vars and k8s_services.
   ssh_password        = ssm_client.require_parameter('/homelab/ssh-password')
-  github_token        = ssm_client.require_parameter('/homelab/github/token')
+  # github_token is optional — only needed when deploying GitHub Actions runners
+  # or the Homepage dashboard GitHub widget. Inventory generates fine without it;
+  # the runner and homepage deploys will skip gracefully if it is None.
+  github_token        = ssm_client.get_parameter('/tokens/github')
   grafana_admin_pass  = ssm_client.require_parameter('/homelab/grafana/admin-password')
 
   inventory_vars = {

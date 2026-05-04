@@ -63,6 +63,6 @@ class HomepageConfig:
             'HOMEPAGE_VAR_BAZARR_API_KEY':       _require(self.bazarr_api_key,      '/homelab/bazarr/api-key'),
             'HOMEPAGE_VAR_DELUGE_PASS':          _require(self.deluge_pass,         '/homelab/deluge/password'),
             'HOMEPAGE_VAR_N8N_API_KEY':          _require(self.n8n_api_key,         '/homelab/n8n/api-key'),
-            'HOMEPAGE_VAR_GITHUB_TOKEN':         _require(self.github_token,        '/homelab/github/token'),
+            'HOMEPAGE_VAR_GITHUB_TOKEN':         _require(self.github_token,        '/tokens/github'),
             'HOMEPAGE_VAR_TAILSCALE_API_KEY':    _require(self.tailscale_api_key,   '/homelab/tailscale/api-key'),
         }

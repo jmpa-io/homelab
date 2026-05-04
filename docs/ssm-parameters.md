@@ -78,7 +78,7 @@ which path to create.
 ### GitHub
 
 ```bash
-/homelab/github/token                  # GitHub Personal Access Token (repo scope)
+/tokens/github                         # GitHub Personal Access Token (repo scope)
 ```
 
 ### k3s
