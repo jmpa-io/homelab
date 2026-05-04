@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -5,68 +6,72 @@ metadata:
   namespace: media
 spec:
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteOnce
+  storageClassName: nfs-storage  # Dynamic storage for config
   resources:
     requests:
       storage: 1Gi
-  storageClassName: nfs-storage
+
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: radarr
   name: radarr
   namespace: media
+  labels:
+    app: radarr
 spec:
   replicas: 1
+  strategy:
+    type: Recreate  # Important for media apps with databases
   selector:
     matchLabels:
       app: radarr
-  strategy:
-    type: Recreate
   template:
     metadata:
       labels:
         app: radarr
     spec:
       containers:
-      - env:
-        - name: PUID
-          value: '1000'
-        - name: PGID
-          value: '1000'
-        - name: TZ
-          value: Australia/Melbourne
+      - name: radarr
         image: lscr.io/linuxserver/radarr:latest
-        name: radarr
         ports:
         - containerPort: 7878
           name: http
-        resources:
-          limits:
-            cpu: 1000m
-            memory: 1Gi
-          requests:
-            cpu: 100m
-            memory: 256Mi
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "Australia/Melbourne"
         volumeMounts:
-        - mountPath: /config
-          name: config
-        - mountPath: /movies
-          name: movies
-        - mountPath: /downloads
-          name: downloads
+        - name: config
+          mountPath: /config
+        - name: movies
+          mountPath: /movies
+        - name: downloads
+          mountPath: /downloads
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
       volumes:
       - name: config
         persistentVolumeClaim:
           claimName: radarr-config
       - name: movies
         persistentVolumeClaim:
-          claimName: media-movies
+          claimName: media-movies  # Static NFS volume
       - name: downloads
         persistentVolumeClaim:
-          claimName: media-downloads
+          claimName: media-downloads  # Static NFS volume
+
+
 ---
 apiVersion: v1
 kind: Service
@@ -74,10 +79,10 @@ metadata:
   name: radarr
   namespace: media
 spec:
-  ports:
-  - name: http
-    port: 7878
-    targetPort: 7878
+  type: LoadBalancer  # Accessible via MetalLB
   selector:
     app: radarr
-  type: LoadBalancer
+  ports:
+  - port: 7878
+    targetPort: 7878
+    name: http

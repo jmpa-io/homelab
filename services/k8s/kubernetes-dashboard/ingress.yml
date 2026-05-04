@@ -19,4 +19,3 @@ spec:
             name: kubernetes-dashboard-web
             port:
               number: 8000
-

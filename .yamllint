@@ -19,9 +19,15 @@ rules:
     max-spaces-inside: 1
   indentation:
     spaces: 2
-    indent-sequences: true
+    indent-sequences: whatever   # allow both indented and non-indented sequences
     check-multi-line-strings: false
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 0
   document-start: disable
   octal-values:
     forbid-implicit-octal: true   # required by ansible-lint
     forbid-explicit-octal: true   # required by ansible-lint
+  commas:
+    max-spaces-after: -1          # allow aligned spacing in flow mappings

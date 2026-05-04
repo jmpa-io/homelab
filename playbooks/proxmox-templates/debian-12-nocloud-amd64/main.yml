@@ -34,4 +34,3 @@
         create_vm_template__template_name: "{{ template_name }}"
         create_vm_template__template_root_password: "{{ template_root_password }}"
         create_vm_template__ssh_public_key: "{{ template_ssh_public_key }}"
-

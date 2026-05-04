@@ -89,10 +89,12 @@ jobs:
 
       - name: Verify services
         run: |
-          echo "### Services Deployed Successfully! 🎉" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Container Status:**" >> $GITHUB_STEP_SUMMARY
-          ansible proxmox_hosts -m shell -a "pct list" --limit jmpa-server-1 | grep -v "CHANGED" >> $GITHUB_STEP_SUMMARY || true
+          {
+            echo "### Services Deployed Successfully!"
+            echo ""
+            echo "**Container Status:**"
+            ansible proxmox_hosts -m shell -a "pct list" --limit jmpa-server-1 | grep -v "CHANGED" || true
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Notify on failure
         if: failure()

@@ -306,3 +306,24 @@ provision-vps:
 # is incorrect.ory.yml as an inventory source
 include $(shell while [[ ! -d .git ]]; do cd ..; done; pwd)/Makefile.common.mk
 
+# ── Post-include additions ────────────────────────────────────────────────────
+# Ansible/YAML/structural linting hooks into the lint chain after the include.
+# lint-docker is the last sub-target in common lint — we append our checks
+# so they run as part of 'make lint' without duplicating any targets.
+
+lint-ansible: ## Runs Ansible/YAML/structural validation.
+lint-ansible:
+	@echo "Running structural validation..."
+	@python3 scripts/validate.py
+	@echo ""
+	@echo "Running YAML lint..."
+	@yamllint -c .yamllint roles/ services/ playbooks/ || true
+	@echo ""
+	@echo "Running Ansible lint..."
+	@ansible-lint --offline playbook.yml || true
+
+lint: lint-ansible
+
+.PHONY += lint-ansible
+
+

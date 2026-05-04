@@ -58,12 +58,11 @@ jobs:
 
       - name: Run updates
         run: |
-          TARGET="${{ inputs.target || 'all' }}"
           AUTO_REBOOT="${{ inputs.auto_reboot || 'false' }}"
 
           ansible-playbook playbooks/update-all.yml \
             -i inventory.json \
-            -e "auto_reboot=$AUTO_REBOOT" \
+            -e "auto_reboot=${AUTO_REBOOT}" \
             -v
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'False'
@@ -83,9 +82,11 @@ jobs:
           # Check NAS
           NAS_REBOOT=$(ansible nas -i ../inventory.json -m shell -a "test -f /var/run/reboot-required && echo 'yes' || echo 'no'" 2>/dev/null | grep -c "yes" || echo "0")
 
-          echo "proxmox_reboot_count=$PROXMOX_REBOOT" >> $GITHUB_OUTPUT
-          echo "dns_reboot_count=$DNS_REBOOT" >> $GITHUB_OUTPUT
-          echo "nas_reboot_count=$NAS_REBOOT" >> $GITHUB_OUTPUT
+          {
+            echo "proxmox_reboot_count=${PROXMOX_REBOOT}"
+            echo "dns_reboot_count=${DNS_REBOOT}"
+            echo "nas_reboot_count=${NAS_REBOOT}"
+          } >> "${GITHUB_OUTPUT}"
         continue-on-error: true
 
       - name: Create update summary

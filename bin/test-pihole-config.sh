@@ -34,11 +34,13 @@ piholeStatus=$(ssh "${piholeUser}@${piholeHost}" "pihole status" 2>/dev/null || 
 echo "✓ Pi-hole service is running"
 
 # Check custom DNS list exists.
+# shellcheck disable=SC2029  # $customListPath intentionally expands on client side
 ssh "${piholeUser}@${piholeHost}" "test -f $customListPath" \
     || die "Custom DNS list not found at $customListPath"
 echo "✓ Custom DNS list exists: $customListPath"
 
 # Count custom DNS entries.
+# shellcheck disable=SC2029  # $customListPath intentionally expands on client side
 entryCount=$(ssh "${piholeUser}@${piholeHost}" "grep -v '^#' $customListPath | grep -v '^$' | wc -l" 2>/dev/null || echo "0")
 echo "✓ Custom DNS entries: $entryCount"
 
@@ -46,6 +48,7 @@ echo "✓ Custom DNS entries: $entryCount"
 echo ""
 echo "Custom DNS entries:"
 echo "-------------------"
+# shellcheck disable=SC2029  # $customListPath intentionally expands on client side
 ssh "${piholeUser}@${piholeHost}" "grep -v '^#' $customListPath | grep -v '^$'" 2>/dev/null || echo "(none)"
 echo "-------------------"
 

@@ -1,0 +1,10 @@
+self-hosted-runner:
+  # Custom labels used by self-hosted runners in this homelab.
+  # actionlint needs to know about these to avoid false-positive runner-label errors.
+  labels:
+    - homelab
+    - k3s
+    - linux
+    - x64
+    - arm64
+    - self-hosted

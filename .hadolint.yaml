@@ -1,0 +1,5 @@
+ignore:
+  # DL3008: Pin versions in apt get install.
+  # Not practical for a development/tooling image — versions change and
+  # the image is not deployed to production.
+  - DL3008

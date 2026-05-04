@@ -1,7 +1,8 @@
 FROM python:3.13.2-slim
 
 # Install deps.
-RUN apt-get update && apt-get install -y \
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ansible \
     awscli \
     bsdmainutils \
@@ -15,4 +16,3 @@ WORKDIR /app
 # Install project-specific deps.
 COPY inventory/requirements.txt ./
 RUN pip install --no-cache-dir -r ./requirements.txt
-

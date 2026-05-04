@@ -49,6 +49,3 @@
         create_lxc_container_subnet: "{{ lxc_container_ip }}/{{ lxc_container_ip_cidr }}"
         create_lxc_container_tags: "{{ lxc_container_tags }}"
       register: create_container
-
-
-
