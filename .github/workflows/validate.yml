@@ -6,17 +6,21 @@ on:
       - main
     paths:
       - 'inventory/**'
-      - 'instances/**'
       - 'roles/**'
-      - 'tasks/**'
+      - 'services/**'
+      - 'playbooks/**'
+      - 'scripts/**'
       - 'playbook.yml'
+      - 'requirements.yml'
+      - '.yamllint'
+      - '.ansible-lint'
   push:
     branches:
       - main
 
 jobs:
   validate:
-    name: Validate Ansible Configuration
+    name: Validate
     runs-on: ubuntu-latest
 
     steps:
@@ -29,38 +33,37 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -r inventory/requirements.txt
-          pip install ansible-lint yamllint
-          ansible-galaxy install -r requirements.yml
+      - name: Install Python dependencies
+        run: pip install -r inventory/requirements.txt ansible-lint yamllint
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml
 
       - name: Run structural validation
-        run: |
-          python3 scripts/validate.py
+        # Fails the build on any structural issue — not continue-on-error.
+        # Checks: YAML validity, missing templates, broken imports,
+        # Python syntax, old group names, pcs_ prefix, no changeme,
+        # SSH key not inline, helm_repository kubeconfig, gather_facts.
+        run: python3 scripts/validate.py
 
-      - name: Run YAML lint
+      - name: Validate Python inventory syntax
+        # Belt-and-braces — also caught by validate.py but worth running
+        # directly to surface cleaner error messages.
+        working-directory: inventory
         run: |
-          yamllint -c .yamllint playbook.yml roles/ services/
-        continue-on-error: true
-
-      - name: Run Ansible lint
-        run: |
-          ansible-lint playbook.yml
-        continue-on-error: true
-
-      - name: Validate Python inventory script
-        run: |
-          cd inventory
           python3 -m py_compile main.py
-          python3 -m py_compile inventory.py service.py ssm.py env.py k8s_services.py k8s_inventory.py homepage_config.py
+          python3 -m py_compile inventory.py service.py ssm.py env.py \
+            k8s_services.py k8s_inventory.py homepage_config.py
           python3 -m py_compile instances/*.py
 
-      - name: Check Ansible syntax (mock inventory)
-        run: |
-          # Create a minimal mock inventory for syntax checking
-          echo '{"all": {"hosts": ["localhost"]}}' > mock-inventory.json
-          ansible-playbook playbook.yml --syntax-check -i mock-inventory.json
+      - name: Run YAML lint
+        run: yamllint -c .yamllint roles/ services/ playbooks/
+
+      - name: Run Ansible lint
+        # continue-on-error because we rely on community.general and
+        # kubernetes.core which may not install cleanly from Galaxy CDN
+        # every run. Structural issues are caught by validate.py above.
+        run: ansible-lint playbook.yml
         continue-on-error: true
 
   security-scan:

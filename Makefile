@@ -4,6 +4,15 @@ ifndef PROJECT
 PROJECT=homelab
 endif
 
+# Override DEPENDENCIES from Makefile.common.mk — this is an Ansible/Python
+# project, not a Go project. We don't need golangci-lint, hadolint, go, etc.
+DEPENDENCIES ?= \
+	aws \
+	ansible \
+	ansible-playbook \
+	python3 \
+	jq
+
 #
 # Variables.
 #
