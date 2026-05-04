@@ -106,12 +106,12 @@ spec:
             - name: NFS_SERVER
               value: "{{ nfs_server_ip }}"
             - name: NFS_PATH
-              value: "/volume4/k3s-storage"  # NAS Volume 4 path
+              value: "{{ nfs_path }}"
       volumes:
         - name: nfs-client-root
           nfs:
             server: "{{ nfs_server_ip }}"
-            path: "/volume4/k3s-storage"
+            path: "{{ nfs_path }}"
 
 ---
 apiVersion: storage.k8s.io/v1

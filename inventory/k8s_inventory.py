@@ -7,11 +7,9 @@ class K8sInventory:
   version: str
   ansible_user: str
   # Path to the SSH private key file on the controller machine.
-  # The key content is fetched from SSM but must be written to disk before
-  # Ansible runs. Use `make setup-k3s-ssh` to write it to the expected path.
+  # Written to disk by _ensure_ssh_key() in main.py from SSM content.
   ansible_ssh_private_key_file: str
   ansible_python_interpreter: str
-  token: str
 
   # Masters.
   masters_per_host: int

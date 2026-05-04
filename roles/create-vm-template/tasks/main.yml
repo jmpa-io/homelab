@@ -126,8 +126,8 @@
         echo "Found unused disk: $DISK_REF"
 
         # Save existing scsi0 for rollback (may be empty).
-        OLD_SCsi0=$(qm config "$VMID" | awk -F': ' '/^scsi0:/ {print $2; exit}' || true)
-        echo "Old scsi0: $OLD_SCsi0" > /tmp/qm-${VMID}-old-scsi0 || true
+        OLD_SCSI0=$(qm config "$VMID" | awk -F': ' '/^scsi0:/ {print $2; exit}' || true)
+        echo "Old scsi0: $OLD_SCSI0" > /tmp/qm-${VMID}-old-scsi0 || true
 
         # attach as scsi0 and set boot.
         qm set "$VMID" --scsi0 "$DISK_REF"
@@ -165,7 +165,9 @@
         vga: serial0
         ciuser: debian
         cipassword: "{{ create_vm_template__template_root_password }}"
-        nameservers: [ "1.1.1.1" ]
+        # Use the homelab Pi-hole DNS so VMs can resolve internal .jmpa.lab names.
+        # Falls back to the Proxmox node IP (which should forward to Pi-hole).
+        nameservers: "{{ create_vm_template__nameservers | default([hostvars[groups['dns'][0]]['ansible_host']]) }}"
         sshkeys: "{{ create_vm_template__ssh_public_key }}"
         update: true
         state: present

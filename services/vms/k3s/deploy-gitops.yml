@@ -64,6 +64,7 @@
       ansible.builtin.set_fact:
         argocd_password: "{{ argocd_secret.resources[0].data.password | b64decode }}"
       when: argocd_secret.resources | length > 0
+      no_log: true
 
     - name: Get ArgoCD LoadBalancer IP
       kubernetes.core.k8s_info:
@@ -94,6 +95,7 @@
         dest: "{{ playbook_dir }}/argocd-credentials.txt"
         mode: '0600'
       delegate_to: localhost
+      no_log: true
 
     - name: Display ArgoCD access information
       ansible.builtin.debug:
@@ -103,7 +105,7 @@
           - "=========================================="
           - "  URL: https://{{ argocd_service.resources[0].status.loadBalancer.ingress[0].ip | default('PENDING') }}"
           - "  Username: admin"
-          - "  Password: {{ argocd_password | default('Check secret manually') }}"
+          - "  Password: stored in {{ playbook_dir }}/argocd-credentials.txt (mode 0600)"
           - "  Credentials saved to: {{ playbook_dir }}/argocd-credentials.txt"
           - "=========================================="
 

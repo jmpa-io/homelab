@@ -117,8 +117,15 @@
             timeout: 120
 
       rescue:
+        # module_defaults must be repeated here — rescue blocks are outside
+        # the parent block's scope in Ansible.
         - name: Remove VM after failed creation.
           community.general.proxmox_kvm:
+            api_host: "{{ create_vm__proxmox_api_ip }}"
+            api_user: "{{ create_vm__proxmox_api_user }}"
+            api_token_id: "{{ create_vm__proxmox_api_token_id }}"
+            api_token_secret: "{{ create_vm__proxmox_api_token_secret }}"
+            node: "{{ create_vm__proxmox_node_name }}"
             vmid: "{{ create_vm__vm_vmid }}"
             state: absent
           ignore_errors: true  # noqa: ignore-errors

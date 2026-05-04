@@ -80,8 +80,15 @@
         execute_script_in_lxc__script_destination: /tmp/install_deps.sh
 
   rescue:
+    # module_defaults must be repeated here — rescue blocks are outside
+    # the parent block's module_defaults scope in Ansible.
     - name: Clean up LXC after failed creation.
       community.general.proxmox:
+        api_host: "{{ create_lxc__proxmox_api_ip }}"
+        api_user: "{{ create_lxc__proxmox_api_user }}"
+        api_token_id: "{{ create_lxc__proxmox_api_token_id }}"
+        api_token_secret: "{{ create_lxc__proxmox_api_token_secret }}"
+        node: "{{ create_lxc__proxmox_node_name }}"
         vmid: "{{ create_lxc__lxc_vmid }}"
         state: "{{ item }}"
         unprivileged: true

@@ -2,13 +2,11 @@
 import json
 import os
 import stat
-import tempfile
 
 from ssm import SSMClient
 from env import read_env_var
 
 from instances import VPS, NAS, DNS, EC2
-from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
 from instances.proxmox_host import ProxmoxHost, ProxmoxHostBridge
 from service import LXCService, HostService, Protocol, CommunityScriptService
 from inventory import Inventory
@@ -275,15 +273,11 @@ def main():
     version=read_env_var('K3S_VERSION', 'v1.30.2+k3s1'),
     ansible_user=read_env_var('K3S_ANSIBLE_USER', 'debian'),
     # Write the SSH private key to a temp file so Ansible can use it as a path.
-    # If K3S_SSH_KEY_PATH is set (e.g. by `make setup-k3s-ssh`), use that path
-    # directly. Otherwise write the key content from SSM to a predictable location.
     ansible_ssh_private_key_file=_ensure_ssh_key(
       content=inventory_vars['ssh']['private_key'],
       path=read_env_var('K3S_SSH_KEY_PATH', os.path.expanduser('~/.ssh/homelab_k3s')),
     ),
     ansible_python_interpreter=inventory_vars['ansible_python_interpreter'],
-    # Dedicated k3s cluster join token — stored separately from the Proxmox API token.
-    token=ssm_client.require_parameter('/homelab/k3s/token'),
     # Masters.
     masters_per_host=read_env_var('K3S_MASTERS_PER_HOST', 1, value_type=int),
     masters_ips_start_range=read_env_var('K3S_MASTERS_START_RANGE', 60, value_type=int),
@@ -293,6 +287,12 @@ def main():
     nodes_ips_start_range=read_env_var('K3S_NODES_START_RANGE', 70, value_type=int),
     nodes_ips_end_range=read_env_var('K3S_NODES_END_RANGE', 79, value_type=int),
   )
+
+  # Pre-flight: verify k3s join token exists in SSM before generating inventory.
+  # The token is read from /var/lib/rancher/k3s/server/node-token at runtime
+  # (main.yml), but we verify the SSM parameter exists here so failures are
+  # caught early with a clear message rather than mid-deploy.
+  ssm_client.require_parameter('/homelab/k3s/token')
 
   #
   # Setup inventory.

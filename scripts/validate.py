@@ -210,20 +210,9 @@ def check_ansible_user_not_me():
                             '(fleet default is "me")' % (f, lineno, bad)
                         )
     return issues
-    """
-    ansible_ssh_private_key_file must reference a file path, not raw key content.
-    A correct value references a variable like ansible_ssh_private_key_file
-    or a path string. An incorrect value would be the literal key PEM content.
-    """
-    issues = []
-    for f in _iter_files('inventory/inventory.py'):
-        for lineno, line in enumerate(_read(f).splitlines(), 1):
-            if 'ansible_ssh_private_key_file' in line and 'BEGIN' in line:
-                issues.append('  %s:%d — value looks like raw key content, not a path' % (f, lineno))
-    return issues
 
 
-# ── 9. helm_repository tasks don't use kubeconfig param ──────────────────────
+# ── 9. IP collision detection ─────────────────────────────────────────────────
 
 def check_ip_collisions():
     """
@@ -299,18 +288,9 @@ def check_ip_collisions():
         issues.append('  %s: k3s VM overlaps with LXC service' % ip)
 
     return issues
-    """
-    ansible_ssh_private_key_file must reference a file path, not raw key content.
-    A correct value references a variable. An incorrect value would contain PEM
-    header text like '-----BEGIN'.
-    """
-    issues = []
-    for f in _iter_files('inventory/inventory.py'):
-        for lineno, line in enumerate(_read(f).splitlines(), 1):
-            if 'ansible_ssh_private_key_file' in line and 'BEGIN' in line:
-                issues.append('  %s:%d — value looks like raw key content, not a path' % (f, lineno))
-    return issues
 
+
+# ── 10. SSH key not inline ────────────────────────────────────────────────────
 
 def check_ssh_key_not_inline():
     """

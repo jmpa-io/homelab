@@ -265,4 +265,6 @@ kind: StorageClass
 metadata:
   name: nfs-media
 provisioner: kubernetes.io/no-provisioner
-volumeBindingMode: WaitForFirstConsumer
+# Static NFS volumes use ReadWriteMany access mode — WaitForFirstConsumer
+# is incompatible with RWX. Use Immediate so volumes bind at creation time.
+volumeBindingMode: Immediate

@@ -34,7 +34,7 @@
 #   this; OVH does not. For LXC-only workloads any KVM VPS works fine.
 
 - name: Bootstrap Proxmox VE on cloud VPS.
-  hosts: "{{ target_host | default('jmpa_server_4') }}"
+  hosts: "{{ target_host | default('jmpa_vps_1') }}"
   become: true
   gather_facts: true
 
@@ -184,12 +184,11 @@
     # Store public IP in SSM so inventory picks it up automatically
     # -------------------------------------------------------------------------
 
-    - name: Get current public IP.
+    - name: Get VPS public IP (from the VPS itself, not the controller).
       ansible.builtin.uri:
         url: https://checkip.amazonaws.com
         return_content: true
       register: public_ip_result
-      delegate_to: localhost
       changed_when: false
 
     - name: Store public IP in SSM.
@@ -199,7 +198,7 @@
           --value "{{ public_ip_result.content | trim }}" \
           --type String \
           --overwrite \
-          --region "{{ lookup('env', 'AWS_REGION') }}"
+          --region "$AWS_REGION"
       delegate_to: localhost
       changed_when: true
 
@@ -210,7 +209,7 @@
           --value "eth0" \
           --type String \
           --overwrite \
-          --region "{{ lookup('env', 'AWS_REGION') }}"
+          --region "$AWS_REGION"
       delegate_to: localhost
       changed_when: true
 

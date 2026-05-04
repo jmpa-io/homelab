@@ -14,7 +14,7 @@
 
 - name: Setup temporary directory.
   ansible.builtin.set_fact:
-    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc__proxmox_node_ip }}/{{ copy_file_to_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ ansible_date_time.epoch }}"  # noqa: yaml[line-length]
+    temporary_directory: "/tmp/ansible/{{ copy_file_to_lxc__proxmox_node_ip }}/{{ copy_file_to_lxc__lxc_vmid }}/{{ role_path | basename }}_{{ lookup('pipe', 'date +%s') }}"  # noqa: yaml[line-length]
 
 - name: Setup temporary directory filepath.
   ansible.builtin.set_fact:

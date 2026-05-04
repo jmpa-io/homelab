@@ -146,7 +146,7 @@ class ObservabilityConfig:
     grafana_pass: Optional[str] = None
     prometheus_retention: str = "30d"
     prometheus_storage: str = "100Gi"
-    loki_retention: str = "744h"   # 31 days
+    loki_retention: str = "30d"    # consistent with prometheus_retention format
     loki_storage: str = "50Gi"
     tempo_storage: str = "50Gi"
 

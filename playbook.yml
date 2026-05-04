@@ -25,14 +25,12 @@
 #
 
 # - name: Setup NAS.
-#  hosts: nas
-#  roles:
-
-    # Packages.
-#    - instances/nas/base
-
-    # Tailscale.
-#    - instances/nas/tailscale
+#   hosts: nas
+#   roles:
+#     # Packages.
+#     - instances/nas/base
+#     # Tailscale.
+#     - instances/nas/tailscale
 
 # ▖▖    ▗
 # ▙▌▛▌▛▘▜▘▛▘

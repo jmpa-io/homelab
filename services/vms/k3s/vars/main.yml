@@ -16,4 +16,4 @@ k3s_kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
 k3s_install_options:
   - "--disable traefik"
   - "--disable servicelb"
-  - "--write-kubeconfig-mode 644"
+  - "--write-kubeconfig-mode 600"

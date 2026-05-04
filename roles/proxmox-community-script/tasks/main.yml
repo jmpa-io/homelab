@@ -87,6 +87,8 @@
     source /tmp/{{ pcs_script_name }}.env
     set +a
     /tmp/{{ pcs_script_name }}.sh
+  args:
+    executable: /bin/bash
   environment:
     DEBIAN_FRONTEND: noninteractive
   register: pcs_script_output
