@@ -47,18 +47,7 @@ class ProxmoxHostBridge:
 
 @dataclass
 class ProxmoxHost(ContainerInstance):
-    """Proxmox server with LXC and K8s support.
-
-    Attributes:
-        ipv4: IPv4 address
-        ipv4_cidr: CIDR notation
-        device_name: Network interface name
-        bridge: Network bridge config
-        name: Instance name template
-        lxc_services: LXC container services
-        k8s_masters: K8s master node IPs
-        k8s_nodes: K8s worker node IPs
-    """
+    """Proxmox server with LXC and K8s support."""
     bridge: ProxmoxHostBridge = field(default_factory=lambda: ProxmoxHostBridge(
         name='vmbr0',
         ipv4_prefix='10.0',
@@ -66,6 +55,8 @@ class ProxmoxHost(ContainerInstance):
         ipv4_cidr='24'
     ))
     name: str = 'jmpa-server-{id}'
+    # Proxmox VE hosts are accessed as root over SSH by default.
+    ansible_user: str = 'root'
     lxc_services: List[Service] = field(default_factory=list)
     k8s_masters: List[str] = field(default_factory=list)
     k8s_nodes: List[str] = field(default_factory=list)

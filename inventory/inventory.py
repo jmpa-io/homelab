@@ -212,7 +212,7 @@ class Inventory:
       'vars': {
         'k3s_version': self.kube_inventory.version,
         'ansible_user': self.kube_inventory.ansible_user,
-        'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key,
+        'ansible_ssh_private_key_file': self.kube_inventory.ansible_ssh_private_key_file,
         'ansible_python_interpreter': self.kube_inventory.ansible_python_interpreter,
         # Emit github and k8s_services here so all k3s plays work with either
         # the full inventory or the k3s-only filtered one.

@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import json
+import os
+import stat
+import tempfile
 
 from ssm import SSMClient
 from env import read_env_var
@@ -16,6 +19,32 @@ from k8s_services import (
   NFSStorageConfig, GitHubRunnerConfig,
 )
 from homepage_config import HomepageConfig
+
+
+def _ensure_ssh_key(content: str, path: str) -> str:
+  """Write SSH private key content to a file and return the path.
+
+  Ansible requires ansible_ssh_private_key_file to be a filesystem path.
+  This helper writes the key content (from SSM) to the given path with
+  correct permissions (0600) so Ansible can use it.
+
+  The file is only written if the content has changed, to avoid unnecessary
+  writes on repeated inventory runs.
+  """
+  os.makedirs(os.path.dirname(path), exist_ok=True)
+
+  # Only write if content differs (avoids unnecessary disk writes).
+  existing = None
+  if os.path.exists(path):
+    with open(path, 'r') as f:
+      existing = f.read()
+
+  if existing != content:
+    with open(path, 'w') as f:
+      f.write(content)
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 0600
+
+  return path
 
 
 def main():
@@ -232,7 +261,13 @@ def main():
   kube_inventory = K8sInventory(
     version=read_env_var('K3S_VERSION', 'v1.30.2+k3s1'),
     ansible_user=read_env_var('K3S_ANSIBLE_USER', 'debian'),
-    ansible_ssh_private_key=inventory_vars['ssh']['private_key'],
+    # Write the SSH private key to a temp file so Ansible can use it as a path.
+    # If K3S_SSH_KEY_PATH is set (e.g. by `make setup-k3s-ssh`), use that path
+    # directly. Otherwise write the key content from SSM to a predictable location.
+    ansible_ssh_private_key_file=_ensure_ssh_key(
+      content=inventory_vars['ssh']['private_key'],
+      path=read_env_var('K3S_SSH_KEY_PATH', os.path.expanduser('~/.ssh/homelab_k3s')),
+    ),
     ansible_python_interpreter=inventory_vars['ansible_python_interpreter'],
     # Dedicated k3s cluster join token — stored separately from the Proxmox API token.
     token=ssm_client.require_parameter('/homelab/k3s/token'),
