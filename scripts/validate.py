@@ -7,19 +7,17 @@ Checks:
   2.  LXC install script templates referenced in playbooks exist on disk
   3.  All import_playbook paths in playbooks/ resolve to real files
   4.  All Python inventory files have valid syntax
-  5.  No genuinely old/renamed Ansible group names remain ('server', 'agent',
-      'hosts: lxc_loki', 'hosts: lxc_tempo')
+  5.  No genuinely old/renamed Ansible group names remain
   6.  All proxmox-community-script callers use pcs_-prefixed variables
   7.  No 'changeme' placeholder values remain in executable code
-  8.  ansible_ssh_private_key_file in inventory.py points to a path variable,
-      not raw key content
-  9.  kubernetes.core.helm_repository tasks do not use a kubeconfig: param
-      (that module doesn't support it)
-  10. k3s service playbooks targeting k3s_masters or k3s_nodes have
-      gather_facts: false
+  8.  Every concrete instance type explicitly sets ansible_user
+      (base class default is 'me' which will fail on real hardware)
+  9.  ansible_ssh_private_key_file in inventory.py is a path, not raw PEM
+  10. kubernetes.core.helm_repository tasks do not use kubeconfig: param
+  11. k3s service playbooks have gather_facts: false
 
 Usage:
-  python3 scripts/validate.py   (from repo root)
+  python3 scripts/validate.py   (from any directory)
   make validate
 """
 
@@ -174,7 +172,35 @@ def check_no_changeme():
 
 # ── 8. ansible_ssh_private_key_file is a path variable, not inline content ───
 
-def check_ssh_key_not_inline():
+def check_ansible_user_not_me():
+    """
+    Every leaf instance type (one that is directly instantiated in main.py)
+    must override ansible_user away from the base class default of 'me'.
+    Connecting as 'me' will fail silently on real hardware.
+
+    Abstract intermediate classes (ContainerInstance) are excluded since
+    their concrete subclasses (ProxmoxHost) set the user.
+    """
+    # These are abstract intermediates — their subclasses handle ansible_user.
+    abstract_bases = {'ContainerInstance'}
+
+    issues = []
+    for f in _iter_files('inventory/instances/*.py'):
+        if os.path.basename(f) in ('instance.py', '__init__.py'):
+            continue
+        content = _read(f)
+        if '@dataclass' not in content:
+            continue
+        m = re.search(r'class (\w+)', content)
+        cls = m.group(1) if m else '?'
+        if cls in abstract_bases:
+            continue
+        if 'ansible_user' not in content:
+            issues.append(
+                '  %s — %s does not set ansible_user '
+                '(inherits "me" from Instance base)' % (f, cls)
+            )
+    return issues
     """
     ansible_ssh_private_key_file must reference a file path, not raw key content.
     A correct value references a variable like ansible_ssh_private_key_file
@@ -189,6 +215,20 @@ def check_ssh_key_not_inline():
 
 
 # ── 9. helm_repository tasks don't use kubeconfig param ──────────────────────
+
+def check_ssh_key_not_inline():
+    """
+    ansible_ssh_private_key_file must reference a file path, not raw key content.
+    A correct value references a variable. An incorrect value would contain PEM
+    header text like '-----BEGIN'.
+    """
+    issues = []
+    for f in _iter_files('inventory/inventory.py'):
+        for lineno, line in enumerate(_read(f).splitlines(), 1):
+            if 'ansible_ssh_private_key_file' in line and 'BEGIN' in line:
+                issues.append('  %s:%d — value looks like raw key content, not a path' % (f, lineno))
+    return issues
+
 
 def check_helm_repository_no_kubeconfig():
     """
@@ -243,6 +283,7 @@ def main():
         ('Old group names',                   check_old_group_names),
         ('PCS prefix consistency',            check_pcs_prefix),
         ('No changeme in code',               check_no_changeme),
+        ('ansible_user not "me"',             check_ansible_user_not_me),
         ('SSH key not inline',                check_ssh_key_not_inline),
         ('helm_repository no kubeconfig',     check_helm_repository_no_kubeconfig),
         ('k3s plays have gather_facts:false', check_k3s_gather_facts),

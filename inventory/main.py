@@ -315,6 +315,7 @@ def main():
     ipv4_cidr=default_cidr,
     device_name=ssm_client.require_parameter('/homelab/jmpa-dns-1/device-name'),
     host_services=[collector],
+    ansible_user=read_env_var('DNS_ANSIBLE_USER', 'pi'),
   ))
 
   # Add VPS instance (uncomment when ready to use).

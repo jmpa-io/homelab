@@ -7,6 +7,9 @@ class VPS(ContainerInstance):
   """Virtual Private Server instance."""
 
   name: str = 'jmpa-vps-{id}'
+  # Generic VPS default — most Debian/Ubuntu cloud images use 'debian' or
+  # 'ubuntu'. Override via ansible_user= when constructing in main.py.
+  ansible_user: str = 'debian'
 
   def to_dict(self) -> dict:
     """Convert VPS instance to dictionary for Ansible consumption."""
