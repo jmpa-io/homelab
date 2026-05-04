@@ -151,10 +151,12 @@ class ObservabilityConfig:
     tempo_storage: str = "50Gi"
 
     def to_dict(self) -> dict:
-        """Raises if required secrets are missing."""
+        """Returns observability config. Grafana password is optional —
+        a missing value just means the Grafana admin password won't be
+        pre-configured; it can be set manually or added to SSM later."""
         return {
             'namespace': self.namespace,
-            'grafana_pass': _require(self.grafana_pass, '/homelab/grafana/admin-password'),
+            'grafana_pass': self.grafana_pass or '',
             'prometheus': {
                 'retention': self.prometheus_retention,
                 'storage': self.prometheus_storage,

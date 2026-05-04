@@ -44,7 +44,7 @@ Complete GitOps-based homelab infrastructure running on Proxmox with K3s and Arg
 All secrets and host IPs are stored in AWS SSM — **nothing works until these exist.**
 Run `make print-inventory` at any time to see exactly which ones are missing.
 
-See **[docs/ssm-parameters.md](docs/ssm-parameters.md)** for the complete reference. Minimum required before deploying:
+See **[docs/ssm-parameters.md](docs/ssm-parameters.md)** for the complete reference. Minimum required before `make print-inventory` works:
 
 ```bash
 export AWS_REGION=ap-southeast-2
@@ -53,10 +53,6 @@ export AWS_REGION=ap-southeast-2
 aws ssm put-parameter --name "/homelab/ssh-password"              --value "<me-user-password>"           --type SecureString
 aws ssm put-parameter --name "/homelab/ssh/public-key"            --value "$(cat ~/.ssh/id_ed25519.pub)" --type String
 aws ssm put-parameter --name "/homelab/ssh/private-key"           --value "$(cat ~/.ssh/id_ed25519)"     --type SecureString
-
-# SSL (or run: make cert)
-aws ssm put-parameter --name "/homelab/ssl/private-key"           --value "$(cat ~/.ssl/private/self-signed.key)" --type SecureString
-aws ssm put-parameter --name "/homelab/ssl/cert"                  --value "$(cat ~/.ssl/certs/self-signed.crt)"   --type SecureString
 
 # Network
 aws ssm put-parameter --name "/homelab/subnet"                    --value "10.0.0.0"    --type String
@@ -78,26 +74,11 @@ aws ssm put-parameter --name "/homelab/jmpa-nas-1/ipv4-address"   --value "<ip>"
 aws ssm put-parameter --name "/homelab/jmpa-nas-1/device-name"    --value "jmpa-nas-1" --type String
 aws ssm put-parameter --name "/homelab/jmpa-dns-1/ipv4-address"   --value "<ip>" --type String
 aws ssm put-parameter --name "/homelab/jmpa-dns-1/device-name"    --value "jmpa-dns-1" --type String
-
-# Tailscale
-aws ssm put-parameter --name "/homelab/tailscale/auth-key"        --value "<tskey-auth-...>" --type SecureString
-
-# Grafana
-aws ssm put-parameter --name "/homelab/grafana/admin-password"    --value "<password>" --type SecureString
-
-# k3s join token (generate once, store forever)
-aws ssm put-parameter --name "/homelab/k3s/token"                 --value "$(openssl rand -hex 32)" --type SecureString
 ```
 
-Verify everything is in place:
-```bash
-make print-inventory   # should output valid JSON with no errors
-```
-
-> **Homepage widget secrets** (Pi-hole API key, Jellyfin API key, arr stack keys, etc.)
-> are **not required** for any of this. Add them as you bring each service online —
-> a missing key just shows a widget error on the Homepage dashboard, nothing else breaks.
-> See [docs/ssm-parameters.md](docs/ssm-parameters.md) for the full optional list.
+Everything else (Tailscale, SSL, Grafana password, k3s token, Pi-hole API key, arr stack keys, etc.)
+is **optional** — add each one as you bring that service online.
+See [docs/ssm-parameters.md](docs/ssm-parameters.md) for the full breakdown.
 
 ### 1. Build the VM template (prerequisite for k3s)
 

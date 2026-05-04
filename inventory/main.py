@@ -58,11 +58,9 @@ def main():
 
   # Fetch shared secrets once — reused in both inventory_vars and k8s_services.
   ssh_password        = ssm_client.require_parameter('/homelab/ssh-password')
-  # github_token is optional — only needed when deploying GitHub Actions runners
-  # or the Homepage dashboard GitHub widget. Inventory generates fine without it;
-  # the runner and homepage deploys will skip gracefully if it is None.
   github_token        = ssm_client.get_parameter('/tokens/github')
-  grafana_admin_pass  = ssm_client.require_parameter('/homelab/grafana/admin-password')
+  # Grafana password — only needed when deploying Grafana LXC or k3s observability.
+  grafana_admin_pass  = ssm_client.get_parameter('/homelab/grafana/admin-password')
 
   inventory_vars = {
     'ansible_become_pass': ssh_password,
@@ -87,14 +85,16 @@ def main():
       'default_ui_port': read_env_var('PROXMOX_DEFAULT_UI_PORT', '8006'),
     },
     'tailscale': {
-      'auth_key': ssm_client.require_parameter('/homelab/tailscale/auth-key'),
+      # Optional — only needed when deploying the tailscale-gateway LXC.
+      'auth_key': ssm_client.get_parameter('/homelab/tailscale/auth-key') or '',
     },
     'ssl': {
-      'private_key': ssm_client.require_parameter('/homelab/ssl/private-key'),
-      'cert': ssm_client.require_parameter('/homelab/ssl/cert'),
+      # Optional — only needed when deploying nginx with SSL termination.
+      'private_key': ssm_client.get_parameter('/homelab/ssl/private-key') or '',
+      'cert':        ssm_client.get_parameter('/homelab/ssl/cert') or '',
     },
     'ssh': {
-      'public_key': ssm_client.require_parameter('/homelab/ssh/public-key'),
+      'public_key':  ssm_client.require_parameter('/homelab/ssh/public-key'),
       'private_key': ssm_client.require_parameter('/homelab/ssh/private-key'),
     },
     'github': {

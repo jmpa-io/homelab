@@ -8,9 +8,121 @@ committed to Git.
 
 ## Required Parameters
 
-Run `make print-inventory` after setting these up. If any are missing,
-the inventory will fail immediately with a message telling you exactly
-which path to create.
+These must exist before `make print-inventory` will succeed. Everything else is optional — add as you bring each service online.
+
+### Network
+
+```bash
+/homelab/subnet                        # LAN subnet base IP (e.g. 10.0.0.0)
+/homelab/internet-gateway              # Router IP (e.g. 10.0.0.1)
+```
+
+### SSH & Auth
+
+```bash
+/homelab/ssh-password                  # Password for the 'me' user (sudo password on all hosts)
+/homelab/ssh/public-key                # SSH public key  (run: make upload-ssh-keys)
+/homelab/ssh/private-key               # SSH private key (run: make upload-ssh-keys)
+```
+
+### Proxmox
+
+```bash
+/homelab/proxmox/api-token             # Format: user@realm!tokenid=secret
+```
+
+### Proxmox Hosts
+
+```bash
+/homelab/jmpa-server-1/ipv4-address
+/homelab/jmpa-server-1/device-name
+/homelab/jmpa-server-2/ipv4-address
+/homelab/jmpa-server-2/device-name
+/homelab/jmpa-server-3/ipv4-address
+/homelab/jmpa-server-3/device-name
+```
+
+### NAS
+
+```bash
+/homelab/jmpa-nas-1/ipv4-address
+/homelab/jmpa-nas-1/device-name
+```
+
+### DNS (Pi-hole)
+
+```bash
+/homelab/jmpa-dns-1/ipv4-address
+/homelab/jmpa-dns-1/device-name
+```
+
+---
+
+## Optional Parameters
+
+These are only read when deploying specific services. Missing values are handled gracefully — the relevant service will fail or degrade, nothing else breaks.
+
+### k3s (add before running `make deploy-k3s`)
+
+```bash
+/homelab/k3s/token                     # Cluster join token — generate once:
+                                       # openssl rand -hex 32
+```
+
+### Tailscale (add before deploying tailscale-gateway LXC)
+
+```bash
+/homelab/tailscale/auth-key            # Tailscale auth key (reusable, ephemeral)
+```
+
+### SSL (add before deploying nginx with SSL, or run: make cert)
+
+```bash
+/homelab/ssl/private-key
+/homelab/ssl/cert
+```
+
+### Grafana (add before deploying Grafana LXC)
+
+```bash
+/homelab/grafana/admin-password
+```
+
+### GitHub (add before deploying GitHub Actions runners)
+
+```bash
+/tokens/github                         # GitHub Personal Access Token (repo scope)
+```
+
+### Homepage dashboard widgets (add as you bring each service online)
+
+Missing values show a widget error on the dashboard — nothing else breaks.
+
+```bash
+/homelab/proxmox/password
+/homelab/pihole/api-key                # Settings → API in Pi-hole UI
+/homelab/nas/password
+/homelab/argocd/admin-password         # Populated automatically by deploy-gitops.yml
+/homelab/jellyfin/api-key
+/homelab/jellyseerr/api-key
+/homelab/tautulli/api-key
+/homelab/prowlarr/api-key
+/homelab/sonarr/api-key
+/homelab/radarr/api-key
+/homelab/lidarr/api-key
+/homelab/readarr/api-key
+/homelab/bazarr/api-key
+/homelab/deluge/password
+/homelab/n8n/api-key
+/homelab/tailscale/api-key             # Tailscale API key (for Homepage widget only)
+```
+
+### VPS (written automatically by `make provision-vps`)
+
+```bash
+/homelab/jmpa-vps-1/ipv4-address
+/homelab/jmpa-vps-1/device-name
+```
 
 ### Network
 
