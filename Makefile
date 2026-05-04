@@ -89,9 +89,6 @@ dist/inventory.json: dist
 dist/inventory.json: inventory/main.py
 	@python3 $< > $@
 
-dist: ## Creates the dist/ directory.
-	@mkdir -p $@
-
 .PHONY += create-k3s-inventory dist/k3s-inventory.json create-inventory dist/inventory.json
 
 #
