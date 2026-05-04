@@ -150,10 +150,14 @@ def main():
   #
 
   community_services = [
+    # Community scripts always run on proxmox_hosts[0] (host 1), so their IPs
+    # are in 10.0.1.x. The dedicated range is .100-.199 to avoid collisions
+    # with Ansible LXC services (.1-.79) and k3s VMs (.60-.79).
     CommunityScriptService(
       name='proxmox_backup_server',
       vmid=read_env_var('PBS_VMID', 100, value_type=int),
       hostname=read_env_var('PBS_HOSTNAME', 'pbs'),
+      ipv4='10.0.1.100',
       port='8007',
       protocol=Protocol.HTTPS,
     ),
@@ -161,6 +165,7 @@ def main():
       name='prometheus_community',
       vmid=read_env_var('PROMETHEUS_VMID', 140, value_type=int),
       hostname=read_env_var('PROMETHEUS_HOSTNAME', 'prometheus'),
+      ipv4='10.0.1.102',
       port='9090',
       protocol=Protocol.HTTP,
     ),
@@ -168,6 +173,7 @@ def main():
       name='grafana_community',
       vmid=read_env_var('GRAFANA_VMID', 145, value_type=int),
       hostname=read_env_var('GRAFANA_HOSTNAME', 'grafana'),
+      ipv4='10.0.1.103',
       port='3000',
       protocol=Protocol.HTTP,
     ),
@@ -175,6 +181,7 @@ def main():
       name='ollama',
       vmid=read_env_var('OLLAMA_VMID', 150, value_type=int),
       hostname=read_env_var('OLLAMA_HOSTNAME', 'ollama'),
+      ipv4='10.0.1.104',
       port='11434',
       protocol=Protocol.HTTP,
     ),
@@ -182,6 +189,7 @@ def main():
       name='uptime_kuma',
       vmid=read_env_var('UPTIME_KUMA_VMID', 155, value_type=int),
       hostname=read_env_var('UPTIME_KUMA_HOSTNAME', 'uptime-kuma'),
+      ipv4='10.0.1.105',
       port='3001',
       protocol=Protocol.HTTP,
     ),
@@ -189,6 +197,7 @@ def main():
       name='speedtest',
       vmid=read_env_var('SPEEDTEST_VMID', 160, value_type=int),
       hostname=read_env_var('SPEEDTEST_HOSTNAME', 'speedtest'),
+      ipv4='10.0.1.106',
       port='80',
       protocol=Protocol.HTTP,
     ),
@@ -196,14 +205,17 @@ def main():
       name='n8n',
       vmid=read_env_var('N8N_VMID', 165, value_type=int),
       hostname=read_env_var('N8N_HOSTNAME', 'n8n'),
+      ipv4='10.0.1.107',
       port='5678',
       protocol=Protocol.HTTP,
     ),
     # GitHub runner: outbound-only connection to GitHub, no DNS record needed.
+    # Runs on all three hosts; IPs .108/.109/.110 one per host.
     CommunityScriptService(
       name='github_runner',
       vmid=read_env_var('GITHUB_RUNNER_VMID_BASE', 180, value_type=int),
       hostname=read_env_var('GITHUB_RUNNER_HOSTNAME', 'github-runner'),
+      ipv4='10.0.1.108',
       port='22',
       protocol=Protocol.SSH,
       add_to_dns=False,
@@ -299,6 +311,28 @@ def main():
       lxc_services=shared_lxc_services,
     ))
 
+  # Add cloud Proxmox VPS (jmpa-server-4).
+  # This is a KVM VPS (e.g. Hetzner CX22 ~€4/month) running Proxmox VE,
+  # connected to the on-prem cluster via Tailscale.
+  # Uncomment after running: make provision-cloud-proxmox
+  # The provisioning playbook stores the VPS IP in SSM automatically.
+  #
+  # cloud_vps_ip = ssm_client.get_parameter('/homelab/jmpa-server-4/ipv4-address')
+  # if cloud_vps_ip:
+  #   inventory.add_instances(ProxmoxHost(
+  #     ipv4=cloud_vps_ip,
+  #     ipv4_cidr='32',  # Single public IP — routing handled by Tailscale
+  #     device_name=ssm_client.get_parameter('/homelab/jmpa-server-4/device-name') or 'eth0',
+  #     bridge=ProxmoxHostBridge(
+  #       name='vmbr0',
+  #       ipv4_prefix='10.0',
+  #       ipv4_suffix='1',
+  #       ipv4_cidr='24',
+  #     ),
+  #     host_services=[collector],
+  #     lxc_services=shared_lxc_services,
+  #   ))
+
   # Add NAS instance.
   nas = NAS(
     ipv4=ssm_client.require_parameter('/homelab/jmpa-nas-1/ipv4-address'),
@@ -315,7 +349,6 @@ def main():
     ipv4_cidr=default_cidr,
     device_name=ssm_client.require_parameter('/homelab/jmpa-dns-1/device-name'),
     host_services=[collector],
-    ansible_user=read_env_var('DNS_ANSIBLE_USER', 'pi'),
   ))
 
   # Add VPS instance (uncomment when ready to use).
@@ -380,7 +413,13 @@ def main():
     argocd=ArgoCDConfig(),
     kubernetes_dashboard=KubernetesDashboardConfig(),
     metallb=MetalLBConfig(
-      ip_range=read_env_var('K3S_METALLB_IP_RANGE', '10.0.0.200-10.0.0.250'),
+      # MetalLB IPs must be on the same L2 as the physical LAN (the subnet
+      # stored in SSM). The range .200-.250 is reserved for LoadBalancer
+      # services. This assumes your LAN is /24 — adjust if needed.
+      ip_range=read_env_var(
+        'K3S_METALLB_IP_RANGE',
+        f'{common_subnet_ipv4.rsplit(".", 1)[0]}.200-{common_subnet_ipv4.rsplit(".", 1)[0]}.250',
+      ),
     ),
     nfs_storage=NFSStorageConfig(
       server=ssm_client.require_parameter('/homelab/jmpa-nas-1/ipv4-address'),

@@ -55,8 +55,6 @@ class ProxmoxHost(ContainerInstance):
         ipv4_cidr='24'
     ))
     name: str = 'jmpa-server-{id}'
-    # Proxmox VE hosts are accessed as root over SSH by default.
-    ansible_user: str = 'root'
     lxc_services: List[Service] = field(default_factory=list)
     k8s_masters: List[str] = field(default_factory=list)
     k8s_nodes: List[str] = field(default_factory=list)

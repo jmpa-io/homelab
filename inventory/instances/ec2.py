@@ -34,7 +34,6 @@ class EC2(Instance):
   region: str = 'ap-southeast-2'
   instance_id: Optional[str] = None
   ssh_key_name: Optional[str] = None
-  ansible_user: str = 'admin'  # Debian AMI default; change to 'ubuntu' for Ubuntu AMIs
 
   def to_dict(self) -> dict:
     """Convert EC2 instance to dictionary for Ansible inventory."""

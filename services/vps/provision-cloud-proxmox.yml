@@ -1,0 +1,254 @@
+---
+# Bootstrap Proxmox VE onto a fresh Debian 12 VPS.
+#
+# This playbook turns a bare Debian 12 KVM VPS (e.g. Hetzner CX22 ~€4/month)
+# into a Proxmox node connected to your on-prem homelab via Tailscale.
+#
+# After this runs, the cloud VPS:
+#   - Runs Proxmox VE (full LXC + VM support, same as on-prem nodes)
+#   - Is connected to your homelab Tailnet (can reach 10.0.x.x LAN directly)
+#   - Appears in the inventory as jmpa-server-4 (host_id=4, subnet 10.0.4.x)
+#   - Can run the same LXC services as on-prem nodes
+#   - Publishes its public IP to SSM at /homelab/jmpa-server-4/ipv4-address
+#
+# Prerequisites:
+#   1. Provision a Debian 12 VPS at your cloud provider of choice
+#   2. Store its public IP in SSM:
+#        aws ssm put-parameter --name "/homelab/jmpa-server-4/ipv4-address" \
+#          --value "<PUBLIC_IP>" --type String
+#        aws ssm put-parameter --name "/homelab/jmpa-server-4/device-name" \
+#          --value "eth0" --type String
+#   3. Ensure SSH access as root (or your ansible_user) works from your machine
+#   4. Run this playbook:
+#        make provision-cloud-proxmox
+#
+# Cost reference (2024):
+#   Hetzner CX22:  €3.92/month  — 2 vCPU, 4GB RAM, 40GB SSD, KVM
+#   Hetzner CX32:  €7.02/month  — 4 vCPU, 8GB RAM, 80GB SSD, KVM
+#   OVH VPS SSD-1: €3.99/month  — 1 vCPU, 2GB RAM, 20GB SSD, KVM
+#   Contabo VPS S: €4.99/month  — 4 vCPU, 8GB RAM, 50GB NVMe, KVM
+#
+# NOTE ON NESTED VIRTUALISATION:
+#   KVM VPS providers support LXC containers natively (no nested virt needed).
+#   Full VMs inside the VPS require nested KVM — Hetzner and Contabo support
+#   this; OVH does not. For LXC-only workloads any KVM VPS works fine.
+
+- name: Bootstrap Proxmox VE on cloud VPS.
+  hosts: "{{ target_host | default('jmpa_server_4') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    proxmox_hostname: "jmpa-server-4"
+    proxmox_fqdn: "jmpa-server-4.jmpa.lab"
+    # Bridge subnet for this node — host_id=4 → 10.0.4.x
+    bridge_ip: "10.0.4.1"
+    bridge_cidr: "24"
+    bridge_name: "vmbr0"
+    tailscale_auth_key: "{{ tailscale.auth_key }}"
+
+  tasks:
+
+    # -------------------------------------------------------------------------
+    # System preparation
+    # -------------------------------------------------------------------------
+
+    - name: Set hostname.
+      ansible.builtin.hostname:
+        name: "{{ proxmox_hostname }}"
+
+    - name: Update /etc/hosts with FQDN.
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127\.0\.1\.1'
+        line: "127.0.1.1 {{ proxmox_fqdn }} {{ proxmox_hostname }}"
+        state: present
+
+    - name: Remove enterprise Proxmox repo if present.
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/pve-enterprise.list
+        state: absent
+
+    - name: Add Proxmox no-subscription repository.
+      ansible.builtin.apt_repository:
+        repo: "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription"
+        state: present
+        filename: pve-no-subscription
+
+    - name: Add Proxmox GPG key.
+      ansible.builtin.get_url:
+        url: https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg
+        dest: /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+        mode: '0644'
+
+    - name: Update apt cache.
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Proxmox VE kernel.
+      ansible.builtin.apt:
+        name: proxmox-default-kernel
+        state: present
+      register: kernel_install
+
+    - name: Reboot to load Proxmox kernel.
+      ansible.builtin.reboot:
+        reboot_timeout: 120
+        post_reboot_delay: 30
+      when: kernel_install.changed
+
+    - name: Install Proxmox VE.
+      ansible.builtin.apt:
+        name:
+          - proxmox-ve
+          - postfix
+          - open-iscsi
+          - chrony
+        state: present
+
+    - name: Remove Debian default kernel (post-Proxmox install).
+      ansible.builtin.apt:
+        name: linux-image-amd64
+        state: absent
+        autoremove: true
+
+    # -------------------------------------------------------------------------
+    # Network — create vmbr0 bridge on top of eth0
+    # The bridge puts all LXC containers in 10.0.4.x
+    # The VPS public IP stays on eth0 for SSH/Tailscale
+    # -------------------------------------------------------------------------
+
+    - name: Configure /etc/network/interfaces with vmbr0.
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        mode: '0644'
+        content: |
+          # This file is managed by Ansible — do not edit manually.
+          auto lo
+          iface lo inet loopback
+
+          # Physical interface — keeps the public IP for SSH/Tailscale
+          auto eth0
+          iface eth0 inet dhcp
+
+          # Proxmox bridge — LXC containers use 10.0.4.x
+          auto {{ bridge_name }}
+          iface {{ bridge_name }} inet static
+              address {{ bridge_ip }}/{{ bridge_cidr }}
+              bridge_ports none
+              bridge_stp off
+              bridge_fd 0
+      notify: Restart networking
+
+    # -------------------------------------------------------------------------
+    # Tailscale — connect to homelab tailnet
+    # -------------------------------------------------------------------------
+
+    - name: Add Tailscale apt key.
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/debian/bookworm.noarmor.gpg
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Add Tailscale apt repository.
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian bookworm main"
+        state: present
+        filename: tailscale
+
+    - name: Install Tailscale.
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: true
+
+    - name: Enable and start Tailscale.
+      ansible.builtin.systemd:
+        name: tailscaled
+        enabled: true
+        state: started
+
+    - name: Connect Tailscale to homelab tailnet.
+      ansible.builtin.shell: |
+        tailscale up \
+          --authkey {{ tailscale_auth_key }} \
+          --hostname {{ proxmox_hostname }} \
+          --accept-routes \
+          --advertise-routes {{ bridge_ip }}/{{ bridge_cidr }}
+      args:
+        creates: /var/lib/tailscale/tailscaled.state
+      changed_when: true
+      no_log: true
+
+    # -------------------------------------------------------------------------
+    # Store public IP in SSM so inventory picks it up automatically
+    # -------------------------------------------------------------------------
+
+    - name: Get current public IP.
+      ansible.builtin.uri:
+        url: https://checkip.amazonaws.com
+        return_content: true
+      register: public_ip_result
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Store public IP in SSM.
+      ansible.builtin.shell: |
+        aws ssm put-parameter \
+          --name "/homelab/jmpa-server-4/ipv4-address" \
+          --value "{{ public_ip_result.content | trim }}" \
+          --type String \
+          --overwrite \
+          --region "{{ lookup('env', 'AWS_REGION') }}"
+      delegate_to: localhost
+      changed_when: true
+
+    - name: Store device name in SSM.
+      ansible.builtin.shell: |
+        aws ssm put-parameter \
+          --name "/homelab/jmpa-server-4/device-name" \
+          --value "eth0" \
+          --type String \
+          --overwrite \
+          --region "{{ lookup('env', 'AWS_REGION') }}"
+      delegate_to: localhost
+      changed_when: true
+
+    # -------------------------------------------------------------------------
+    # Display summary
+    # -------------------------------------------------------------------------
+
+    - name: Display cloud Proxmox node summary.
+      ansible.builtin.debug:
+        msg:
+          - "=============================================="
+          - "Cloud Proxmox Node Ready!"
+          - "=============================================="
+          - "  Hostname    : {{ proxmox_hostname }}"
+          - "  Public IP   : {{ public_ip_result.content | trim }}"
+          - "  Bridge      : {{ bridge_name }} — {{ bridge_ip }}/{{ bridge_cidr }}"
+          - "  LXC subnet  : 10.0.4.0/24"
+          - "  Tailscale   : connected to homelab tailnet"
+          - "  Proxmox UI  : https://{{ public_ip_result.content | trim }}:8006"
+          - ""
+          - "SSM parameters stored:"
+          - "  /homelab/jmpa-server-4/ipv4-address"
+          - "  /homelab/jmpa-server-4/device-name"
+          - ""
+          - "Next steps:"
+          - "  1. Uncomment jmpa-server-4 block in inventory/main.py"
+          - "  2. Run: make print-inventory  (verify host appears)"
+          - "  3. Run: ansible-playbook playbook.yml -i dist/inventory.json"
+          - "     (deploys base config + LXC services to the new node)"
+          - ""
+          - "Cost reference:"
+          - "  Hetzner CX22 (recommended): €3.92/month"
+          - "  — 2 vCPU, 4 GB RAM, 40 GB SSD, KVM, LXC support"
+          - "  — Nested KVM for full VMs: yes"
+          - "=============================================="
+
+  handlers:
+    - name: Restart networking
+      ansible.builtin.service:
+        name: networking
+        state: restarted

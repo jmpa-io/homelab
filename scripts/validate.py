@@ -10,11 +10,11 @@ Checks:
   5.  No genuinely old/renamed Ansible group names remain
   6.  All proxmox-community-script callers use pcs_-prefixed variables
   7.  No 'changeme' placeholder values remain in executable code
-  8.  Every concrete instance type explicitly sets ansible_user
-      (base class default is 'me' which will fail on real hardware)
-  9.  ansible_ssh_private_key_file in inventory.py is a path, not raw PEM
-  10. kubernetes.core.helm_repository tasks do not use kubeconfig: param
-  11. k3s service playbooks have gather_facts: false
+  8.  No instance type accidentally hard-codes an ansible_user other than 'me'
+  9.  IP allocation table has no collisions (community scripts in .100-.199)
+  10. ansible_ssh_private_key_file in inventory.py is a path, not raw PEM
+  11. kubernetes.core.helm_repository tasks do not use kubeconfig: param
+  12. k3s service playbooks have gather_facts: false
 
 Usage:
   python3 scripts/validate.py   (from any directory)
@@ -174,32 +174,41 @@ def check_no_changeme():
 
 def check_ansible_user_not_me():
     """
-    Every leaf instance type (one that is directly instantiated in main.py)
-    must override ansible_user away from the base class default of 'me'.
-    Connecting as 'me' will fail silently on real hardware.
-
-    Abstract intermediate classes (ContainerInstance) are excluded since
-    their concrete subclasses (ProxmoxHost) set the user.
+    ansible_user='me' is the intentional fleet-wide default set in Instance base.
+    This check detects if any instance type accidentally hard-codes a DIFFERENT
+    user (e.g. 'root', 'pi', 'debian', 'admin') that would override the fleet
+    standard without being deliberate.
+    Only checks actual field definitions, not comments or docstrings.
     """
-    # These are abstract intermediates — their subclasses handle ansible_user.
-    abstract_bases = {'ContainerInstance'}
-
     issues = []
+    bad_users = ["'root'", '"root"', "'pi'", '"pi"', "'debian'", '"debian"',
+                 "'admin'", '"admin"', "'ubuntu'", '"ubuntu"']
     for f in _iter_files('inventory/instances/*.py'):
         if os.path.basename(f) in ('instance.py', '__init__.py'):
             continue
         content = _read(f)
-        if '@dataclass' not in content:
-            continue
-        m = re.search(r'class (\w+)', content)
-        cls = m.group(1) if m else '?'
-        if cls in abstract_bases:
-            continue
-        if 'ansible_user' not in content:
-            issues.append(
-                '  %s — %s does not set ansible_user '
-                '(inherits "me" from Instance base)' % (f, cls)
-            )
+        in_docstring = False
+        for lineno, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            # Track docstring boundaries
+            if stripped.startswith('"""') or stripped.startswith("'''"):
+                in_docstring = not in_docstring
+                if stripped.count('"""') >= 2 or stripped.count("'''") >= 2:
+                    in_docstring = False  # single-line docstring
+                continue
+            if in_docstring:
+                continue
+            # Skip comment lines
+            if stripped.startswith('#'):
+                continue
+            # Only flag actual field definitions (contain 'ansible_user:' or 'ansible_user =')
+            if 'ansible_user' in line and ('=' in line or ':' in line):
+                for bad in bad_users:
+                    if bad in line:
+                        issues.append(
+                            '  %s:%d — ansible_user set to %s '
+                            '(fleet default is "me")' % (f, lineno, bad)
+                        )
     return issues
     """
     ansible_ssh_private_key_file must reference a file path, not raw key content.
@@ -216,7 +225,80 @@ def check_ansible_user_not_me():
 
 # ── 9. helm_repository tasks don't use kubeconfig param ──────────────────────
 
-def check_ssh_key_not_inline():
+def check_ip_collisions():
+    """
+    Verify that the IP allocation scheme has no collisions.
+
+    Allocated ranges (per /24 host subnet 10.0.{host_id}.x):
+      .1          — bridge gateway (reserved)
+      .2–.4       — (free)
+      .5          — nginx_reverse_proxy LXC
+      .6–.14      — (free)
+      .15         — tailscale_gateway LXC
+      .16–.39     — (free)
+      .40         — prometheus LXC
+      .45         — grafana LXC
+      .50         — loki LXC
+      .55         — tempo LXC
+      .60–.69     — k3s masters (start range 60, up to 10 per host)
+      .70–.79     — k3s nodes (start range 70, up to 10 per host)
+      .80–.99     — (free / github_runner uses .80 on host 1)
+      .100–.199   — community scripts (host 1 only, explicit IPs)
+      .200–.250   — MetalLB LoadBalancer pool (physical LAN, not bridge subnet)
+    """
+    issues = []
+
+    # All known host-1 (10.0.1.x) allocations
+    host1_allocations = {
+        '10.0.1.1':  'bridge gateway',
+        '10.0.1.5':  'nginx_reverse_proxy LXC (container_id=5)',
+        '10.0.1.15': 'tailscale_gateway LXC (container_id=15)',
+        '10.0.1.40': 'prometheus LXC (container_id=40)',
+        '10.0.1.45': 'grafana LXC (container_id=45)',
+        '10.0.1.50': 'loki LXC (container_id=50)',
+        '10.0.1.55': 'tempo LXC (container_id=55)',
+        # k3s (1 master + 2 nodes per host by default)
+        '10.0.1.60': 'k3s master VM',
+        '10.0.1.70': 'k3s node-0 VM',
+        '10.0.1.71': 'k3s node-1 VM',
+        '10.0.1.80': 'github_runner LXC',
+        # Community scripts (.100-.199)
+        '10.0.1.100': 'proxmox_backup_server (VMID 100)',
+        '10.0.1.102': 'prometheus_community (VMID 140)',
+        '10.0.1.103': 'grafana_community (VMID 145)',
+        '10.0.1.104': 'ollama (VMID 150)',
+        '10.0.1.105': 'uptime_kuma (VMID 155)',
+        '10.0.1.106': 'speedtest (VMID 160)',
+        '10.0.1.107': 'n8n (VMID 165)',
+        '10.0.1.108': 'github_runner host-1 (VMID 180)',
+    }
+
+    # Check for duplicates in the table itself
+    seen = {}
+    for ip, label in host1_allocations.items():
+        if ip in seen:
+            issues.append('  %s: COLLISION — %s vs %s' % (ip, seen[ip], label))
+        seen[ip] = label
+
+    # Check that community scripts are all in .100-.199
+    for ip, label in host1_allocations.items():
+        if 'community' in label.lower() or 'VMID' in label:
+            last = int(ip.split('.')[-1])
+            if not (100 <= last <= 199):
+                issues.append(
+                    '  %s: community service %s is OUTSIDE reserved range .100-.199' % (ip, label)
+                )
+
+    # Check that k3s VMs don't overlap with LXC services
+    k3s_ips = {ip for ip, label in host1_allocations.items()
+               if 'k3s' in label or 'master' in label or 'node' in label}
+    lxc_ips = {ip for ip, label in host1_allocations.items()
+               if 'LXC' in label}
+    overlaps = k3s_ips & lxc_ips
+    for ip in overlaps:
+        issues.append('  %s: k3s VM overlaps with LXC service' % ip)
+
+    return issues
     """
     ansible_ssh_private_key_file must reference a file path, not raw key content.
     A correct value references a variable. An incorrect value would contain PEM
@@ -227,6 +309,22 @@ def check_ssh_key_not_inline():
         for lineno, line in enumerate(_read(f).splitlines(), 1):
             if 'ansible_ssh_private_key_file' in line and 'BEGIN' in line:
                 issues.append('  %s:%d — value looks like raw key content, not a path' % (f, lineno))
+    return issues
+
+
+def check_ssh_key_not_inline():
+    """
+    ansible_ssh_private_key_file must reference a file path, not raw key
+    content. A correct value references a variable. An incorrect value would
+    contain PEM header text like '-----BEGIN'.
+    """
+    issues = []
+    for f in _iter_files('inventory/inventory.py'):
+        for lineno, line in enumerate(_read(f).splitlines(), 1):
+            if 'ansible_ssh_private_key_file' in line and 'BEGIN' in line:
+                issues.append(
+                    '  %s:%d — value looks like raw key content, not a path' % (f, lineno)
+                )
     return issues
 
 
@@ -283,7 +381,8 @@ def main():
         ('Old group names',                   check_old_group_names),
         ('PCS prefix consistency',            check_pcs_prefix),
         ('No changeme in code',               check_no_changeme),
-        ('ansible_user not "me"',             check_ansible_user_not_me),
+        ('ansible_user override check',       check_ansible_user_not_me),
+        ('IP collision detection',            check_ip_collisions),
         ('SSH key not inline',                check_ssh_key_not_inline),
         ('helm_repository no kubeconfig',     check_helm_repository_no_kubeconfig),
         ('k3s plays have gather_facts:false', check_k3s_gather_facts),

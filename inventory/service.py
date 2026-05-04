@@ -62,26 +62,38 @@ class LXCService(Service):
 
 @dataclass
 class CommunityScriptService(Service):
-  """Service deployed via Proxmox VE Community Script."""
+  """Service deployed via Proxmox VE Community Script.
+
+  Community scripts always run on proxmox_hosts[0] (host 1), so their IPs
+  are always in the 10.0.1.x subnet. IPs are assigned explicitly from the
+  dedicated community-scripts range (10.0.1.100–10.0.1.199) to avoid
+  collisions with Ansible-managed LXC services (10.0.1.1–10.0.1.79) and
+  k3s VMs (10.0.1.60–10.0.1.79).
+
+  The ipv4 field MUST be explicitly set — there is no automatic derivation
+  from vmid (the old formula caused multiple critical IP collisions).
+  """
   vmid: int
   hostname: str
+  ipv4: str          # Explicit IP — must be in 10.0.1.100-10.0.1.199
   bridge: str = 'vmbr0'
   port: str = ''
   protocol: Protocol = field(default_factory=lambda: Protocol.HTTP)
   add_to_dns: bool = True
-  ipv4: str = field(init=False, default='')
 
   def __post_init__(self):
-    """Calculate IP address from VMID and bridge."""
-    if self.vmid > 999:
+    """Validate the explicitly-set IP is in the correct reserved range."""
+    try:
+      last_octet = int(self.ipv4.split('.')[-1])
+    except (ValueError, IndexError):
+      raise ValueError(f"CommunityScriptService '{self.name}': invalid ipv4 '{self.ipv4}'")
+    if not (100 <= last_octet <= 199):
       raise ValueError(
-        f"VMID {self.vmid} exceeds maximum of 999. "
-        f"VMIDs above 999 cause IP address collisions in the last octet."
+        f"CommunityScriptService '{self.name}': IP {self.ipv4} last octet {last_octet} "
+        f"is outside the reserved community-scripts range (.100–.199). "
+        f"Use 10.0.1.100–10.0.1.199 to avoid collisions with LXC (.1–.79) "
+        f"and k3s VMs (.60–.79)."
       )
-    bridge_num = int(self.bridge.replace('vmbr', ''))
-    third_octet = bridge_num + 1
-    fourth_octet = str(self.vmid)[-2:].zfill(2)
-    self.ipv4 = f'10.0.{third_octet}.{fourth_octet}'
 
   def to_dns_record(self, domain: str = 'jmpa.lab') -> Dict[str, str]:
     """Generate DNS record for Pi-hole custom.list format."""
