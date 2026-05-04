@@ -49,10 +49,10 @@ ping-nas: $(INVENTORY)
 .PHONY += ping-inventory ping-hosts ping-nas
 
 print-inventory-no-jq: inventory/main.py # Outputs the contents of the dynamic Ansible inventory, without formatting.
-	@python $<
+	@python3 $<
 
 print-inventory: inventory/main.py  ## Outputs the contents of the dynamic Ansible inventory.
-	@python $< | jq '.'
+	@python3 $< | jq '.'
 
 check-playbook: ## Check the Ansible playbook.
 check-playbook: playbook.yml
@@ -242,9 +242,9 @@ deploy-n8n: dist/inventory.json
 .PHONY += deploy-pbs deploy-ollama deploy-uptime-kuma deploy-speedtest deploy-n8n
 
 ---: ## ---
-#
 
-provision-ec2: ## Provision the EC2 fleet member via Terraform.
+#
+# EC2. ## Provision the EC2 fleet member via Terraform.
 provision-ec2:
 	@echo "Initialising Terraform..."
 	@cd $(EC2_DIR) && terraform init
