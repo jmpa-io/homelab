@@ -38,14 +38,14 @@
       ansible.builtin.include_role:
         name: proxmox-community-script
       vars:
-        script_name: n8n
-        container_id: "{{ n8n_vmid }}"
-        container_hostname: "{{ n8n_hostname }}"
-        container_cores: "{{ n8n_cores }}"
-        container_memory: "{{ n8n_memory }}"
-        container_disk_size: "{{ n8n_disk_size }}"
-        # n8n runs on port 5678 by default
-        container_port: "5678"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/n8n.sh"
+        pcs_script_name: n8n
+        pcs_container_id: "{{ n8n_vmid }}"
+        pcs_hostname: "{{ n8n_hostname }}"
+        pcs_cpu_cores: "{{ n8n_cores }}"
+        pcs_ram: "{{ n8n_memory }}"
+        pcs_disk_size: "{{ n8n_disk_size }}"
+        pcs_verbose: "yes"
 
     - name: Display n8n access information
       ansible.builtin.debug:

@@ -79,7 +79,7 @@
   tasks:
     - name: Include HA configuration tasks
       ansible.builtin.include_tasks:
-        file: "{{ playbook_dir }}/instances/proxmox-hosts/ha/tasks/main.yml"
+        file: "{{ playbook_dir }}/../instances/proxmox-hosts/ha/tasks/main.yml"
 
   post_tasks:
     - name: Display next steps

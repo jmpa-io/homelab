@@ -37,14 +37,14 @@
       ansible.builtin.include_role:
         name: proxmox-community-script
       vars:
-        script_name: librespeed
-        container_id: "{{ speedtest_vmid }}"
-        container_hostname: "{{ speedtest_hostname }}"
-        container_cores: "{{ speedtest_cores }}"
-        container_memory: "{{ speedtest_memory }}"
-        container_disk_size: "{{ speedtest_disk_size }}"
-        # LibreSpeed runs on port 80 by default
-        container_port: "80"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/librespeed.sh"
+        pcs_script_name: librespeed
+        pcs_container_id: "{{ speedtest_vmid }}"
+        pcs_hostname: "{{ speedtest_hostname }}"
+        pcs_cpu_cores: "{{ speedtest_cores }}"
+        pcs_ram: "{{ speedtest_memory }}"
+        pcs_disk_size: "{{ speedtest_disk_size }}"
+        pcs_verbose: "yes"
 
     - name: Display speedtest access information
       ansible.builtin.debug:

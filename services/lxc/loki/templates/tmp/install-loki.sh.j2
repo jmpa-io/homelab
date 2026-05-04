@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Installs & configures Loki inside the LXC container.
+#
+# {{ ansible_managed }}
+
+set -eo pipefail
+
+LOKI_VERSION="{{ loki_version | default('2.9.4') }}"
+LOKI_PORT="{{ services.loki.default_port | default('3100') }}"
+LOKI_DATA_DIR="{{ loki_data_dir | default('/var/lib/loki') }}"
+LOKI_USER="loki"
+
+echo "Installing Loki ${LOKI_VERSION}..."
+
+# Install dependencies.
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+  curl \
+  unzip \
+  ca-certificates \
+  --no-install-recommends
+
+# Create loki user.
+id -u "${LOKI_USER}" &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin "${LOKI_USER}"
+
+# Download Loki binary.
+ARCH="$(uname -m)"
+case "${ARCH}" in
+  x86_64)  ARCH_LABEL="amd64" ;;
+  aarch64) ARCH_LABEL="arm64" ;;
+  *)       echo "Unsupported architecture: ${ARCH}"; exit 1 ;;
+esac
+
+DOWNLOAD_URL="https://github.com/grafana/loki/releases/download/v${LOKI_VERSION}/loki-linux-${ARCH_LABEL}.zip"
+curl -sSL "${DOWNLOAD_URL}" -o /tmp/loki.zip
+unzip -o /tmp/loki.zip -d /tmp/loki-bin
+install -m 755 /tmp/loki-bin/loki-linux-${ARCH_LABEL} /usr/local/bin/loki
+rm -rf /tmp/loki.zip /tmp/loki-bin
+
+# Create directories.
+mkdir -p "${LOKI_DATA_DIR}"/{chunks,index,index_cache,compactor,wal}
+chown -R "${LOKI_USER}:${LOKI_USER}" "${LOKI_DATA_DIR}"
+mkdir -p /etc/loki
+chown "${LOKI_USER}:${LOKI_USER}" /etc/loki
+
+# Enable and start the service (config is pushed separately by copy-file-to-lxc).
+systemctl daemon-reload
+systemctl enable loki.service
+systemctl restart loki.service
+
+echo "Loki ${LOKI_VERSION} installed successfully."
+echo "  HTTP: http://localhost:${LOKI_PORT}"

@@ -20,19 +20,19 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ollama.sh"
-        script_name: "ollama"
-        container_id: "{{ ollama_vmid }}"
-        hostname: "{{ ollama_hostname }}"
-        ram: "{{ ollama_ram }}"
-        swap: "512"
-        disk_size: "{{ ollama_disk_size }}"
-        cpu_cores: "{{ ollama_cpu_cores }}"
-        bridge: "{{ ollama_bridge }}"
-        privileged: "no"
-        features: "nesting=1"
-        verbose: "yes"
+        pcs_proxmox_host: "{{ inventory_hostname }}"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ollama.sh"
+        pcs_script_name: "ollama"
+        pcs_container_id: "{{ ollama_vmid }}"
+        pcs_hostname: "{{ ollama_hostname }}"
+        pcs_ram: "{{ ollama_ram }}"
+        pcs_swap: "512"
+        pcs_disk_size: "{{ ollama_disk_size }}"
+        pcs_cpu_cores: "{{ ollama_cpu_cores }}"
+        pcs_bridge: "{{ ollama_bridge }}"
+        pcs_privileged: "no"
+        pcs_features: "nesting=1"
+        pcs_verbose: "yes"
 
     - name: Display Ollama access information
       ansible.builtin.debug:

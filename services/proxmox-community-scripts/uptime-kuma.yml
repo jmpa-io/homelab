@@ -19,19 +19,19 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
-        script_name: "uptime-kuma"
-        container_id: "{{ uptime_kuma_vmid }}"
-        hostname: "{{ uptime_kuma_hostname }}"
-        ram: "{{ uptime_kuma_ram }}"
-        swap: "256"
-        disk_size: "{{ uptime_kuma_disk_size }}"
-        cpu_cores: "{{ uptime_kuma_cpu_cores }}"
-        bridge: "{{ uptime_kuma_bridge }}"
-        privileged: "no"
-        features: "nesting=1"
-        verbose: "yes"
+        pcs_proxmox_host: "{{ inventory_hostname }}"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
+        pcs_script_name: "uptime-kuma"
+        pcs_container_id: "{{ uptime_kuma_vmid }}"
+        pcs_hostname: "{{ uptime_kuma_hostname }}"
+        pcs_ram: "{{ uptime_kuma_ram }}"
+        pcs_swap: "256"
+        pcs_disk_size: "{{ uptime_kuma_disk_size }}"
+        pcs_cpu_cores: "{{ uptime_kuma_cpu_cores }}"
+        pcs_bridge: "{{ uptime_kuma_bridge }}"
+        pcs_privileged: "no"
+        pcs_features: "nesting=1"
+        pcs_verbose: "yes"
 
     - name: Calculate Uptime Kuma IP address
       ansible.builtin.set_fact:

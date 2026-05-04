@@ -1,3 +1,4 @@
+# Prerequisite: namespace/media must exist (created by deploy-media-volumes.yml)
 ---
 # Prowlarr - Indexer Manager
 # Manages indexers for Sonarr, Radarr, etc.

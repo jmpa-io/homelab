@@ -37,7 +37,7 @@ jobs:
 
       - name: Run YAML lint
         run: |
-          yamllint -c .yamllint playbook.yml instances/ roles/ tasks/ services/
+          yamllint -c .yamllint playbook.yml roles/ services/
         continue-on-error: true
 
       - name: Run Ansible lint
@@ -49,6 +49,7 @@ jobs:
         run: |
           cd inventory
           python3 -m py_compile main.py
+          python3 -m py_compile inventory.py service.py ssm.py env.py k8s_services.py k8s_inventory.py homepage_config.py
           python3 -m py_compile instances/*.py
 
       - name: Check Ansible syntax (mock inventory)

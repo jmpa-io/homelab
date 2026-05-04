@@ -21,19 +21,19 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/grafana.sh"
-        script_name: "grafana"
-        container_id: "{{ grafana_vmid }}"
-        hostname: "{{ grafana_hostname }}"
-        ram: "{{ grafana_ram }}"
-        swap: "512"
-        disk_size: "{{ grafana_disk_size }}"
-        cpu_cores: "{{ grafana_cpu_cores }}"
-        bridge: "{{ grafana_bridge }}"
-        privileged: "no"
-        features: "nesting=1"
-        verbose: "yes"
+        pcs_proxmox_host: "{{ inventory_hostname }}"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/grafana.sh"
+        pcs_script_name: "grafana"
+        pcs_container_id: "{{ grafana_vmid }}"
+        pcs_hostname: "{{ grafana_hostname }}"
+        pcs_ram: "{{ grafana_ram }}"
+        pcs_swap: "512"
+        pcs_disk_size: "{{ grafana_disk_size }}"
+        pcs_cpu_cores: "{{ grafana_cpu_cores }}"
+        pcs_bridge: "{{ grafana_bridge }}"
+        pcs_privileged: "no"
+        pcs_features: "nesting=1"
+        pcs_verbose: "yes"
 
     - name: Wait for Grafana to be ready
       ansible.builtin.pause:

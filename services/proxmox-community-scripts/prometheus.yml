@@ -19,19 +19,19 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/prometheus.sh"
-        script_name: "prometheus"
-        container_id: "{{ prometheus_vmid }}"
-        hostname: "{{ prometheus_hostname }}"
-        ram: "{{ prometheus_ram }}"
-        swap: "512"
-        disk_size: "{{ prometheus_disk_size }}"
-        cpu_cores: "{{ prometheus_cpu_cores }}"
-        bridge: "{{ prometheus_bridge }}"
-        privileged: "no"
-        features: "nesting=1"
-        verbose: "yes"
+        pcs_proxmox_host: "{{ inventory_hostname }}"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/prometheus.sh"
+        pcs_script_name: "prometheus"
+        pcs_container_id: "{{ prometheus_vmid }}"
+        pcs_hostname: "{{ prometheus_hostname }}"
+        pcs_ram: "{{ prometheus_ram }}"
+        pcs_swap: "512"
+        pcs_disk_size: "{{ prometheus_disk_size }}"
+        pcs_cpu_cores: "{{ prometheus_cpu_cores }}"
+        pcs_bridge: "{{ prometheus_bridge }}"
+        pcs_privileged: "no"
+        pcs_features: "nesting=1"
+        pcs_verbose: "yes"
 
     - name: Wait for Prometheus to be ready
       ansible.builtin.pause:

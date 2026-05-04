@@ -1,3 +1,4 @@
+# Prerequisite: namespace/media must exist (created by deploy-media-volumes.yml)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

@@ -19,19 +19,19 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        proxmox_host: "{{ inventory_hostname }}"
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/proxmox-backup-server.sh"
-        script_name: "proxmox-backup-server"
-        container_id: "{{ pbs_vmid }}"
-        hostname: "{{ pbs_hostname }}"
-        ram: "{{ pbs_ram }}"
-        swap: "512"
-        disk_size: "{{ pbs_disk_size }}"
-        cpu_cores: "{{ pbs_cpu_cores }}"
-        bridge: "{{ pbs_bridge }}"
-        privileged: "no"
-        features: "nesting=1"
-        verbose: "yes"
+        pcs_proxmox_host: "{{ inventory_hostname }}"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/proxmox-backup-server.sh"
+        pcs_script_name: "proxmox-backup-server"
+        pcs_container_id: "{{ pbs_vmid }}"
+        pcs_hostname: "{{ pbs_hostname }}"
+        pcs_ram: "{{ pbs_ram }}"
+        pcs_swap: "512"
+        pcs_disk_size: "{{ pbs_disk_size }}"
+        pcs_cpu_cores: "{{ pbs_cpu_cores }}"
+        pcs_bridge: "{{ pbs_bridge }}"
+        pcs_privileged: "no"
+        pcs_features: "nesting=1"
+        pcs_verbose: "yes"
 
     - name: Wait for PBS to be fully initialized
       ansible.builtin.pause:

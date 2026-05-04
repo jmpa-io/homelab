@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Installs & configures Tempo inside the LXC container.
+#
+# {{ ansible_managed }}
+
+set -eo pipefail
+
+TEMPO_VERSION="{{ tempo_version | default('2.4.1') }}"
+TEMPO_HTTP_PORT="{{ tempo_http_port | default('3200') }}"
+TEMPO_DATA_DIR="{{ tempo_data_dir | default('/var/lib/tempo') }}"
+TEMPO_USER="tempo"
+
+echo "Installing Tempo ${TEMPO_VERSION}..."
+
+# Install dependencies.
+apt-get update -q
+DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+  curl \
+  ca-certificates \
+  --no-install-recommends
+
+# Create tempo user.
+id -u "${TEMPO_USER}" &>/dev/null || useradd --system --no-create-home --shell /usr/sbin/nologin "${TEMPO_USER}"
+
+# Download Tempo binary.
+ARCH="$(uname -m)"
+case "${ARCH}" in
+  x86_64)  ARCH_LABEL="amd64" ;;
+  aarch64) ARCH_LABEL="arm64" ;;
+  *)       echo "Unsupported architecture: ${ARCH}"; exit 1 ;;
+esac
+
+DOWNLOAD_URL="https://github.com/grafana/tempo/releases/download/v${TEMPO_VERSION}/tempo_${TEMPO_VERSION}_linux_${ARCH_LABEL}.tar.gz"
+curl -sSL "${DOWNLOAD_URL}" -o /tmp/tempo.tar.gz
+tar -xzf /tmp/tempo.tar.gz -C /tmp tempo
+install -m 755 /tmp/tempo /usr/local/bin/tempo
+rm -f /tmp/tempo.tar.gz /tmp/tempo
+
+# Create directories.
+mkdir -p "${TEMPO_DATA_DIR}"/{wal,blocks,generator/wal}
+chown -R "${TEMPO_USER}:${TEMPO_USER}" "${TEMPO_DATA_DIR}"
+mkdir -p /etc/tempo
+chown "${TEMPO_USER}:${TEMPO_USER}" /etc/tempo
+
+# Enable and start the service (config is pushed separately by copy-file-to-lxc).
+systemctl daemon-reload
+systemctl enable tempo.service
+systemctl restart tempo.service
+
+echo "Tempo ${TEMPO_VERSION} installed successfully."
+echo "  HTTP: http://localhost:${TEMPO_HTTP_PORT}"
+echo "  OTLP gRPC: localhost:4317"
+echo "  OTLP HTTP: localhost:4318"

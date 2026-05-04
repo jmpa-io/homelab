@@ -3,38 +3,38 @@
 # Environment variables for Proxmox VE community script
 
 # Basic configuration
-export VERBOSE="{{ verbose }}"
-export CTID="{{ container_id }}"
-export PCT_HOSTNAME="{{ hostname }}"
+export VERBOSE="{{ pcs_verbose }}"
+export CTID="{{ pcs_container_id }}"
+export PCT_HOSTNAME="{{ pcs_hostname }}"
 
 # Resources
-export PCT_RAM="{{ ram }}"
-export PCT_SWAP="{{ swap }}"
-export PCT_DISK_SIZE="{{ disk_size }}"
-export PCT_CPUS="{{ cpu_cores }}"
+export PCT_RAM="{{ pcs_ram }}"
+export PCT_SWAP="{{ pcs_swap }}"
+export PCT_DISK_SIZE="{{ pcs_disk_size }}"
+export PCT_CPUS="{{ pcs_cpu_cores }}"
 
 # OS configuration
-export PCT_OSTYPE="{{ os_type }}"
-export PCT_OSVERSION="{{ os_version }}"
+export PCT_OSTYPE="{{ pcs_os_type }}"
+export PCT_OSVERSION="{{ pcs_os_version }}"
 
 # Network
-export BRIDGE="{{ bridge }}"
-export NET0="name=eth0,bridge={{ bridge }},ip={{ final_static_ip }}/24,gw={{ final_gateway }}"
+export BRIDGE="{{ pcs_bridge }}"
+export NET0="name=eth0,bridge={{ pcs_bridge }},ip={{ pcs_final_static_ip }}/24,gw={{ pcs_final_gateway }}"
 
 # Container options
-export PCT_OPTIONS="-features {{ features }}"
-{% if privileged == "yes" %}
+export PCT_OPTIONS="-features {{ pcs_features }}"
+{% if pcs_privileged == "yes" %}
 export PRIVILEGED="yes"
 {% endif %}
 
 # Advanced options
-{% if advanced_options != "" %}
-{{ advanced_options }}
+{% if pcs_advanced_options != "" %}
+{{ pcs_advanced_options }}
 {% endif %}
 
 # SSH configuration
-{% if ssh_root_password != "" %}
-export SSH_ROOT_PASSWORD="{{ ssh_root_password }}"
+{% if pcs_ssh_root_password != "" %}
+export SSH_ROOT_PASSWORD="{{ pcs_ssh_root_password }}"
 {% endif %}
 
 # Non-interactive mode

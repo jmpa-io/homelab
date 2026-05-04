@@ -1,3 +1,4 @@
+# Prerequisite: namespace/media must exist (created by deploy-media-volumes.yml)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -85,19 +86,5 @@ spec:
     name: http
   selector:
     app: jellyseerr
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: jellyseerr
-  namespace: media
-  labels:
-    app: jellyseerr
-spec:
-  selector:
-    matchLabels:
-      app: jellyseerr
-  endpoints:
-  - port: http
-    path: /api/v1/status
-    interval: 30s
+# Note: Jellyseerr does not expose Prometheus metrics natively.
+# Monitor it via the Prometheus blackbox exporter or via the Homepage dashboard.

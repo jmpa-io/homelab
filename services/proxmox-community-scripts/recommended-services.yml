@@ -66,14 +66,14 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
-        script_name: "uptime-kuma"
-        container_id: "{{ service_vmid }}"
-        hostname: "{{ service_hostname }}"
-        ram: "1024"
-        disk_size: "4"
-        cpu_cores: "1"
-        bridge: "vmbr0"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
+        pcs_script_name: "uptime-kuma"
+        pcs_container_id: "{{ service_vmid }}"
+        pcs_hostname: "{{ service_hostname }}"
+        pcs_ram: "1024"
+        pcs_disk_size: "4"
+        pcs_cpu_cores: "1"
+        pcs_bridge: "vmbr0"
 
 - name: Deploy Ntfy
   hosts: proxmox_hosts[0]
@@ -86,14 +86,14 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ntfy.sh"
-        script_name: "ntfy"
-        container_id: "{{ service_vmid }}"
-        hostname: "{{ service_hostname }}"
-        ram: "512"
-        disk_size: "2"
-        cpu_cores: "1"
-        bridge: "vmbr0"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ntfy.sh"
+        pcs_script_name: "ntfy"
+        pcs_container_id: "{{ service_vmid }}"
+        pcs_hostname: "{{ service_hostname }}"
+        pcs_ram: "512"
+        pcs_disk_size: "2"
+        pcs_cpu_cores: "1"
+        pcs_bridge: "vmbr0"
 
 - name: Deploy Nginx Proxy Manager
   hosts: proxmox_hosts[0]
@@ -106,11 +106,11 @@
       ansible.builtin.include_role:
         name: "{{ playbook_dir }}/roles/proxmox-community-script"
       vars:
-        script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/nginxproxymanager.sh"
-        script_name: "nginx-proxy-manager"
-        container_id: "{{ service_vmid }}"
-        hostname: "{{ service_hostname }}"
-        ram: "2048"
-        disk_size: "8"
-        cpu_cores: "2"
-        bridge: "vmbr0"
+        pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/nginxproxymanager.sh"
+        pcs_script_name: "nginx-proxy-manager"
+        pcs_container_id: "{{ service_vmid }}"
+        pcs_hostname: "{{ service_hostname }}"
+        pcs_ram: "2048"
+        pcs_disk_size: "8"
+        pcs_cpu_cores: "2"
+        pcs_bridge: "vmbr0"

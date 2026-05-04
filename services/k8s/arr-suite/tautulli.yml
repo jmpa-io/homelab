@@ -1,3 +1,4 @@
+# Prerequisite: namespace/media must exist (created by deploy-media-volumes.yml)
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -95,11 +96,5 @@ metadata:
   namespace: media
   labels:
     app: tautulli
-spec:
-  selector:
-    matchLabels:
-      app: tautulli
-  endpoints:
-  - port: http
-    path: /api/v2?apikey=${TAUTULLI_API_KEY}&cmd=get_server_info
-    interval: 30s
+# Note: Tautulli does not expose native Prometheus metrics.
+# Monitor it via the Homepage dashboard integration or a custom exporter.

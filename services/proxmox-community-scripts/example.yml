@@ -10,15 +10,15 @@
       include_role:
         name: proxmox-community-script
       vars:
-        proxmox_host: "{{ groups['proxmox_hosts'][0] }}"
-        script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/homeassistant.sh"
-        script_name: "homeassistant"
-        container_id: "100"
-        hostname: "homeassistant"
-        ram: "4096"
-        disk_size: "16"
-        cpu_cores: "4"
-        features: "nesting=1"
+        pcs_proxmox_host: "{{ groups['proxmox_hosts'][0] }}"
+        pcs_script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/homeassistant.sh"
+        pcs_script_name: "homeassistant"
+        pcs_container_id: "100"
+        pcs_hostname: "homeassistant"
+        pcs_ram: "4096"
+        pcs_disk_size: "16"
+        pcs_cpu_cores: "4"
+        pcs_features: "nesting=1"
 
 - name: Deploy Pi-hole using community script
   hosts: localhost
@@ -28,14 +28,14 @@
       include_role:
         name: proxmox-community-script
       vars:
-        proxmox_host: "{{ groups['proxmox_hosts'][1] }}"
-        script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/pihole.sh"
-        script_name: "pihole"
-        container_id: "101"
-        hostname: "pihole"
-        ram: "1024"
-        disk_size: "4"
-        cpu_cores: "2"
+        pcs_proxmox_host: "{{ groups['proxmox_hosts'][1] }}"
+        pcs_script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/pihole.sh"
+        pcs_script_name: "pihole"
+        pcs_container_id: "101"
+        pcs_hostname: "pihole"
+        pcs_ram: "1024"
+        pcs_disk_size: "4"
+        pcs_cpu_cores: "2"
 
 - name: Deploy Docker host using community script
   hosts: localhost
@@ -45,16 +45,16 @@
       include_role:
         name: proxmox-community-script
       vars:
-        proxmox_host: "{{ groups['proxmox_hosts'][2] }}"
-        script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/docker.sh"
-        script_name: "docker"
-        container_id: "102"
-        hostname: "docker-host"
-        ram: "8192"
-        disk_size: "100"
-        cpu_cores: "8"
-        privileged: "yes"
-        features: "nesting=1,keyctl=1"
-        advanced_options: |
+        pcs_proxmox_host: "{{ groups['proxmox_hosts'][2] }}"
+        pcs_script_url: "https://github.com/community-scripts/ProxmoxVE/raw/main/ct/docker.sh"
+        pcs_script_name: "docker"
+        pcs_container_id: "102"
+        pcs_hostname: "docker-host"
+        pcs_ram: "8192"
+        pcs_disk_size: "100"
+        pcs_cpu_cores: "8"
+        pcs_privileged: "yes"
+        pcs_features: "nesting=1,keyctl=1"
+        pcs_advanced_options: |
           export DOCKER_COMPOSE_VERSION="2.24.0"
           export PORTAINER="yes"

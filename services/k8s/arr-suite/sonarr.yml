@@ -1,3 +1,4 @@
+# Prerequisite: namespace/media must exist (created by deploy-media-volumes.yml)
 ---
 # Sonarr - TV Show Management
 # Part of the *arr suite for media automation

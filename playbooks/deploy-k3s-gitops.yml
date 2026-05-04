@@ -1,6 +1,9 @@
 ---
 # Complete K3s + ArgoCD + Dashboard Deployment
 # This playbook sets up everything you need for GitOps
+#
+# Observability (Prometheus, Grafana, Loki, Tempo) runs as LXC containers
+# on Proxmox, NOT inside K3s. Use the services/lxc/* playbooks for that.
 
 - name: Deploy K3s Cluster
   import_playbook: ../services/vms/k3s/main.yml
@@ -11,14 +14,14 @@
 - name: Deploy NFS Media Volumes
   import_playbook: ../services/vms/k3s/deploy-media-volumes.yml
 
+- name: Deploy MetalLB IP Pool
+  import_playbook: ../services/vms/k3s/deploy-metallb.yml
+
 - name: Deploy Kubernetes Dashboard
   import_playbook: ../services/vms/k3s/deploy-dashboard.yml
 
 - name: Deploy ArgoCD and GitHub Runners
   import_playbook: ../services/vms/k3s/deploy-gitops.yml
-
-- name: Deploy Observability Stack
-  import_playbook: ../services/vms/k3s/deploy-observability.yml
 
 - name: Deploy Media Suite
   import_playbook: ../services/vms/k3s/deploy-media-suite.yml
