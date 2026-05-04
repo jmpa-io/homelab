@@ -64,7 +64,7 @@
   tasks:
     - name: Deploy Uptime Kuma
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"
         pcs_script_name: "uptime-kuma"
@@ -84,7 +84,7 @@
   tasks:
     - name: Deploy Ntfy
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/ntfy.sh"
         pcs_script_name: "ntfy"
@@ -104,7 +104,7 @@
   tasks:
     - name: Deploy Nginx Proxy Manager
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/nginxproxymanager.sh"
         pcs_script_name: "nginx-proxy-manager"

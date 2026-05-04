@@ -19,7 +19,7 @@
   tasks:
     - name: Deploy Grafana using community script
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_proxmox_host: "{{ inventory_hostname }}"
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/grafana.sh"
@@ -59,7 +59,7 @@
 
   vars:
     grafana_vmid: "{{ lookup('env', 'GRAFANA_VMID') | default('145', true) }}"
-    grafana_ip: "{{ final_static_ip }}"
+    grafana_ip: "{{ pcs_final_static_ip }}"
     prometheus_ip: "{{ lookup('env', 'PROMETHEUS_IP') | default('10.0.1.40', true) }}"
     grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') | default('admin', true) }}"
 

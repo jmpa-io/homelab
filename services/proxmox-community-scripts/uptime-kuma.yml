@@ -17,7 +17,7 @@
   tasks:
     - name: Deploy Uptime Kuma using community script
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_proxmox_host: "{{ inventory_hostname }}"
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/uptime-kuma.sh"

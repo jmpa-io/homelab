@@ -1,0 +1,11 @@
+---
+# Variables for the backup-to-nas role.
+# Override these in the calling play's vars: block if needed.
+
+nas_backup_volume: "volume3"
+nas_backup_path: "/mnt/nfs/{{ hostvars[groups['nas'][0]]['instance_name'] }}/{{ nas_backup_volume }}/proxmox-backups"
+backup_schedule: "daily"
+backup_time: "02:00"
+backup_retention_count: 7
+backup_compression: "zstd"
+backup_mode: "snapshot"

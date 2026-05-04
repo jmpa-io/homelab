@@ -13,6 +13,7 @@
     - create_vm_template__template_image_url
     - create_vm_template__template_vmid
     - create_vm_template__template_root_password
+    - create_vm_template__ssh_public_key
 
 - name: Create template, refreshed if needed.
   block:

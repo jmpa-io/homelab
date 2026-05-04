@@ -99,7 +99,6 @@
     # k3s_version comes from k3s_cluster group vars (inventory.py line 213).
     # Prefer that over common.k3s.version so this play works with both the
     # full inventory and the k3s-only filtered one.
-    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
     k3s_server_manifests_urls:
       - url: "https://raw.githubusercontent.com/metallb/metallb/{{ k8s_services.metallb.version }}/config/manifests/metallb-native.yaml"
         filename: metallb.yaml
@@ -170,7 +169,6 @@
   vars_files:
     - "{{ playbook_dir }}/vars/main.yml"
   vars:
-    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
     k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] | default('') }}"
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 
@@ -210,7 +208,6 @@
   vars_files:
     - "{{ playbook_dir }}/vars/main.yml"
   vars:
-    k3s_version: "{{ k3s_version | default(common.k3s.version) }}"
     k3s_token: "{{ hostvars['localhost']['k3s_cluster_token'] | default('') }}"
     k3s_server_url: "https://{{ hostvars[groups['k3s_masters'][0]]['ansible_host'] }}:6443"
 

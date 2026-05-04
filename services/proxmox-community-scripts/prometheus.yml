@@ -17,7 +17,7 @@
   tasks:
     - name: Deploy Prometheus using community script
       ansible.builtin.include_role:
-        name: "{{ playbook_dir }}/roles/proxmox-community-script"
+        name: "{{ root_playbook_directory }}/roles/proxmox-community-script"
       vars:
         pcs_proxmox_host: "{{ inventory_hostname }}"
         pcs_script_url: "https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/prometheus.sh"
@@ -62,7 +62,7 @@
     - name: Create Prometheus configuration from template
       delegate_to: "{{ inventory_hostname }}"
       ansible.builtin.template:
-        src: "{{ playbook_dir }}/roles/proxmox-community-script/templates/prometheus-config.yml.j2"
+        src: "{{ root_playbook_directory }}/roles/proxmox-community-script/templates/prometheus-config.yml.j2"
         dest: "/tmp/prometheus-config.yml"
         mode: '0644'
 

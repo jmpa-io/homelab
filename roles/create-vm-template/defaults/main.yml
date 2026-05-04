@@ -9,3 +9,10 @@ create_vm_template__vm_storage: "local"
 create_vm_template__vm_cores: 4
 create_vm_template__vm_memory: 2048
 create_vm_template__vm_disk: 32G
+# ---
+# SSH public key injected via cloud-init into the template.
+# Must be provided by the caller — reads from inventory ssh.public_key by default.
+create_vm_template__ssh_public_key: "{{ ssh.public_key }}"
+# Optional override list of nameservers for cloud-init.
+# Defaults to homelab DNS (Pi-hole) via the groups['dns'][0] hostvars.
+create_vm_template__nameservers: []

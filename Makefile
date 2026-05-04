@@ -81,33 +81,18 @@ create-k3s-inventory: ## Creates the 'dist/k3s-inventory.json'.
 create-k3s-inventory: dist/k3s-inventory.json
 dist/k3s-inventory.json: dist
 dist/k3s-inventory.json: inventory/main.py
-	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))' > $@
+	@python3 $< | jq 'with_entries(select(.key == "k3s_cluster"))' > $@
 
 create-inventory: ## Creates the full 'dist/inventory.json'.
 create-inventory: dist/inventory.json
 dist/inventory.json: dist
 dist/inventory.json: inventory/main.py
-	@python $< > $@
+	@python3 $< > $@
 
-ping-k3s-inventory: ## Pings the k3s inventory.
-ping-k3s-inventory: dist/k3s-inventory.json
-	@ansible k3s_masters:k3s_nodes -i $< -m ping
+dist: ## Creates the dist/ directory.
+	@mkdir -p $@
 
-print-k3s-inventory: ## Prints the k3s inventory.
-print-k3s-inventory: inventory/main.py
-	@python $< | jq 'with_entries(select(.key == "k3s_cluster"))'
-
-print-k3s-inventory-no-jq: # Prints the k3s inventory, without jq formatting.
-print-k3s-inventory-no-jq: inventory/main.py
-	@python $<
-
-deploy-k3s: ## Deploys the k3s cluster.
-deploy-k3s: dist/inventory.json
-	ansible-playbook services/vms/k3s/main.yml \
-		-i $< \
-		--extra-vars "root_playbook_directory=$$PWD"
-
-.PHONY += create-k3s-inventory dist/k3s-inventory.json
+.PHONY += create-k3s-inventory dist/k3s-inventory.json create-inventory dist/inventory.json
 
 #
 # Dashboard token rotation.
@@ -227,7 +212,39 @@ docker: image-root
 ---: ## ---
 
 #
-# EC2.
+# Proxmox community scripts.
+#
+
+COMMUNITY_SCRIPTS_DIR ?= services/proxmox-community-scripts
+
+deploy-pbs: ## Deploy Proxmox Backup Server via community script.
+deploy-pbs: dist/inventory.json
+	ansible-playbook $(COMMUNITY_SCRIPTS_DIR)/proxmox-backup-server.yml \
+		-i $< --extra-vars "root_playbook_directory=$$PWD"
+
+deploy-ollama: ## Deploy Ollama via community script.
+deploy-ollama: dist/inventory.json
+	ansible-playbook $(COMMUNITY_SCRIPTS_DIR)/ollama.yml \
+		-i $< --extra-vars "root_playbook_directory=$$PWD"
+
+deploy-uptime-kuma: ## Deploy Uptime Kuma via community script.
+deploy-uptime-kuma: dist/inventory.json
+	ansible-playbook $(COMMUNITY_SCRIPTS_DIR)/uptime-kuma.yml \
+		-i $< --extra-vars "root_playbook_directory=$$PWD"
+
+deploy-speedtest: ## Deploy LibreSpeed speedtest via community script.
+deploy-speedtest: dist/inventory.json
+	ansible-playbook $(COMMUNITY_SCRIPTS_DIR)/speedtest.yml \
+		-i $< --extra-vars "root_playbook_directory=$$PWD"
+
+deploy-n8n: ## Deploy n8n via community script.
+deploy-n8n: dist/inventory.json
+	ansible-playbook $(COMMUNITY_SCRIPTS_DIR)/n8n.yml \
+		-i $< --extra-vars "root_playbook_directory=$$PWD"
+
+.PHONY += deploy-pbs deploy-ollama deploy-uptime-kuma deploy-speedtest deploy-n8n
+
+---: ## ---
 #
 
 provision-ec2: ## Provision the EC2 fleet member via Terraform.

@@ -4,7 +4,7 @@
   hosts: proxmox_hosts
   vars:
     proxmox_node_name: "{{ host.name }}"
-    proxmox_node_id: "{{ inventory_hostname.split('_')[-1] | int }}"
+    proxmox_node_id: "{{ host.bridge.ipv4.split('.')[2] | int }}"
     proxmox_node_ip: "{{ host.ipv4 }}"
     proxmox_node_bridge_ip: "{{ host.bridge.ipv4 }}"
     proxmox_node_bridge_name: "{{ host.bridge.name }}"
@@ -12,11 +12,13 @@
     proxmox_api_ip: "{{ proxmox_node_ip }}"
     proxmox_api_token_secret: "{{ proxmox.api_token }}"
     # ---
-    template_vmid: "{{ 10000 + proxmox_node_id }}"
+    template_vmid: "{{ 10000 + proxmox_node_id | int }}"
     template_name: "debian-12-nocloud-amd64"
-    template_image_url: "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+    # Debian 12 (Bookworm) generic cloud image — nocloud variant.
+    # Check for latest at: https://cloud.debian.org/images/cloud/bookworm/latest/
+    template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
     template_root_password: "{{ ansible_become_pass }}"
-    template_ssh_public_key: "{{ ssh.public_key }} "
+    template_ssh_public_key: "{{ ssh.public_key }}"
 
   tasks:
     - name: Create template.

@@ -32,38 +32,6 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: observability
-  namespace: argocd
-  labels:
-    app.kubernetes.io/name: observability
-    app.kubernetes.io/part-of: monitoring-stack
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-
-  source:
-    repoURL: https://github.com/jmpa-io/homelab.git
-    targetRevision: HEAD
-    path: services/k8s/observability
-
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: observability
-
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
+# Note: The observability Application has been intentionally removed.
+# Observability (Prometheus, Grafana, Loki, Tempo) runs as LXC containers
+# on Proxmox — NOT inside K3s. Use services/lxc/ playbooks for those.

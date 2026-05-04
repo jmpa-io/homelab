@@ -88,13 +88,5 @@ spec:
     name: http
   selector:
     app: tautulli
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: tautulli
-  namespace: media
-  labels:
-    app: tautulli
 # Note: Tautulli does not expose native Prometheus metrics.
-# Monitor it via the Homepage dashboard integration or a custom exporter.
+# Monitor via Homepage dashboard or a custom exporter.
